@@ -2,6 +2,8 @@
 
 namespace Core\Helpers;
 
+use Core\Enums\FilterFlag;
+use Core\Enums\FilterOperation;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Request as RequestFacade;
@@ -118,7 +120,12 @@ class Helpers
      *
      * @param Request|null $request
      *
-     * @return array
+     * @return array<array{
+     *      field: string,
+     *      operation: FilterOperation,
+     *      flags: FilterFlag[],
+     *      value: mixed,
+     *  }>
      */
     public static function requestedFilters(?Request $request = null): array
     {

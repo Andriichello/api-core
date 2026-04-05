@@ -13,7 +13,7 @@ use Core\Models\Interfaces\HasOrgIdInterface;
  * @implements HasOrgIdInterface
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Speedgoat\Skeleton\Models\Traits
+ * @package Core\Models\Traits
  */
 trait HasOrgId
 {

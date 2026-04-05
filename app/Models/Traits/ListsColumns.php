@@ -12,7 +12,7 @@ use Core\Models\Interfaces\ListsColumnsInterface;
  * @implements ListsColumnsInterface
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Speedgoat\Skeleton\Models\Traits
+ * @package Core\Models\Traits
  */
 trait ListsColumns
 {

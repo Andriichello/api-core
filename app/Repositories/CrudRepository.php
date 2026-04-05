@@ -1,0 +1,183 @@
+<?php
+
+namespace Core\Repositories;
+
+use Exception;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+use Core\Http\Filters\BaseFilter;
+use Core\Models\BaseModel;
+use Core\Queries\BaseQuery;
+use Core\Queries\Interfaces\IndexableInterface;
+use Core\Repositories\Interfaces\CrudRepositoryInterface;
+use Core\Repositories\Traits\AllowsFilters;
+use Core\Repositories\Traits\AllowsSorts;
+
+/**
+ * Class CrudRepository.
+ *
+ * @author Andrii Prykhodko <andriichello@gmail.com>
+ * @package Core\Repositories
+ */
+abstract class CrudRepository extends BaseRepository implements
+    CrudRepositoryInterface
+{
+    use AllowsSorts;
+    use AllowsFilters;
+
+    /**
+     * Get the query builder for the repository's model.
+     *
+     * @param Request|null $request
+     *
+     * @return BaseQuery
+     * @throws Exception
+     */
+    public function builder(?Request $request = null): BaseQuery
+    {
+        return $this->applyRequestOnQuery(parent::builder(), $request);
+    }
+
+    /**
+     * Apply `sorts`, `filters` and `index` rules on query.
+     *
+     * @param BaseQuery $query
+     * @param Request|null $request
+     *
+     * @return BaseQuery
+     * @throws Exception
+     */
+    protected function applyRequestOnQuery(BaseQuery $query, ?Request $request = null): BaseQuery
+    {
+        if ($query instanceof IndexableInterface) {
+            $query->index($request ?? request());
+        }
+
+        if ($request) {
+            $sorts = $this->getRequestedSorts($request);
+
+            if (empty($sorts)) {
+                $sorts = $this->getDefaultSorts();
+            }
+
+            foreach ($sorts as $sort => $direction) {
+                $table = $this->tableOfAllowedSort($sort) ?? $query->getModel()->getTable();
+                $column = $this->columnOfAllowedSort($sort) ?? $sort;
+
+                $query->orderBy(
+                    empty($table) ? $column : $table . '.' . $column,
+                    $direction
+                );
+            }
+
+            $filters = $this->getRequestedFilters($request);
+
+            foreach ($filters as $filter) {
+                $field = $filter['field'];
+                $value = $filter['value'] ?? '';
+
+                /** @var class-string<BaseFilter> $class */
+                $class = $this->classOfAllowedFilter($field);
+                $table = $this->tableOfAllowedFilter($field);
+                $column = $this->columnOfAllowedFilter($field);
+
+                $logic = new $class($table ?? $query->getModel()->getTable())
+                    ->setOperation($filter['operation'])
+                    ->setFlags($filter['flags'] ?? []);
+
+                $logic->apply($query, $column ?? $field, $value);
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Find the model by the id.
+     *
+     * @param mixed $id
+     *
+     * @return BaseModel|null
+     */
+    public function find(mixed $id): ?BaseModel
+    {
+        return $this->builder()->find($id);
+    }
+
+    /**
+     * Find the model by the id or throw an exception.
+     *
+     * @param mixed $id
+     *
+     * @return BaseModel|null
+     */
+    public function findOrFail(mixed $id): ?BaseModel
+    {
+        return $this->builder()->findOrFail($id);
+    }
+
+    /**
+     * Create the model with given attributes.
+     *
+     * @param array $attributes
+     *
+     * @return BaseModel
+     */
+    public function create(array $attributes): BaseModel
+    {
+        return $this->builder()->create($attributes);
+    }
+
+    /**
+     * Update the model with given attributes.
+     *
+     * @param BaseModel $model
+     * @param array $attributes
+     *
+     * @return bool
+     */
+    public function update(BaseModel $model, array $attributes): bool
+    {
+        return $model->update($attributes);
+    }
+
+    /**
+     * Update or create the model with given attributes.
+     *
+     * @param array $attributes
+     *
+     * @return Builder|BaseModel
+     */
+    public function updateOrCreate(array $attributes): Builder|BaseModel
+    {
+        return $this->builder()->updateOrCreate($attributes);
+    }
+
+    /**
+     * Delete the given model.
+     *
+     * @param BaseModel $model
+     *
+     * @return bool
+     */
+    public function delete(BaseModel $model): bool
+    {
+        return $model->delete();
+    }
+
+    /**
+     * Force delete the given model.
+     *
+     * @param BaseModel $model
+     *
+     * @return bool
+     */
+    public function forceDelete(BaseModel $model): bool
+    {
+        if (!$this->delete($model)) {
+            return false;
+        }
+
+        return $model->forceDelete();
+    }
+}
