@@ -2,10 +2,11 @@
 
 namespace Core\Models;
 
+use Core\Queries\OrganizationQuery;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -24,6 +25,8 @@ use Illuminate\Support\Collection;
  * @property Carbon|null $deleted_at
  *
  * @property-read User[]|Collection $users
+ *
+ * @method static OrganizationQuery query()
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Models
@@ -96,5 +99,17 @@ class Organization extends BaseModel
     public function orgId(): ?int
     {
         return $this->id;
+    }
+
+    /**
+     * Create a new Eloquent query builder for the model.
+     *
+     * @param DatabaseBuilder $query
+     *
+     * @return OrganizationQuery
+     */
+    public function newEloquentBuilder($query): OrganizationQuery
+    {
+        return new OrganizationQuery($query);
     }
 }
