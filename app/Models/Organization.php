@@ -1,0 +1,100 @@
+<?php
+
+namespace Core\Models;
+
+use Database\Factories\OrganizationFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+
+/**
+ * Class Organization.
+ *
+ * @property int $id
+ * @property string $slug
+ * @property string $name
+ * @property array|null $metadata
+ * @property string|null $activated_at
+ * @property string|null $deactivated_at
+ * @property string|null $suspended_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ *
+ * @property-read User[]|Collection $users
+ *
+ * @author Andrii Prykhodko <andriichello@gmail.com>
+ * @package Core\Models
+ */
+class Organization extends BaseModel
+{
+    /** @use HasFactory<OrganizationFactory> */
+    use HasFactory;
+
+    /**
+     * The attributes that are mass-assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'slug',
+        'name',
+    ];
+
+    /**
+     * The attributes that aren't mass-assignable.
+     *
+     * @var array<string>
+     */
+    protected $guarded = [
+        'metadata',
+        'activated_at',
+        'deactivated_at',
+        'suspended_at',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'activated_at' => 'datetime',
+        'deactivated_at' => 'datetime',
+        'suspended_at' => 'datetime',
+    ];
+
+    /**
+     * The loadable relationships for the model.
+     *
+     * @var array
+     */
+    protected $relationships = [
+        'organization',
+    ];
+
+    /**
+     * Users associated with the model.
+     *
+     * @return HasMany
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'organization_id');
+    }
+
+    /**
+     * Returns id of the organization, to which the record belongs.
+     *
+     * @return int|null
+     */
+    public function orgId(): ?int
+    {
+        return $this->id;
+    }
+}
