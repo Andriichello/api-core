@@ -1,9 +1,8 @@
 <?php
 
-namespace Core\Http\Filters\Operations;
+namespace Core\Http\Filters;
 
 use Core\Enums\FilterOperation;
-use Core\Http\Filters\BaseFilter;
 use InvalidArgumentException;
 
 /**

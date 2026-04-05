@@ -4,6 +4,7 @@ namespace Core\Http\Filters\Operations;
 
 use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
+use Core\Http\Filters\OperationFilter;
 use Core\Queries\BaseQuery;
 use InvalidArgumentException;
 
@@ -35,12 +36,6 @@ class InFilter extends OperationFilter
      */
     public function apply(BaseQuery $query, string $column, mixed $value, string $boolean = 'and'): void
     {
-        if ($this->hasFlag(FilterFlag::CaseInsensitive)) {
-            throw new InvalidArgumentException(
-                'Case insensitive flag is not supported for IN filter'
-            );
-        }
-
         if (is_string($value)) {
             $value = explode(',', $value);
         }
@@ -55,8 +50,12 @@ class InFilter extends OperationFilter
             );
         }
 
-        $this->hasFlag(FilterFlag::Not)
-            ? $query->whereNotIn($column, $value, $boolean)
-            : $query->whereIn($column, $value, $boolean);
+        $placeholders = implode(', ', array_fill(0, count($value), 'LOWER(?)'));
+        $operator = $this->hasFlag(FilterFlag::Not) ? 'NOT IN' : 'IN';
+        $raw = "LOWER({$column}) {$operator} ({$placeholders})";
+
+        $this->hasFlag(FilterFlag::CaseInsensitive)
+            ? $query->whereRaw($raw, $value, $boolean)
+            : $query->where($column, $operator, $value, $boolean);
     }
 }

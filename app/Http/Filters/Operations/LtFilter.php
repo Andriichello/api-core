@@ -4,8 +4,8 @@ namespace Core\Http\Filters\Operations;
 
 use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
+use Core\Http\Filters\OperationFilter;
 use Core\Queries\BaseQuery;
-use InvalidArgumentException;
 
 /**
  * Class LtFilter.
@@ -35,14 +35,12 @@ class LtFilter extends OperationFilter
      */
     public function apply(BaseQuery $query, string $column, mixed $value, string $boolean = 'and'): void
     {
-        if ($this->hasFlag(FilterFlag::CaseInsensitive)) {
-            throw new InvalidArgumentException(
-                'Case insensitive flag is not supported for LT filter'
-            );
-        }
-
         $operator = $this->hasFlag(FilterFlag::Not) ? '>=' : '<';
 
-        $query->where($column, $operator, $value, $boolean);
+        $raw = "LOWER({$column}) {$operator} LOWER(?)";
+
+        $this->hasNoFlag(FilterFlag::CaseInsensitive)
+            ? $query->where($column, $operator, $value, $boolean)
+            : $query->whereRaw($raw, [$value], $boolean);
     }
 }

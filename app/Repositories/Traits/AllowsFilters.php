@@ -16,7 +16,7 @@ use Core\Repositories\CrudRepository;
  * Trait AllowsFilters.
  *
  * Contains logic for getting the list of filters,
- * which should be applied for given request.
+ * which should be applied for the given request.
  * Throws exception when asked filter is not allowed.
  *
  * By default, all model's fillable columns along with

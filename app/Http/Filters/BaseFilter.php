@@ -72,7 +72,7 @@ abstract class BaseFilter
     }
 
     /**
-     * Returns true if given flags are set on the filter.
+     * Returns true if given flags (all of them) are set on the filter.
      *
      * @param FilterFlag $flag
      * @param FilterFlag ...$more
@@ -85,6 +85,27 @@ abstract class BaseFilter
 
         foreach ($more as $value) {
             if (!in_array($value, $this->flags)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Returns true if given flags (at least one of them) are not set on the filter.
+     *
+     * @param FilterFlag $flag
+     * @param FilterFlag ...$more
+     *
+     * @return bool
+     */
+    public function hasNoFlag(FilterFlag $flag, FilterFlag ...$more): bool
+    {
+        array_unshift($more, $flag);
+
+        foreach ($more as $value) {
+            if (in_array($value, $this->flags)) {
                 return false;
             }
         }

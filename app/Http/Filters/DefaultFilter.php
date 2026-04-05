@@ -7,6 +7,7 @@ use Core\Http\Filters\Operations\EqFilter;
 use Core\Http\Filters\Operations\GtFilter;
 use Core\Http\Filters\Operations\GteFilter;
 use Core\Http\Filters\Operations\InFilter;
+use Core\Http\Filters\Operations\LikeFilter;
 use Core\Http\Filters\Operations\LtFilter;
 use Core\Http\Filters\Operations\LteFilter;
 use Core\Http\Filters\Operations\NullFilter;
@@ -48,6 +49,7 @@ class DefaultFilter extends BaseFilter
             FilterOperation::GTE => new GteFilter($this->table),
             FilterOperation::LT => new LtFilter($this->table),
             FilterOperation::LTE => new LteFilter($this->table),
+            FilterOperation::LIKE => new LikeFilter($this->table),
         };
 
         // Will throw an exception if there is an operation mismatch

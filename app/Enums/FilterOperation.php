@@ -20,6 +20,9 @@ enum FilterOperation: string implements BaseEnumInterface
     case IN = 'in';
     case NULL = 'null';
 
+    // Search:
+    case LIKE = 'like';
+
     // Greater:
     case GT = 'gt';
     case GTE = 'gte';

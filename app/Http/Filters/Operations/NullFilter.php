@@ -4,6 +4,7 @@ namespace Core\Http\Filters\Operations;
 
 use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
+use Core\Http\Filters\OperationFilter;
 use Core\Queries\BaseQuery;
 use InvalidArgumentException;
 
