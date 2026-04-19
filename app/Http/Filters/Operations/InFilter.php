@@ -50,12 +50,26 @@ class InFilter extends OperationFilter
             );
         }
 
-        $placeholders = implode(', ', array_fill(0, count($value), 'LOWER(?)'));
-        $operator = $this->hasFlag(FilterFlag::Not) ? 'NOT IN' : 'IN';
-        $raw = "LOWER({$column}) {$operator} ({$placeholders})";
-
         $this->hasFlag(FilterFlag::CaseInsensitive)
-            ? $query->whereRaw($raw, $value, $boolean)
-            : $query->where($column, $operator, $value, $boolean);
+            ? $this->applyCI($query, $column, $value, $boolean)
+            : $query->whereIn($column, $value, $boolean, not: $this->hasFlag(FilterFlag::Not));
+    }
+
+    /**
+     * Apply a case-insensitive filter to the given query builder instance.
+     *
+     * @param BaseQuery $query
+     * @param string $column
+     * @param mixed $value
+     * @param string $boolean
+     *
+     * @return void
+     */
+    protected function applyCI(BaseQuery $query, string $column, mixed $value, string $boolean = 'and'): void
+    {
+        $operator = $this->hasFlag(FilterFlag::Not) ? 'NOT IN' : 'IN';
+        $placeholders = implode(', ', array_fill(0, count($value), 'LOWER(?)'));
+
+        $query->whereRaw("LOWER({$column}) {$operator} ({$placeholders})", $value, $boolean);
     }
 }

@@ -4,12 +4,12 @@ namespace Core\Http\Filters;
 
 use Core\Enums\FilterOperation;
 use Core\Http\Filters\Operations\EqFilter;
-use Core\Http\Filters\Operations\GtFilter;
 use Core\Http\Filters\Operations\GteFilter;
+use Core\Http\Filters\Operations\GtFilter;
 use Core\Http\Filters\Operations\InFilter;
 use Core\Http\Filters\Operations\LikeFilter;
-use Core\Http\Filters\Operations\LtFilter;
 use Core\Http\Filters\Operations\LteFilter;
+use Core\Http\Filters\Operations\LtFilter;
 use Core\Http\Filters\Operations\NullFilter;
 use Core\Queries\BaseQuery;
 use InvalidArgumentException;

@@ -33,7 +33,7 @@ abstract class BaseFilter
      *
      * @var FilterFlag[]
      */
-    protected ?array $flags = [];
+    protected array $flags = [];
 
     /**
      * BaseFilter constructor.

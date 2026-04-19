@@ -37,10 +37,8 @@ class GteFilter extends OperationFilter
     {
         $operator = $this->hasFlag(FilterFlag::Not) ? '<' : '>=';
 
-        $raw = "LOWER({$column}) {$operator} LOWER(?)";
-
-        $this->hasNoFlag(FilterFlag::CaseInsensitive)
-            ? $query->where($column, $operator, $value, $boolean)
-            : $query->whereRaw($raw, [$value], $boolean);
+        $this->hasFlag(FilterFlag::CaseInsensitive)
+            ? $query->whereRaw("LOWER({$column}) {$operator} LOWER(?)", [$value], $boolean)
+            : $query->where($column, $operator, $value, $boolean);
     }
 }
