@@ -1,0 +1,14 @@
+{
+    "agents": [
+        "junie",
+        "claude_code",
+        "opencode"
+    ],
+    "guidelines": true,
+    "mcp": true,
+    "nightwatch_mcp": false,
+    "sail": false,
+    "skills": [
+        "laravel-best-practices"
+    ]
+}
