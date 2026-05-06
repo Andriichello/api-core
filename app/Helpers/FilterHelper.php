@@ -60,8 +60,10 @@ class FilterHelper
      */
     public static function parseNode(string $field, mixed $node, array $path = []): array
     {
+        $isLeaf = !is_array($node) ||
+            (count($node) === 0 || array_keys($node) === range(0, count($node) - 1));
         // leaf → operation reached
-        if (!is_array($node)) {
+        if ($isLeaf) {
             $operation = static::parseOperation($path);
             $flags = static::parseFlags($path);
 
