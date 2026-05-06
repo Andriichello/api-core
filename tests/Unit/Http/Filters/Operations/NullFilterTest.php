@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * Class NullFilterTest.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
+ * @package Core\Tests\Unit\Http\Filters\Operations
  */
 class NullFilterTest extends TestCase
 {

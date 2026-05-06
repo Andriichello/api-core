@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * Class LikeFilterTest.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
+ * @package Core\Tests\Unit\Http\Filters\Operations
  */
 class LikeFilterTest extends TestCase
 {

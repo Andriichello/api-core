@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * Class InFilterTest.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
+ * @package Core\Tests\Unit\Http\Filters\Operations
  */
 class InFilterTest extends TestCase
 {

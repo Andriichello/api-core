@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * Class ComparisonFiltersTest.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
+ * @package Core\Tests\Unit\Http\Filters\Operations
  */
 class ComparisonFiltersTest extends TestCase
 {
