@@ -3,6 +3,7 @@
 namespace Core\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Core\Models\Traits\ChecksRolesAndPermissions;
 use Core\Queries\UserQuery;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Authenticatable;
@@ -17,6 +18,9 @@ use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Traits\HasRoles;
 
 /**
  * Class User.
@@ -37,6 +41,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  *
  * @property-read Organization|null $organization
+ * @property-read Role[]|Collection $roles
  *
  * @method static UserQuery query()
  *
@@ -51,6 +56,7 @@ class User extends BaseModel implements
     use Authenticatable, Authorizable, CanResetPassword, MustVerifyEmail;
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+    use HasRoles, ChecksRolesAndPermissions;
 
     /**
      * The attributes that are mass-assignable.
