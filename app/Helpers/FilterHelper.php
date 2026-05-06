@@ -60,19 +60,29 @@ class FilterHelper
      */
     public static function parseNode(string $field, mixed $node, array $path = []): array
     {
-        $isLeaf = !is_array($node) ||
-            (count($node) === 0 || array_keys($node) === range(0, count($node) - 1));
-        // leaf → operation reached
-        if ($isLeaf) {
+        $isScalar = is_scalar($node);
+        $isNumericArray = is_array($node) &&
+            array_keys($node) === range(0, count($node) - 1) &&
+            array_all($node, fn ($item) => is_scalar($item));
+
+        // Leaf → operation reached
+        if ($isScalar || $isNumericArray) {
             $operation = static::parseOperation($path);
             $flags = static::parseFlags($path);
 
-            return [[
-                'field' => $field,
-                'operation' => $operation,
-                'flags' => $flags,
-                'value' => $node,
-            ]];
+            // Don't allow array of values for non-IN operations
+            if ($isNumericArray && $operation !== FilterOperation::IN) {
+                throw new InvalidArgumentException("Array of values is only supported by IN operation");
+            }
+
+            return [
+                [
+                    'field' => $field,
+                    'operation' => $operation,
+                    'flags' => $flags,
+                    'value' => $node,
+                ]
+            ];
         }
 
         $result = [];
@@ -99,9 +109,10 @@ class FilterHelper
      * @throws InvalidArgumentException
      */
     protected static function parseOperation(
-        array &$path,
+        array           &$path,
         FilterOperation $default = FilterOperation::EQ
-    ): FilterOperation {
+    ): FilterOperation
+    {
         $operation = array_last($path);
 
         if ($operation === null) {
