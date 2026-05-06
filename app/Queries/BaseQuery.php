@@ -3,7 +3,9 @@
 namespace Core\Queries;
 
 use Closure;
+use Core\Models\User;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
 use Core\Models\BaseModel;
@@ -30,13 +32,14 @@ use Core\Queries\Interfaces\IndexableInterface;
 class BaseQuery extends EloquentBuilder implements IndexableInterface
 {
     /**
-     * Apply index query conditions.
+     * Apply index query conditions for a given user.
      *
-     * @param Request $request
+     * @param User|null $user
+     * @param array $params
      *
      * @return BaseQuery
      */
-    public function index(Request $request): BaseQuery
+    public function index(?Model $user, array $params = []): BaseQuery
     {
         return $this;
     }

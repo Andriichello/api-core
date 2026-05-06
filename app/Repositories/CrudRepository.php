@@ -51,8 +51,10 @@ abstract class CrudRepository extends BaseRepository implements
      */
     protected function applyRequestOnQuery(BaseQuery $query, ?Request $request = null): BaseQuery
     {
+        $request ??= request();
+
         if ($query instanceof IndexableInterface) {
-            $query->index($request ?? request());
+            $query->index($request->user(), $request->all());
         }
 
         if ($request) {

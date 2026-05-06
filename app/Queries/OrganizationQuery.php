@@ -4,7 +4,7 @@ namespace Core\Queries;
 
 use Core\Models\Organization;
 use Core\Models\User;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class OrganizationQuery.
@@ -22,24 +22,21 @@ use Illuminate\Http\Request;
 class OrganizationQuery extends BaseQuery
 {
     /**
-     * Apply index query conditions.
+     * Apply index query conditions for a given user.
      *
-     * @param Request $request
+     * @param User|null $user
+     * @param array $params
      *
      * @return OrganizationQuery
      */
-    public function index(Request $request): OrganizationQuery
+    public function index(?Model $user, array $params = []): OrganizationQuery
     {
-        /** @var User|null $user */
-        $user = $request->user();
-
         if (!$user) {
             $this->whereRaw('1 = 0');
             return $this;
         }
 
-        // todo: check if user is a super-admin
-        if ($user->hasInternalOrg()) {
+        if ($user->hasInternalOrg() && $user->isSuperAdmin()) {
             return $this;
         }
 

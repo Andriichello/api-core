@@ -3,7 +3,7 @@
 namespace Core\Queries\Interfaces;
 
 use Core\Queries\BaseQuery;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Interface IndexableInterface.
@@ -14,11 +14,12 @@ use Illuminate\Http\Request;
 interface IndexableInterface
 {
     /**
-     * Apply index query conditions.
+     * Apply index query conditions for a given user.
      *
-     * @param Request $request
+     * @param Model|null $user
+     * @param array $params
      *
      * @return BaseQuery
      */
-    public function index(Request $request): BaseQuery;
+    public function index(?Model $user, array $params = []): BaseQuery;
 }
