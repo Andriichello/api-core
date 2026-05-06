@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
  * Interface AllowsAppendsInterface.
  *
  * Contains logic for getting the list of attributes,
- * which should be appended for given request.
+ * which should be appended for the given request.
  * Throws exception when asked append is not allowed.
  *
  * By default, no appends will be allowed.
@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
 interface AllowsAppendsInterface
 {
     /**
-     * Get list of columns that are allowed as
+     * Get a list of columns that are allowed as
      * appends on request.
      *
      * @return array<int, string>
@@ -38,7 +38,7 @@ interface AllowsAppendsInterface
     public function hasAllowedAppends(string|array $appends): bool;
 
     /**
-     * Get append value. If it's not allowed then
+     * Get append value. If it's not allowed, then
      * an exception will be thrown.
      *
      * @param string $append
@@ -49,20 +49,20 @@ interface AllowsAppendsInterface
     public function getAllowedAppend(string $append): mixed;
 
     /**
-     * Get an array of append keys to values. By default,
-     * all allowed appends will be returned. If given appends
-     * are not allowed then an exception will be thrown.
+     * Get an array of appending keys to values. By default,
+     * all allowed appending will be returned. If given appends
+     * are not allowed, then an exception will be thrown.
      *
      * @param string|array|null $appends
      *
      * @return array
      * @throws Exception
      */
-    public function getAllowedAppends(string|array $appends = null): array;
+    public function getAllowedAppends(string|array|null $appends = null): array;
 
     /**
-     * Get an array of requested appends. If requested appends
-     * are not allowed then an exception will be thrown.
+     * Get an array of requested appending. If requested appends
+     * are not allowed, then an exception will be thrown.
      *
      * @param Request $request
      *

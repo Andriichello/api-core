@@ -7,11 +7,12 @@ use Core\Http\Resources\Interfaces\AllowsAppendsInterface;
 use Core\Http\Resources\Interfaces\AllowsIncludesInterface;
 use Core\Http\Resources\Traits\AllowsAppends;
 use Core\Http\Resources\Traits\AllowsIncludes;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Class BaseResource.
@@ -45,11 +46,29 @@ class BaseResource extends JsonResource implements
     /**
      * Transform the resource into an array.
      *
+     * Merges resolved include and append in the base attribute array,
+     * omitting any entry whose value is a MissingValue (i.e., the repository
+     * did not eager-load the relationship).
+     *
+     * @param Request $request
+     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        $data = parent::toArray($request);
+
+        foreach ($this->getRequested($request) as $key => $value) {
+            if ($value instanceof MissingValue) {
+                unset($data[$key]);
+
+                continue;
+            }
+
+            $data[$key] = $value;
+        }
+
+        return $data;
     }
 
     /**
@@ -81,7 +100,7 @@ class BaseResource extends JsonResource implements
     }
 
     /**
-     * Determines if current route has the slug in the name.
+     * Determines if the current route has the slug in the name.
      *
      * @param Request $request
      *
@@ -101,13 +120,13 @@ class BaseResource extends JsonResource implements
 
     /**
      * Get an array of requested includes and appends.
-     * If requested includes or appends are not allowed
+     * If requested includes or appends are not allowed,
      * then an exception will be thrown.
      *
      * @param Request $request
      *
      * @return array
-     * @throws Exception
+     * @throws Throwable
      */
     public function getRequested(Request $request): array
     {

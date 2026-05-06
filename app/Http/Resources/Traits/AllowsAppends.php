@@ -30,16 +30,16 @@ trait AllowsAppends
     protected array $allowedAppends = [];
 
     /**
-     * List of columns that were passed from parent
-     * resource. Needed for nested appends.
+     * List of columns that were passed from the parent
+     * resource. Needed for nested appending.
      *
      * @var array<int, string>
      */
     protected ?array $passedAppends = null;
 
     /**
-     * Get the list of columns that were passed from parent
-     * resource. Needed for nested appends.
+     * Get the list of columns that were passed from the parent
+     * resource. Needed for nested appending.
      *
      * @return array|null
      */
@@ -49,8 +49,8 @@ trait AllowsAppends
     }
 
     /**
-     * Set the list of columns that were passed from parent
-     * resource. Needed for nested appends.
+     * Set the list of columns that were passed from the parent
+     * resource. Needed for nested appending.
      *
      * @param array|null $appends
      *
@@ -97,7 +97,7 @@ trait AllowsAppends
     }
 
     /**
-     * Get append value. If it's not allowed then
+     * Get append value. If it's not allowed, then
      * an exception will be thrown.
      *
      * @param string $append
@@ -118,16 +118,16 @@ trait AllowsAppends
     }
 
     /**
-     * Get an array of append keys to values. By default,
-     * all allowed appends will be returned. If given appends
-     * are not allowed then an exception will be thrown.
+     * Get an array of appending keys to values. By default,
+     * all allowed appending will be returned. If given appends
+     * are not allowed, then an exception will be thrown.
      *
      * @param string|array|null $appends
      *
      * @return array
      * @throws Exception
      */
-    public function getAllowedAppends(string|array $appends = null): array
+    public function getAllowedAppends(string|array|null $appends = null): array
     {
         $appends = $appends !== null ? Arr::wrap($appends)
             : $this->listOfAllowedAppends();
@@ -142,8 +142,8 @@ trait AllowsAppends
     }
 
     /**
-     * Get an array of requested appends. If requested appends
-     * are not allowed then an exception will be thrown.
+     * Get an array of requested appending. If requested appends
+     * are not allowed, then an exception will be thrown.
      *
      * @param Request $request
      *

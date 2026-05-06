@@ -2,21 +2,30 @@
 
 namespace Core\Http\Resources\Traits;
 
-use Exception;
-use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 use Core\Helpers\Helpers;
 use Core\Http\Resources\BaseResource;
+use Core\Http\Resources\Interfaces\AllowsIncludesInterface;
+use Exception;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\MissingValue;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Trait AllowsIncludes.
  *
- * Contains logic for getting the list of relations,
- * which should be included for given request.
- * Throws exception when asked include is not allowed.
+ * Contains logic for getting the list of relations which should be included
+ * for a given request. Throws an exception when a requested include is not
+ * allowed. Relations are only resolved when they have already been eager-loaded
+ * by the repository — lazy loading is never triggered.
  *
  * By default, no includes will be allowed.
+ *
+ * @mixin BaseResource
+ *
+ * @implements AllowsIncludesInterface
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Resources\Traits
@@ -35,12 +44,12 @@ trait AllowsIncludes
      * List of includes that were passed from parent
      * resource. Needed for nested includes.
      *
-     * @var array<int|string, string>
+     * @var array<int|string, string>|null
      */
     protected ?array $passedIncludes = null;
 
     /**
-     * Get list of includes that were passed from parent
+     * Get a list of includes that were passed from parent
      * resource. Needed for nested includes.
      *
      * @return array|null
@@ -51,7 +60,7 @@ trait AllowsIncludes
     }
 
     /**
-     * Set list of includes that are passed from parent
+     * Set a list of includes that are passed from the parent
      * resource. Needed for nested includes.
      *
      * @param array|null $includes
@@ -130,7 +139,7 @@ trait AllowsIncludes
      * @param array $all (List of all includes, required for nested includes)
      *
      * @return mixed
-     * @throws Exception
+     * @throws Throwable
      */
     public function getAllowedInclude(string $include, array $all = []): mixed
     {
@@ -145,7 +154,14 @@ trait AllowsIncludes
             ->before('.')
             ->value();
 
-        $value = data_get($this, $relation);
+        $isLoaded = $this->resource instanceof Model &&
+            $this->resource->relationLoaded($relation);
+
+        if (!$isLoaded) {
+            return new MissingValue();
+        }
+
+        $value = $this->resource->getRelation($relation);
 
         $nested = [];
 
@@ -181,7 +197,7 @@ trait AllowsIncludes
      * @return array
      * @throws Exception
      */
-    public function getAllowedIncludes(string|array $includes = null): array
+    public function getAllowedIncludes(string|array|null $includes = null): array
     {
         $includes = $includes !== null ? Arr::wrap($includes)
             : $this->listOfAllowedIncludes();
@@ -201,12 +217,12 @@ trait AllowsIncludes
 
     /**
      * Get an array of requested includes. If requested includes
-     * are not allowed then an exception will be thrown.
+     * are not allowed, then an exception will be thrown.
      *
      * @param Request $request
      *
      * @return array
-     * @throws Exception
+     * @throws Throwable
      */
     public function getRequestedIncludes(Request $request): array
     {

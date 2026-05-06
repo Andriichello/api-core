@@ -2,16 +2,17 @@
 
 namespace Core\Repositories;
 
-use Exception;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Core\Http\Filters\BaseFilter;
 use Core\Models\BaseModel;
 use Core\Queries\BaseQuery;
 use Core\Queries\Interfaces\IndexableInterface;
 use Core\Repositories\Interfaces\CrudRepositoryInterface;
+use Core\Repositories\Traits\AllowsEagerLoads;
 use Core\Repositories\Traits\AllowsFilters;
 use Core\Repositories\Traits\AllowsSorts;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+use Throwable;
 
 /**
  * Class CrudRepository.
@@ -24,6 +25,7 @@ abstract class CrudRepository extends BaseRepository implements
 {
     use AllowsSorts;
     use AllowsFilters;
+    use AllowsEagerLoads;
 
     /**
      * Get the query builder for the repository's model.
@@ -31,7 +33,7 @@ abstract class CrudRepository extends BaseRepository implements
      * @param Request|null $request
      *
      * @return BaseQuery
-     * @throws Exception
+     * @throws Throwable
      */
     public function builder(?Request $request = null): BaseQuery
     {
@@ -45,7 +47,7 @@ abstract class CrudRepository extends BaseRepository implements
      * @param Request|null $request
      *
      * @return BaseQuery
-     * @throws Exception
+     * @throws Throwable
      */
     protected function applyRequestOnQuery(BaseQuery $query, ?Request $request = null): BaseQuery
     {
@@ -86,6 +88,12 @@ abstract class CrudRepository extends BaseRepository implements
                     ->setFlags($filter['flags'] ?? []);
 
                 $logic->apply($query, $column ?? $field, $value);
+            }
+
+            $includes = $this->getValidatedIncludes($request);
+
+            if (!empty($includes)) {
+                $query->with($includes);
             }
         }
 
