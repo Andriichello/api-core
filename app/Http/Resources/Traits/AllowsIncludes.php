@@ -5,12 +5,12 @@ namespace Core\Http\Resources\Traits;
 use Core\Helpers\Helpers;
 use Core\Http\Resources\BaseResource;
 use Core\Http\Resources\Interfaces\AllowsIncludesInterface;
-use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -170,7 +170,7 @@ trait AllowsIncludes
 
     /**
      * Get include value. If it's not allowed then
-     * an exception will be thrown.
+     * a validation exception (422) will be thrown.
      *
      * @param string $include
      * @param array $all (List of all includes, required for nested includes)
@@ -181,10 +181,7 @@ trait AllowsIncludes
     public function getAllowedInclude(string $include, array $all = []): mixed
     {
         if (!$this->hasAllowedIncludes($include)) {
-            $message = "The '$include' include is not allowed on "
-                . static::class;
-
-            throw new Exception($message);
+            throw $this->notAllowedInclude($include);
         }
 
         $relation = Str::of($include)
@@ -232,7 +229,7 @@ trait AllowsIncludes
      * @param string|array|null $includes
      *
      * @return array
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedIncludes(string|array|null $includes = null): array
     {
@@ -266,6 +263,27 @@ trait AllowsIncludes
         return $this->getAllowedIncludes(
             $this->passedIncludes ?? $this->includesOfRequest ?? Helpers::requestedIncludes($request)
         );
+    }
+
+    /**
+     * Get a validation exception (422) for the given include,
+     * which is not allowed, naming the includes that are.
+     *
+     * @param string $include
+     *
+     * @return ValidationException
+     */
+    public function notAllowedInclude(string $include): ValidationException
+    {
+        $allowed = $this->listOfAllowedIncludes();
+
+        $message = "The '$include' include is not allowed. " . (empty($allowed)
+            ? 'No includes are allowed.'
+            : 'Allowed includes: ' . implode(', ', $allowed) . '.');
+
+        return ValidationException::withMessages([
+            'include' => [$message],
+        ]);
     }
 
     /**

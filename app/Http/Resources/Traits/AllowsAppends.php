@@ -3,9 +3,9 @@
 namespace Core\Http\Resources\Traits;
 
 use Core\Helpers\Helpers;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Trait AllowsAppends.
@@ -135,23 +135,41 @@ trait AllowsAppends
 
     /**
      * Get append value. If it's not allowed, then
-     * an exception will be thrown.
+     * a validation exception (422) will be thrown.
      *
      * @param string $append
      *
      * @return mixed
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedAppend(string $append): mixed
     {
         if (!$this->hasAllowedAppends($append)) {
-            $message = "The '$append' append is not allowed on "
-                . static::class;
-
-            throw new Exception($message);
+            throw $this->notAllowedAppend($append);
         }
 
         return data_get($this, $append);
+    }
+
+    /**
+     * Get a validation exception (422) for the given append,
+     * which is not allowed, naming the appends that are.
+     *
+     * @param string $append
+     *
+     * @return ValidationException
+     */
+    public function notAllowedAppend(string $append): ValidationException
+    {
+        $allowed = $this->listOfAllowedAppends();
+
+        $message = "The '$append' append is not allowed. " . (empty($allowed)
+            ? 'No appends are allowed.'
+            : 'Allowed appends: ' . implode(', ', $allowed) . '.');
+
+        return ValidationException::withMessages([
+            'append' => [$message],
+        ]);
     }
 
     /**
@@ -162,7 +180,7 @@ trait AllowsAppends
      * @param string|array|null $appends
      *
      * @return array
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedAppends(string|array|null $appends = null): array
     {
@@ -185,7 +203,7 @@ trait AllowsAppends
      * @param Request $request
      *
      * @return array
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getRequestedAppends(Request $request): array
     {

@@ -5,8 +5,8 @@ namespace Core\Repositories\Traits;
 use Core\Helpers\Helpers;
 use Core\Http\Resources\BaseResource;
 use Core\Repositories\CrudRepository;
-use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Trait AllowsEagerLoads.
@@ -42,7 +42,7 @@ trait AllowsEagerLoads
      * @param Request $request
      *
      * @return array
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getValidatedIncludes(Request $request): array
     {
@@ -70,7 +70,7 @@ trait AllowsEagerLoads
         foreach ($requestedIncludes as $include) {
             // Leverage the exact validation logic already built in AllowsIncludes
             if (!$resourceInstance->hasAllowedIncludes($include)) {
-                throw new Exception("The '$include' include is not allowed on " . $resourceClass);
+                throw $resourceInstance->notAllowedInclude($include);
             }
 
             $validIncludes[] = $include;

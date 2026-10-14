@@ -6,8 +6,8 @@ use Core\Http\Resources\BaseResource;
 use Core\Models\Organization;
 use Core\Models\User;
 use Core\Tests\TestCase;
-use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class BaseResourceAppendsTest.
@@ -82,7 +82,7 @@ class BaseResourceAppendsTest extends TestCase
 
     public function testGetAllowedAppendThrowsExceptionForDisallowedAppend(): void
     {
-        $this->expectException(Exception::class);
+        $this->expectException(ValidationException::class);
         $this->expectExceptionMessage("'password' append is not allowed");
 
         $resource = new class(new User) extends BaseResource
@@ -145,7 +145,7 @@ class BaseResourceAppendsTest extends TestCase
 
     public function testGetRequestedAppendsThrowsExceptionForDisallowedAppend(): void
     {
-        $this->expectException(Exception::class);
+        $this->expectException(ValidationException::class);
         $this->expectExceptionMessage("'password' append is not allowed");
 
         $resource = new class(new User) extends BaseResource
@@ -268,5 +268,49 @@ class BaseResourceAppendsTest extends TestCase
         /** @var BaseResource $orgResource */
         $orgResource = $array['organization'];
         $this->assertSame(['name'], $orgResource->getPassedAppends());
+    }
+
+    public function testNotAllowedAppendAnswers422NamingTheAllowedOnes(): void
+    {
+        $resource = new class(new User) extends BaseResource
+        {
+            protected array $allowedAppends = ['email'];
+        };
+
+        try {
+            $resource->getAllowedAppend('password');
+        } catch (ValidationException $exception) {
+            $this->assertEquals(
+                ["The 'password' append is not allowed. Allowed appends: email."],
+                $exception->errors()['append']
+            );
+
+            return;
+        }
+
+        $this->fail('The append did not answer with 422.');
+    }
+
+    public function testNotAllowedAppendSaysWhenNoneAreAllowed(): void
+    {
+        $resource = new class(new User) extends BaseResource {};
+
+        $this->assertEquals(
+            ["The 'password' append is not allowed. No appends are allowed."],
+            $resource->notAllowedAppend('password')->errors()['append']
+        );
+    }
+
+    public function testAppendParameterThatIsNotAStringAnswers422(): void
+    {
+        $resource = new class(new User) extends BaseResource
+        {
+            protected array $allowedAppends = ['email'];
+        };
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('The append parameter must be a comma-separated list.');
+
+        $resource->toArray(Request::create('/', 'GET', ['append' => ['email']]));
     }
 }

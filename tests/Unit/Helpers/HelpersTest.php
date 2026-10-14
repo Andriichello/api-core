@@ -10,6 +10,7 @@ use Core\Models\Traits\ListsColumns;
 use Core\Tests\TestCase;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class HelpersTest.
@@ -55,7 +56,7 @@ class HelpersTest extends TestCase
             'tags' => ['developer', 'admin'],
             'settings' => [
                 'theme' => 'dark',
-                'config' => (object)[
+                'config' => (object) [
                     'timezone' => 'UTC',
                     'limit' => 50,
                 ],
@@ -69,7 +70,7 @@ class HelpersTest extends TestCase
                     'author' => 'Bob',
                     'content' => 'Thanks for sharing',
                 ],
-            ]
+            ],
         ];
 
         $result = Helpers::objectToArray((object) $data);
@@ -150,8 +151,8 @@ class HelpersTest extends TestCase
             'email' => [
                 ['like' => '%smith%'],
                 ['like' => '%@example.com'],
-                ['not' => ['in' => 'jerry.smith@example,ben.smith@example']]
-            ]
+                ['not' => ['in' => 'jerry.smith@example,ben.smith@example']],
+            ],
         ];
         $request = new Request([
             'filter' => $filters,
@@ -196,7 +197,7 @@ class HelpersTest extends TestCase
         $items = [
             1,
             [$key => 2],
-            (object)[$key => 3]
+            (object) [$key => 3],
         ];
 
         $extracted = Helpers::extract($key, ...$items);
@@ -217,5 +218,26 @@ class HelpersTest extends TestCase
         $this->assertEquals('complex-resources', Helpers::morphOf('ComplexResource'));
         $this->assertEquals('test.complex-resources', Helpers::morphOf('Test\ComplexResource'));
         $this->assertEquals('test.complex-resources', Helpers::morphOf('Models\Test\ComplexResource'));
+    }
+
+    public function testRequestedListsThatAreNotStringsAnswer422(): void
+    {
+        $cases = [
+            'append' => fn (Request $request) => Helpers::requestedAppends($request),
+            'include' => fn (Request $request) => Helpers::requestedIncludes($request),
+            'sort' => fn (Request $request) => Helpers::requestedSorts($request),
+        ];
+
+        foreach ($cases as $key => $read) {
+            try {
+                $read(Request::create('/', 'GET', [$key => ['a', 'b']]));
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey($key, $exception->errors());
+
+                continue;
+            }
+
+            $this->fail("The $key parameter did not answer with 422.");
+        }
     }
 }

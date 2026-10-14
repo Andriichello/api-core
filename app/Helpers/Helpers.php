@@ -4,10 +4,11 @@ namespace Core\Helpers;
 
 use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
+use Core\Providers\MorphServiceProvider;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Request as RequestFacade;
-use Core\Providers\MorphServiceProvider;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class Helpers.
@@ -76,15 +77,46 @@ class Helpers
     }
 
     /**
+     * Returns the value of the requested parameter, which has to be a
+     * comma-separated list. If it is not (such as `include[]=…`), then
+     * a validation exception (422) will be thrown.
+     *
+     * @param string $key
+     * @param Request|null $request
+     *
+     * @return string
+     * @throws ValidationException
+     */
+    protected static function requestedList(
+        string $key,
+        ?Request $request = null
+    ): string {
+        $value = static::requested($key, '', $request);
+
+        if ($value === null) {
+            return '';
+        }
+
+        if (!is_scalar($value)) {
+            throw ValidationException::withMessages([
+                $key => ["The $key parameter must be a comma-separated list."],
+            ]);
+        }
+
+        return (string) $value;
+    }
+
+    /**
      * Returns an array of requested `append`.
      *
      * @param Request|null $request
      *
      * @return array<int, string>
+     * @throws ValidationException
      */
     public static function requestedAppends(?Request $request = null): array
     {
-        $string = static::requested('append', '', $request);
+        $string = static::requestedList('append', $request);
         $appends = array_filter(explode(',', $string));
 
         return array_values(array_unique($appends));
@@ -97,10 +129,11 @@ class Helpers
      * @param Request|null $request
      *
      * @return array<string, string>
+     * @throws ValidationException
      */
     public static function requestedSorts(?Request $request = null): array
     {
-        $string = static::requested('sort', '', $request);
+        $string = static::requestedList('sort', $request);
         $values = array_filter(explode(',', $string));
 
         $sorts = [];
@@ -138,16 +171,18 @@ class Helpers
      * @param Request|null $request
      *
      * @return array
+     * @throws ValidationException
      */
     public static function requestedIncludes(?Request $request = null): array
     {
-        $string = static::requested('include', '', $request);
+        $string = static::requestedList('include', $request);
 
         $includes = [];
 
         foreach (array_filter(explode(',', $string)) as $include) {
             if (!str_contains($include, '.')) {
                 $includes[] = $include;
+
                 continue;
             }
 

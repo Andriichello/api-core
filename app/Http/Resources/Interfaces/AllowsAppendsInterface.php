@@ -2,8 +2,8 @@
 
 namespace Core\Http\Resources\Interfaces;
 
-use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Interface AllowsAppendsInterface.
@@ -63,7 +63,7 @@ interface AllowsAppendsInterface
      * @param string $append
      *
      * @return mixed
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedAppend(string $append): mixed;
 
@@ -75,7 +75,7 @@ interface AllowsAppendsInterface
      * @param string|array|null $appends
      *
      * @return array
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedAppends(string|array|null $appends = null): array;
 
@@ -86,7 +86,7 @@ interface AllowsAppendsInterface
      * @param Request $request
      *
      * @return array
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getRequestedAppends(Request $request): array;
 }

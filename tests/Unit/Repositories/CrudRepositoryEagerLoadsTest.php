@@ -7,9 +7,9 @@ use Core\Models\BaseModel;
 use Core\Models\User;
 use Core\Repositories\CrudRepository;
 use Core\Tests\TestCase;
-use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class CrudRepositoryEagerLoadsTest.
@@ -108,7 +108,7 @@ class CrudRepositoryEagerLoadsTest extends TestCase
 
     public function testGetValidatedIncludesThrowsExceptionForDisallowedInclude(): void
     {
-        $this->expectException(Exception::class);
+        $this->expectException(ValidationException::class);
         $this->expectExceptionMessage("'roles' include is not allowed");
 
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -175,7 +175,7 @@ class CrudRepositoryEagerLoadsTest extends TestCase
 
     public function testBuilderThrowsWhenIncludeIsNotAllowedOnResource(): void
     {
-        $this->expectException(Exception::class);
+        $this->expectException(ValidationException::class);
         $this->expectExceptionMessage("'roles' include is not allowed");
 
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -194,5 +194,59 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         };
 
         $repo->builder(Request::create('/', 'GET', ['include' => 'roles']));
+    }
+
+    public function testNotAllowedIncludeAnswers422NamingTheAllowedOnes(): void
+    {
+        $resourceClass = get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        });
+
+        $repo = new class($resourceClass) extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            public function __construct(string $resourceClass)
+            {
+                $this->resourceClass = $resourceClass;
+            }
+        };
+
+        try {
+            $repo->getValidatedIncludes(Request::create('/', 'GET', ['include' => 'roles']));
+        } catch (ValidationException $exception) {
+            $this->assertEquals(
+                ["The 'roles' include is not allowed. Allowed includes: organization."],
+                $exception->errors()['include']
+            );
+
+            return;
+        }
+
+        $this->fail('The include did not answer with 422.');
+    }
+
+    public function testIncludeParameterThatIsNotAStringAnswers422(): void
+    {
+        $resourceClass = get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        });
+
+        $repo = new class($resourceClass) extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            public function __construct(string $resourceClass)
+            {
+                $this->resourceClass = $resourceClass;
+            }
+        };
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('The include parameter must be a comma-separated list.');
+
+        $repo->getValidatedIncludes(Request::create('/', 'GET', ['include' => ['organization']]));
     }
 }

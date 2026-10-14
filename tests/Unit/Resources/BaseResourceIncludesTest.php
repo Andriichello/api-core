@@ -6,9 +6,9 @@ use Core\Http\Resources\BaseResource;
 use Core\Models\Organization;
 use Core\Models\User;
 use Core\Tests\TestCase;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\MissingValue;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class BaseResourceIncludesTest.
@@ -191,7 +191,7 @@ class BaseResourceIncludesTest extends TestCase
 
     public function testGetAllowedIncludeThrowsExceptionForDisallowedInclude(): void
     {
-        $this->expectException(Exception::class);
+        $this->expectException(ValidationException::class);
         $this->expectExceptionMessage("'roles' include is not allowed");
 
         $resource = new class(new User) extends BaseResource
@@ -241,7 +241,7 @@ class BaseResourceIncludesTest extends TestCase
 
     public function testGetRequestedIncludesThrowsForDisallowedInclude(): void
     {
-        $this->expectException(Exception::class);
+        $this->expectException(ValidationException::class);
         $this->expectExceptionMessage("'roles' include is not allowed");
 
         $resource = new class(new User) extends BaseResource
@@ -302,5 +302,36 @@ class BaseResourceIncludesTest extends TestCase
 
         $this->assertArrayHasKey('organization', $array);
         $this->assertInstanceOf(BaseResource::class, $array['organization']);
+    }
+
+    public function testNotAllowedIncludeAnswers422NamingTheAllowedOnes(): void
+    {
+        $resource = new class(new User) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        };
+
+        try {
+            $resource->getAllowedInclude('roles');
+        } catch (ValidationException $exception) {
+            $this->assertEquals(
+                ["The 'roles' include is not allowed. Allowed includes: organization."],
+                $exception->errors()['include']
+            );
+
+            return;
+        }
+
+        $this->fail('The include did not answer with 422.');
+    }
+
+    public function testNotAllowedIncludeSaysWhenNoneAreAllowed(): void
+    {
+        $resource = new class(new User) extends BaseResource {};
+
+        $this->assertEquals(
+            ["The 'roles' include is not allowed. No includes are allowed."],
+            $resource->notAllowedInclude('roles')->errors()['include']
+        );
     }
 }

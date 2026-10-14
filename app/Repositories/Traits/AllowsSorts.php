@@ -205,16 +205,6 @@ trait AllowsSorts
      */
     public function getRequestedSorts(Request $request): array
     {
-        $input = $request->input('sort');
-
-        if ($input !== null && !is_string($input)) {
-            throw ValidationException::withMessages([
-                'sort' => [
-                    'The sort parameter must list the sorts, such as sort=name,-created_at.',
-                ],
-            ]);
-        }
-
         return $this->getAllowedSorts(Helpers::requestedSorts($request));
     }
 }
