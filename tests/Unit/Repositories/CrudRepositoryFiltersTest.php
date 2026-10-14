@@ -2,8 +2,10 @@
 
 namespace Core\Tests\Unit\Repositories;
 
+use Core\Enums\FilterOperation;
 use Core\Http\Filters\DefaultFilter;
 use Core\Models\BaseModel;
+use Core\Models\Organization;
 use Core\Models\User;
 use Core\Queries\BaseQuery;
 use Core\Repositories\CrudRepository;
@@ -230,6 +232,76 @@ class CrudRepositoryFiltersTest extends TestCase
         ]);
 
         $repository->builder($request);
+    }
+
+    public function testThrowsExceptionForUnknownFilterWhenAllFiltersAreAllowed(): void
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('\'unknown_column\' filter is not allowed');
+
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'unknown_column' => ['eq' => 'value'],
+            ],
+        ]);
+
+        $this->repository->builder($request);
+    }
+
+    public function testRequestedFiltersKeepEveryEntryOfTheSameField(): void
+    {
+        $request = Request::create('/users', 'GET', [
+            'filter' => [
+                'id' => [
+                    'gt' => 5,
+                    'lt' => 10,
+                ],
+                'email' => ['eq' => 'test@example.com'],
+            ],
+        ]);
+
+        $filters = $this->repository->getRequestedFilters($request);
+
+        $this->assertCount(3, $filters);
+        $this->assertSame(['id', 'id', 'email'], array_column($filters, 'field'));
+        $this->assertSame(
+            [FilterOperation::GT, FilterOperation::LT, FilterOperation::EQ],
+            array_column($filters, 'operation')
+        );
+        $this->assertSame([5, 10, 'test@example.com'], array_column($filters, 'value'));
+    }
+
+    public function testFiltersNarrowDownTheResults(): void
+    {
+        $organization = Organization::create([
+            'slug' => 'acme',
+            'name' => 'Acme',
+        ]);
+
+        $user = User::query()->forceCreate([
+            'organization_id' => $organization->id,
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => 'password123',
+        ]);
+
+        $colleague = User::query()->forceCreate([
+            'organization_id' => $organization->id,
+            'name' => 'Colleague',
+            'email' => 'colleague@example.com',
+            'password' => 'password123',
+        ]);
+
+        $request = Request::create('/users', 'GET', [
+            'filter' => [
+                'email' => ['eq' => 'colleague@example.com'],
+            ],
+        ]);
+        $request->setUserResolver(fn () => $user);
+
+        $ids = $this->repository->builder($request)->pluck('users.id')->all();
+
+        $this->assertEquals([$colleague->id], $ids);
     }
 
     public function testBuilderWithoutRequestReturnsBaseQuery(): void

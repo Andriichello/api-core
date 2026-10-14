@@ -40,10 +40,12 @@ class UserQuery extends BaseQuery
         }
 
         $this->where(function (UserQuery $query) use ($user) {
-            $query->where('users.id', $user->id)
-                ->orWhere(function (UserQuery $query) use ($user) {
-                    $query->whereIn('users.organization_id', $user->orgId());
-                });
+            $query->where('users.id', $user->id);
+
+            // Users without an organization can only see themselves
+            if ($user->orgId() !== null) {
+                $query->orWhere('users.organization_id', $user->orgId());
+            }
         });
 
         return $this;

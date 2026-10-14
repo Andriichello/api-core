@@ -74,7 +74,7 @@ trait WithTarget
     {
         return $model::query()
             ->whereKey($this->getId())
-            ->index($this);
+            ->index($this->user(), $this->all());
     }
 
     /**

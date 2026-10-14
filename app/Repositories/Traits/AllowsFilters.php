@@ -172,7 +172,7 @@ trait AllowsFilters
                     throw new Exception($message);
                 }
 
-                $allowed = array_merge(
+                array_push(
                     $allowed,
                     ...array_filter(
                         $filters,
@@ -201,9 +201,11 @@ trait AllowsFilters
      */
     public function getRequestedFilters(Request $request): array
     {
+        $filters = Helpers::requestedFilters($request);
+
         return $this->getAllowedFilters(
-            $filters = Helpers::requestedFilters($request),
-            array_keys($filters)
+            $filters,
+            array_values(array_unique(array_column($filters, 'field')))
         );
     }
 }

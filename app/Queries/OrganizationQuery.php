@@ -41,7 +41,7 @@ class OrganizationQuery extends BaseQuery
         }
 
         $this->where(function (OrganizationQuery $query) use ($user) {
-            $query->where('organization.id', $user->orgId());
+            $query->where('organizations.id', $user->orgId());
         });
 
         return $this;
