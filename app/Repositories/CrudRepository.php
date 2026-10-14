@@ -13,6 +13,8 @@ use Core\Repositories\Traits\AllowsFilters;
 use Core\Repositories\Traits\AllowsSorts;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Throwable;
 
 /**
@@ -80,8 +82,8 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
                 $field = $filter['field'];
                 $value = $filter['value'] ?? '';
 
-                // An empty value (`filter[name][eq]=`) filters nothing, except for
-                // the null operation, which does not use the value at all
+                // An empty value (`filter[name][eq]=`) filters nothing, except
+                // for the null operation, for which it means `is null`
                 if ($value === '' && $filter['operation'] !== FilterOperation::NULL) {
                     continue;
                 }
@@ -95,7 +97,13 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
                     ->setOperation($filter['operation'])
                     ->setFlags($filter['flags'] ?? []);
 
-                $logic->apply($query, $column ?? $field, $value);
+                try {
+                    $logic->apply($query, $column ?? $field, $value);
+                } catch (InvalidArgumentException $exception) {
+                    throw ValidationException::withMessages([
+                        "filter.$field" => [$exception->getMessage()],
+                    ]);
+                }
             }
 
             $includes = $this->getValidatedIncludes($request);

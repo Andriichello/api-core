@@ -485,4 +485,42 @@ class CrudRepositoryFiltersTest extends TestCase
             $this->errorsOf($request)['filter.id']
         );
     }
+
+    public function testNullFilterTakesFalseForNotNull(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'email_verified_at' => ['null' => 'false'],
+            ],
+        ]);
+
+        $sql = $this->repository->builder($request)->toRawSql();
+
+        $this->assertStringContainsString('"users"."email_verified_at" is not null', $sql);
+    }
+
+    public function testInvalidValueOrFlagOfNullFilterAnswers422(): void
+    {
+        $maybe = $this->createRequestWithUser([
+            'filter' => [
+                'email_verified_at' => ['null' => 'maybe'],
+            ],
+        ]);
+
+        $this->assertEquals(
+            ["The 'null' operation takes true or false, such as [null]=false."],
+            $this->errorsOf($maybe)['filter.email_verified_at']
+        );
+
+        $caseInsensitive = $this->createRequestWithUser([
+            'filter' => [
+                'email_verified_at' => ['ci' => ['null' => '1']],
+            ],
+        ]);
+
+        $this->assertEquals(
+            ["The 'ci' flag is not supported by the 'null' operation."],
+            $this->errorsOf($caseInsensitive)['filter.email_verified_at']
+        );
+    }
 }
