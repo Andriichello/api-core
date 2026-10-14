@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<phpmd-baseline>
+  <violation rule="PHPMD\Rule\UnusedFormalParameter" file="app/Models/Traits/ChecksRolesAndPermissions.php"/>
+  <violation rule="PHPMD\Rule\CleanCode\BooleanArgumentFlag" file="app/Providers/MorphServiceProvider.php"/>
+  <violation rule="PHPMD\Rule\UnusedFormalParameter" file="database/factories/OrganizationFactory.php"/>
+  <violation rule="PHPMD\Rule\UnusedFormalParameter" file="database/factories/UserFactory.php"/>
+  <violation rule="PHPMD\Rule\Design\TooManyFields" file="tests/Unit/Repositories/CrudRepositoryEagerLoadsTest.php"/>
+  <violation rule="PHPMD\Rule\Design\TooManyFields" file="tests/Unit/Repositories/CrudRepositoryTest.php"/>
+  <violation rule="PHPMD\Rule\Design\TooManyFields" file="tests/Unit/Resources/BaseResourceAppendsTest.php"/>
+</phpmd-baseline>

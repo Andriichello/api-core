@@ -3,13 +3,12 @@
 namespace Core\Queries;
 
 use Closure;
+use Core\Models\BaseModel;
 use Core\Models\User;
+use Core\Queries\Interfaces\IndexableInterface;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\JoinClause;
-use Illuminate\Http\Request;
-use Core\Models\BaseModel;
-use Core\Queries\Interfaces\IndexableInterface;
 
 /**
  * Class BaseQuery.
@@ -38,6 +37,7 @@ class BaseQuery extends EloquentBuilder implements IndexableInterface
      * @param array $params
      *
      * @return BaseQuery
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
      */
     public function index(?Model $user, array $params = []): BaseQuery
     {
@@ -92,6 +92,7 @@ class BaseQuery extends EloquentBuilder implements IndexableInterface
                     $where['column'] = $substitution;
                 }
             }
+
             return $wheres;
         };
 
@@ -133,7 +134,6 @@ class BaseQuery extends EloquentBuilder implements IndexableInterface
     {
         $joins = [];
 
-        // @phpstan-ignore-next-line
         foreach ($this->getQuery()->joins ?? [] as $join) {
             /** @var JoinClause $join */
             $table = $join->table;
@@ -201,8 +201,8 @@ class BaseQuery extends EloquentBuilder implements IndexableInterface
     public function chunkPaginated(callable $callback, int $count = 1000): void
     {
         // makes sure that previously set limit and offset are followed
-        $originalLimit = $this->getQuery()->limit ?? 0; // @phpstan-ignore-line
-        $originalOffset = $this->getQuery()->offset ?? 0; // @phpstan-ignore-line
+        $originalLimit = $this->getQuery()->limit ?? 0;
+        $originalOffset = $this->getQuery()->offset ?? 0;
 
         $retrieved = 0;
         $step = min($originalLimit, $count);

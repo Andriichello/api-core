@@ -92,7 +92,7 @@ use Illuminate\Database\Eloquent\Collection;
  *
  * @author John Doe <john.doe@example.com>
  * @package App\Models
- * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+ * @SuppressWarnings("PHPMD.UnusedFormalParameter")
  */
 ```
 

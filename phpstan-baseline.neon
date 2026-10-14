@@ -1,0 +1,199 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Instanceof between Illuminate\\Routing\\Route and Illuminate\\Routing\\Route will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Http/Resources/BaseResource.php
+
+		-
+			message: '#^Call to function is_subclass_of\(\) with class\-string\<Core\\Http\\Resources\\BaseCollection\> and ''Illuminate\\\\Http\\\\Resources\\\\Json\\\\ResourceCollection'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Resources/ResourcePaginator.php
+
+		-
+			message: '#^Property Core\\Http\\Resources\\BaseResource\:\:\$allowedAppends \(array\<int\|string, string\>\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: app/Http/Resources/Traits/AllowsAppends.php
+
+		-
+			message: '#^PHPDoc tag @implements has invalid value \(AllowsIncludesInterface\)\: Unexpected token "\\n \*", expected ''\<'' at offset 438 on line 13$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: app/Http/Resources/Traits/AllowsIncludes.php
+
+		-
+			message: '#^Property Core\\Http\\Resources\\BaseResource\:\:\$allowedIncludes \(array\<int\|string, string\>\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 2
+			path: app/Http/Resources/Traits/AllowsIncludes.php
+
+		-
+			message: '#^PHPDoc type array of property Core\\Models\\AccessToken\:\:\$casts is not covariant with PHPDoc type array\<string, string\> of overridden property Laravel\\Sanctum\\PersonalAccessToken\:\:\$casts\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/AccessToken.php
+
+		-
+			message: '#^PHPDoc type array of property Core\\Models\\AccessToken\:\:\$fillable is not covariant with PHPDoc type array\<int, string\> of overridden property Laravel\\Sanctum\\PersonalAccessToken\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/AccessToken.php
+
+		-
+			message: '#^PHPDoc tag @implements has invalid value \(HasOrgIdInterface\)\: Unexpected token "\\n \*", expected ''\<'' at offset 78 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: app/Models/Traits/HasOrgId.php
+
+		-
+			message: '#^PHPDoc tag @implements has invalid value \(ListsColumnsInterface\)\: Unexpected token "\\n \*", expected ''\<'' at offset 86 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: app/Models/Traits/ListsColumns.php
+
+		-
+			message: '#^Closure invoked with 3 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Queries/BaseQuery.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: app/Repositories/CrudRepository.php
+
+		-
+			message: '#^Instanceof between Core\\Queries\\BaseQuery and Core\\Queries\\Interfaces\\IndexableInterface will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Repositories/CrudRepository.php
+
+		-
+			message: '#^Offset ''flags'' on array\{field\: string, operation\: Core\\Enums\\FilterOperation, flags\: array\<Core\\Enums\\FilterFlag\>, value\: mixed\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Repositories/CrudRepository.php
+
+		-
+			message: '#^Property Core\\Repositories\\CrudRepository\:\:\$allowedFilters \(array\<int\|string, Core\\Http\\Filters\\BaseFilter\|list\<string\|null\>\|string\>\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 4
+			path: app/Repositories/Traits/AllowsFilters.php
+
+		-
+			message: '#^Property Core\\Repositories\\CrudRepository\:\:\$allowedSorts \(array\<array\<string\>\|string\>\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 3
+			path: app/Repositories/Traits/AllowsSorts.php
+
+		-
+			message: '#^Comparison operation "\>\=" between int\<80500, 80699\> and 80500 is always true\.$#'
+			identifier: greaterOrEqual.alwaysTrue
+			count: 2
+			path: config/database.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: database/seeders/RolesAndPermissionsSeeder.php
+
+		-
+			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.CouplingBetweenObjects\)\)\: Unexpected token "\.CouplingBetweenObjects\)", expected ''\)'' at offset 151 on line 6$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: database/seeders/RolesAndPermissionsSeeder.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Helpers/HelpersTest.php
+
+		-
+			message: '#^Call to an undefined static method Core\\Models\\Organization\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Unit/Http/Requests/WithTargetTest.php
+
+		-
+			message: '#^Method Core\\Tests\\Unit\\Http\\Requests\\WithTargetTest\:\:createUser\(\) should return Core\\Models\\User but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Unit/Http/Requests/WithTargetTest.php
+
+		-
+			message: '#^Call to an undefined static method Core\\Models\\Organization\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Unit/Queries/OrganizationQueryTest.php
+
+		-
+			message: '#^Method Core\\Tests\\Unit\\Queries\\OrganizationQueryTest\:\:createUser\(\) should return Core\\Models\\User but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Unit/Queries/OrganizationQueryTest.php
+
+		-
+			message: '#^Call to an undefined static method Core\\Models\\Organization\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Unit/Queries/UserQueryTest.php
+
+		-
+			message: '#^Method Core\\Tests\\Unit\\Queries\\UserQueryTest\:\:createUser\(\) should return Core\\Models\\User but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Unit/Queries/UserQueryTest.php
+
+		-
+			message: '#^Property Core\\Repositories\\CrudRepository@anonymous/tests/Unit/Repositories/CrudRepositoryEagerLoadsTest\.php\:48\:\:\$resourceClass \(class\-string\<Core\\Http\\Resources\\BaseResource\>\) does not accept default value of type string\.$#'
+			identifier: property.defaultValue
+			count: 1
+			path: tests/Unit/Repositories/CrudRepositoryEagerLoadsTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Unit/Repositories/CrudRepositoryFiltersTest.php
+
+		-
+			message: '#^Call to an undefined static method Core\\Models\\Organization\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Unit/Repositories/CrudRepositoryFiltersTest.php
+
+		-
+			message: '#^Call to an undefined static method Core\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: tests/Unit/Repositories/CrudRepositoryFiltersTest.php
+
+		-
+			message: '#^Property Core\\Repositories\\CrudRepository@anonymous/tests/Unit/Repositories/CrudRepositoryFiltersTest\.php\:194\:\:\$allowedFilters \(array\<int\|string, array\{string, string\|null, string\|null\}\|Core\\Http\\Filters\\BaseFilter\|string\>\) does not accept default value of type array\{org_id\: array\{''Core\\\\Http\\\\Filters\\\\DefaultFilter'', ''organization_id''\}\}\.$#'
+			identifier: property.defaultValue
+			count: 1
+			path: tests/Unit/Repositories/CrudRepositoryFiltersTest.php
+
+		-
+			message: '#^Call to an undefined static method Core\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Unit/Repositories/CrudRepositorySortsTest.php
+
+		-
+			message: '#^Call to an undefined static method Core\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: tests/Unit/Repositories/CrudRepositoryTest.php
+
+		-
+			message: '#^Property Core\\Repositories\\CrudRepository@anonymous/tests/Unit/Repositories/CrudRepositoryTest\.php\:221\:\:\$allowedFilters \(array\<int\|string, array\{string, string\|null, string\|null\}\|Core\\Http\\Filters\\BaseFilter\|string\>\) does not accept default value of type array\{org_id\: array\{''Core\\\\Http\\\\Filters\\\\DefaultFilter'', ''organization_id''\}\}\.$#'
+			identifier: property.defaultValue
+			count: 1
+			path: tests/Unit/Repositories/CrudRepositoryTest.php

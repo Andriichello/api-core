@@ -1,0 +1,27 @@
+grumphp:
+  fixer:
+    enabled: false
+  parallel:
+    enabled: true
+
+  process_timeout: 60
+  stop_on_failure: true
+  ignore_unstaged_changes: true
+  hide_circumvention_tip: true
+
+  tasks:
+    phpcs:
+      standard: phpcs.xml
+    phpmd:
+      ruleset: [phpmd.xml]
+      report_format: ansi
+    phpstan:
+      configuration: phpstan.neon
+      # Keep the scope in line with the paths in phpstan.neon
+      ignore_patterns:
+        - /^bootstrap\//
+        - /^database\/migrations\//
+        - /^public\//
+        - /^routes\//
+    phplint: ~
+    composer: ~
