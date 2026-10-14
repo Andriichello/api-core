@@ -13,7 +13,7 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Controllers
  */
-abstract class BaseController extends Controller implements WithPaginationInterface
+abstract class BaseController implements WithPaginationInterface
 {
     use AuthorizesRequests;
     use ValidatesRequests;

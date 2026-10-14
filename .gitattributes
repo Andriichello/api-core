@@ -9,3 +9,21 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# Development files, which apps requiring api-core don't need
+/.ai export-ignore
+/.claude export-ignore
+/.editorconfig export-ignore
+/.env.example export-ignore
+/.mcp.json export-ignore
+/boost.json export-ignore
+/CLAUDE.md export-ignore
+/grumphp.yml export-ignore
+/phpcs.xml export-ignore
+/phpmd.baseline.xml export-ignore
+/phpmd.xml export-ignore
+/phpstan-baseline.neon export-ignore
+/phpstan.neon export-ignore
+/phpunit.xml export-ignore
+/pint.json export-ignore
+/tests export-ignore

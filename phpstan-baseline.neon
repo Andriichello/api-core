@@ -79,20 +79,8 @@ parameters:
 			path: app/Repositories/CrudRepository.php
 
 		-
-			message: '#^Comparison operation "\>\=" between int\<80500, 80699\> and 80500 is always true\.$#'
-			identifier: greaterOrEqual.alwaysTrue
-			count: 2
-			path: config/database.php
-
-		-
 			message: '#^Empty array passed to foreach\.$#'
 			identifier: foreach.emptyArray
-			count: 1
-			path: database/seeders/RolesAndPermissionsSeeder.php
-
-		-
-			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.CouplingBetweenObjects\)\)\: Unexpected token "\.CouplingBetweenObjects\)", expected ''\)'' at offset 151 on line 6$#'
-			identifier: phpDoc.parseError
 			count: 1
 			path: database/seeders/RolesAndPermissionsSeeder.php
 

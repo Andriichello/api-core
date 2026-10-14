@@ -21,7 +21,5 @@ grumphp:
       ignore_patterns:
         - /^bootstrap\//
         - /^database\/migrations\//
-        - /^public\//
-        - /^routes\//
     phplint: ~
     composer: ~
