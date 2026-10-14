@@ -11,8 +11,8 @@ use Laravel\Sanctum\PersonalAccessToken;
  *
  * @property int $id
  * @property int|null $organization_id
- * @property int $tokenable_id
  * @property string $tokenable_type
+ * @property int $tokenable_id
  * @property string $name
  * @property string $token
  * @property string[]|null $abilities

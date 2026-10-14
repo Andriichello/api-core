@@ -4,11 +4,11 @@ namespace Core\Models;
 
 use Core\Queries\OrganizationQuery;
 use Database\Factories\OrganizationFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 /**
  * Class Organization.
@@ -17,14 +17,14 @@ use Illuminate\Support\Collection;
  * @property string $slug
  * @property string $name
  * @property array|null $metadata
- * @property string|null $activated_at
- * @property string|null $deactivated_at
- * @property string|null $suspended_at
+ * @property Carbon|null $activated_at
+ * @property Carbon|null $deactivated_at
+ * @property Carbon|null $suspended_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property Carbon|null $deleted_at
+ * @property string|null $deleted_at
  *
- * @property-read User[]|Collection $users
+ * @property Collection<int, User> $users
  *
  * @method static OrganizationQuery query()
  *
@@ -67,6 +67,7 @@ class Organization extends BaseModel
      * @var array
      */
     protected $casts = [
+        'metadata' => 'array',
         'activated_at' => 'datetime',
         'deactivated_at' => 'datetime',
         'suspended_at' => 'datetime',

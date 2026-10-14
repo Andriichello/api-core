@@ -12,13 +12,15 @@ use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Foundation\Auth\Access\Authorizable;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -38,10 +40,12 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $last_login_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property Carbon|null $deleted_at
+ * @property string|null $deleted_at
  *
- * @property-read Organization|null $organization
- * @property-read Role[]|Collection $roles
+ * @property Organization|null $organization
+ * @property Collection<int, Role> $roles
+ * @property Collection<int, Permission> $permissions
+ * @property Collection<int, DatabaseNotification> $notifications
  *
  * @method static UserQuery query()
  *
@@ -118,6 +122,7 @@ class User extends BaseModel implements
      * @var array
      */
     protected $casts = [
+        'metadata' => 'array',
         'email_verified_at' => 'datetime',
         'suspended_at' => 'datetime',
         'last_login_at' => 'datetime',
