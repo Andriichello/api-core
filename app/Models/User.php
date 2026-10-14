@@ -15,6 +15,7 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Foundation\Auth\Access\Authorizable;
@@ -30,6 +31,7 @@ use Spatie\Permission\Traits\HasRoles;
  *
  * @property int $id
  * @property int|null $organization_id
+ * @property int|null $main_account_id
  * @property string $name
  * @property string $email
  * @property string $password
@@ -44,6 +46,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $deleted_at
  *
  * @property Organization|null $organization
+ * @property User|null $mainAccount
+ * @property Collection<int, User> $relatedAccounts
  * @property Collection<int, Role> $roles
  * @property Collection<int, Permission> $permissions
  * @property Collection<int, DatabaseNotification> $notifications
@@ -91,6 +95,7 @@ class User extends BaseModel implements
      */
     protected $guarded = [
         'organization_id',
+        'main_account_id',
         'metadata',
         'email_verified_at',
         'suspended_at',
@@ -107,6 +112,7 @@ class User extends BaseModel implements
      */
     protected $hidden = [
         'password',
+        'main_account_id',
     ];
 
     /**
@@ -116,6 +122,8 @@ class User extends BaseModel implements
      */
     protected $relationships = [
         'organization',
+        'mainAccount',
+        'relatedAccounts',
     ];
 
     /**
@@ -139,6 +147,60 @@ class User extends BaseModel implements
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class, 'organization_id');
+    }
+
+    /**
+     * Main account of the person, to which this account is linked.
+     *
+     * @return BelongsTo
+     */
+    public function mainAccount(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'main_account_id');
+    }
+
+    /**
+     * Accounts of the person, which are linked to this main account.
+     *
+     * @return HasMany
+     */
+    public function relatedAccounts(): HasMany
+    {
+        return $this->hasMany(User::class, 'main_account_id');
+    }
+
+    /**
+     * Determine if this is a main account, which isn't linked to another one.
+     *
+     * @return bool
+     */
+    public function isMainAccount(): bool
+    {
+        return $this->main_account_id === null;
+    }
+
+    /**
+     * Get id of the person's main account: the one this account
+     * is linked to, or its own id, when it is the main account.
+     *
+     * @return int
+     */
+    public function mainAccountId(): int
+    {
+        return $this->main_account_id ?? $this->id;
+    }
+
+    /**
+     * Determine if the given account belongs to the same person: it is this
+     * account, its main account, or another account linked to the same one.
+     *
+     * @param User $user
+     *
+     * @return bool
+     */
+    public function isSamePerson(User $user): bool
+    {
+        return $this->mainAccountId() === $user->mainAccountId();
     }
 
     /**

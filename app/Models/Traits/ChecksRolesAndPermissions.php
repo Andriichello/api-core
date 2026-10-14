@@ -4,8 +4,8 @@ namespace Core\Models\Traits;
 
 use Core\Enums\UserRole;
 use Core\Helpers\Helpers;
-use Spatie\Permission\Models\Role;
 use Core\Models\User;
+use Spatie\Permission\Models\Role;
 
 /**
  * Trait ChecksRolesAndPermissions.
@@ -163,7 +163,7 @@ trait ChecksRolesAndPermissions
     {
         return array_filter(
             UserRole::values(),
-            fn(string $role) => $this->isOfRole($role)
+            fn (string $role) => $this->isOfRole($role)
                 || $this->isHigherThanRole($role)
         );
     }
@@ -182,7 +182,8 @@ trait ChecksRolesAndPermissions
     }
 
     /**
-     * Determines if the current user can impersonate a given user.
+     * Determines if the current user can impersonate a given user: a super
+     * admin can, and so can a main account its linked accounts.
      *
      * @param User $user
      *
@@ -190,7 +191,8 @@ trait ChecksRolesAndPermissions
      */
     public function canImpersonateUser(User $user): bool
     {
-        return $this->isOfRole(UserRole::SuperAdmin);
+        return $this->isOfRole(UserRole::SuperAdmin)
+            || $this->id === $user->main_account_id;
     }
 
     /**

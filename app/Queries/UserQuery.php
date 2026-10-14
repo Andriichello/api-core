@@ -44,9 +44,11 @@ class UserQuery extends BaseQuery
         }
 
         $this->where(function (UserQuery $query) use ($user) {
-            $query->where('users.id', $user->id);
+            // Accounts of the same person, linked by the main account, see each other
+            $query->where('users.id', $user->mainAccountId())
+                ->orWhere('users.main_account_id', $user->mainAccountId());
 
-            // Users without an organization can only see themselves
+            // Users without an organization can only see their own accounts
             if ($user->orgId() !== null) {
                 $query->orWhere('users.organization_id', $user->orgId());
             }

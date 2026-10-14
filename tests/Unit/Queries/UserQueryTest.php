@@ -27,10 +27,11 @@ class UserQueryTest extends TestCase
         ]);
     }
 
-    private function createUser(?Organization $organization = null): User
+    private function createUser(?Organization $organization = null, ?User $mainAccount = null): User
     {
         return User::query()->forceCreate([
             'organization_id' => $organization?->id,
+            'main_account_id' => $mainAccount?->id,
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'password' => 'password123',
@@ -109,5 +110,55 @@ class UserQueryTest extends TestCase
         $ids = User::query()->index($superAdmin)->pluck('id')->all();
 
         $this->assertEqualsCanonicalizing([$superAdmin->id, $colleague->id], $ids);
+    }
+
+    public function testReturnsLinkedAccountsForMainAccount(): void
+    {
+        $organization = $this->createOrganization();
+
+        $main = $this->createUser($organization);
+        $colleague = $this->createUser($organization);
+        $linked = $this->createUser($this->createOrganization(), $main);
+
+        $this->createUser($this->createOrganization());
+        $this->createUser();
+
+        $ids = User::query()->index($main)->pluck('id')->all();
+
+        $this->assertEqualsCanonicalizing([$main->id, $colleague->id, $linked->id], $ids);
+    }
+
+    public function testReturnsMainAndSiblingAccountsForLinkedAccount(): void
+    {
+        $organization = $this->createOrganization();
+
+        $main = $this->createUser($this->createOrganization());
+        $linked = $this->createUser($organization, $main);
+        $sibling = $this->createUser($this->createOrganization(), $main);
+        $colleague = $this->createUser($organization);
+
+        $stranger = $this->createUser($this->createOrganization());
+        $this->createUser($this->createOrganization(), $stranger);
+        $this->createUser();
+
+        $ids = User::query()->index($linked)->pluck('id')->all();
+
+        $this->assertEqualsCanonicalizing(
+            [$main->id, $linked->id, $sibling->id, $colleague->id],
+            $ids
+        );
+    }
+
+    public function testReturnsOnlyOwnAccountsForUserWithoutOrganization(): void
+    {
+        $main = $this->createUser();
+        $linked = $this->createUser($this->createOrganization(), $main);
+
+        $this->createUser();
+        $this->createUser($this->createOrganization());
+
+        $ids = User::query()->index($main)->pluck('id')->all();
+
+        $this->assertEqualsCanonicalizing([$main->id, $linked->id], $ids);
     }
 }
