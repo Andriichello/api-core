@@ -9,7 +9,6 @@ use Core\Models\User;
 use Core\Queries\BaseQuery;
 use Core\Repositories\CrudRepository;
 use Core\Tests\TestCase;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 
@@ -282,13 +281,50 @@ class CrudRepositoryTest extends TestCase
         $this->assertInstanceOf(BaseQuery::class, $query);
     }
 
+    public function testDeleteSoftDeletesSoftDeletableModel(): void
+    {
+        $repo = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = Organization::class;
+        };
+
+        $organization = Organization::query()->create(['slug' => 'acme', 'name' => 'Acme']);
+
+        $this->assertTrue($repo->isSoftDeletable());
+        $this->assertTrue($repo->delete($organization));
+        $this->assertSoftDeleted($organization);
+    }
+
     public function testForceDeleteDeletesFirstAndThenRemovesSoftDeletableModel(): void
     {
-        $model = get_class(new class extends Organization
+        $repo = new class extends CrudRepository
         {
-            use SoftDeletes;
+            public int $deletes = 0;
 
+            protected BaseModel|string $model = Organization::class;
+
+            public function delete(BaseModel $model): bool
+            {
+                $this->deletes++;
+
+                return parent::delete($model);
+            }
+        };
+
+        $organization = Organization::query()->create(['slug' => 'acme', 'name' => 'Acme']);
+
+        $this->assertTrue($repo->forceDelete($organization));
+        $this->assertSame(1, $repo->deletes);
+        $this->assertModelMissing($organization);
+    }
+
+    public function testForceDeleteDeletesModelWithoutSoftDeletesOnce(): void
+    {
+        $model = get_class(new class extends BaseModel
+        {
             protected $table = 'organizations';
+
+            protected $fillable = ['slug', 'name'];
         });
 
         $repo = new class($model) extends CrudRepository
@@ -310,36 +346,10 @@ class CrudRepositoryTest extends TestCase
 
         $organization = $model::query()->create(['slug' => 'acme', 'name' => 'Acme']);
 
+        $this->assertFalse($repo->isSoftDeletable());
         $this->assertTrue($repo->forceDelete($organization));
         $this->assertSame(1, $repo->deletes);
-        $this->assertDatabaseMissing('organizations', ['id' => $organization->id]);
-    }
-
-    public function testForceDeleteDeletesModelWithoutSoftDeletesOnce(): void
-    {
-        $repo = new class extends CrudRepository
-        {
-            public int $deletes = 0;
-
-            protected BaseModel|string $model = User::class;
-
-            public function delete(BaseModel $model): bool
-            {
-                $this->deletes++;
-
-                return parent::delete($model);
-            }
-        };
-
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => 'password123',
-        ]);
-
-        $this->assertTrue($repo->forceDelete($user));
-        $this->assertSame(1, $repo->deletes);
-        $this->assertModelMissing($user);
+        $this->assertModelMissing($organization);
     }
 
     public function testForceDeleteStopsWhenDeleteFails(): void

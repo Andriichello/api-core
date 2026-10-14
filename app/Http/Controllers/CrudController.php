@@ -15,6 +15,7 @@ use Core\Queries\BaseQuery;
 use Core\Repositories\CrudRepository;
 use Exception;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Throwable;
@@ -193,10 +194,11 @@ abstract class CrudController extends ResourceController
      */
     protected function handleDestroy(DestroyRequest $request): ApiResponse
     {
-        $withTrashed = $request->force() && $this->repository->isSoftDeletable();
-
         $model = $this->builder($request)
-            ->when($withTrashed, fn (BaseQuery $query) => $query->withTrashed()) // @phpstan-ignore method.notFound
+            ->when(
+                $request->force(),
+                fn (BaseQuery $query) => $query->withoutGlobalScope(SoftDeletingScope::class)
+            )
             ->findOrFail($request->getId());
 
         $deleted = $request->force()

@@ -240,12 +240,33 @@ class CrudControllerTest extends TestCase
             ->assertNotFound();
     }
 
-    public function testDestroyDeletesTheModel(): void
+    public function testDestroySoftDeletesTheModel(): void
     {
         $this->actingAs($this->user)
             ->deleteJson('/users/' . $this->colleague->id)
             ->assertOk()
             ->assertJsonPath('message', 'Deleted');
+
+        $this->assertSoftDeleted($this->colleague);
+
+        $this->actingAs($this->user)
+            ->getJson('/users/' . $this->colleague->id)
+            ->assertNotFound();
+    }
+
+    public function testForceDestroyRemovesASoftDeletedModel(): void
+    {
+        $this->colleague->delete();
+
+        $superAdmin = $this->createUser('super@example.com', null, UserRole::SuperAdmin);
+
+        $this->actingAs($superAdmin)
+            ->deleteJson('/users/' . $this->colleague->id)
+            ->assertNotFound();
+
+        $this->actingAs($superAdmin)
+            ->deleteJson('/users/' . $this->colleague->id . '?force=1')
+            ->assertOk();
 
         $this->assertModelMissing($this->colleague);
     }

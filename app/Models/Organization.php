@@ -7,6 +7,7 @@ use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Support\Carbon;
 
@@ -22,7 +23,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $suspended_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property string|null $deleted_at
+ * @property Carbon|null $deleted_at
  *
  * @property Collection<int, User> $users
  *
@@ -35,6 +36,8 @@ class Organization extends BaseModel
 {
     /** @use HasFactory<OrganizationFactory> */
     use HasFactory;
+
+    use SoftDeletes;
 
     /**
      * The attributes that are mass-assignable.
