@@ -53,7 +53,7 @@ class CrudRepositorySortsTest extends TestCase
 
         $orders = $query->getQuery()->orders;
         $this->assertCount(1, $orders);
-        $this->assertEquals('name', $orders[0]['column']);
+        $this->assertEquals('users.name', $orders[0]['column']);
         $this->assertEquals('asc', $orders[0]['direction']);
     }
 
@@ -67,7 +67,7 @@ class CrudRepositorySortsTest extends TestCase
 
         $orders = $query->getQuery()->orders;
         $this->assertCount(1, $orders);
-        $this->assertEquals('name', $orders[0]['column']);
+        $this->assertEquals('users.name', $orders[0]['column']);
         $this->assertEquals('desc', $orders[0]['direction']);
     }
 
@@ -81,9 +81,9 @@ class CrudRepositorySortsTest extends TestCase
 
         $orders = $query->getQuery()->orders;
         $this->assertCount(2, $orders);
-        $this->assertEquals('name', $orders[0]['column']);
+        $this->assertEquals('users.name', $orders[0]['column']);
         $this->assertEquals('asc', $orders[0]['direction']);
-        $this->assertEquals('created_at', $orders[1]['column']);
+        $this->assertEquals('users.created_at', $orders[1]['column']);
         $this->assertEquals('desc', $orders[1]['direction']);
     }
 
@@ -96,7 +96,7 @@ class CrudRepositorySortsTest extends TestCase
         $orders = $query->getQuery()->orders;
         // Default should be 'id' => 'asc'
         $this->assertCount(1, $orders);
-        $this->assertEquals('id', $orders[0]['column']);
+        $this->assertEquals('users.id', $orders[0]['column']);
         $this->assertEquals('asc', $orders[0]['direction']);
     }
 
@@ -114,7 +114,7 @@ class CrudRepositorySortsTest extends TestCase
 
         $orders = $query->getQuery()->orders;
         $this->assertCount(1, $orders);
-        $this->assertEquals('created_at', $orders[0]['column']);
+        $this->assertEquals('users.created_at', $orders[0]['column']);
         $this->assertEquals('desc', $orders[0]['direction']);
     }
 
@@ -182,7 +182,38 @@ class CrudRepositorySortsTest extends TestCase
         $repository->builder($request);
     }
 
-    public function testIgnoresSortWhenNotInAllowedList(): void
+    public function testThrowsExceptionForUnknownSortWhenAllSortsAreAllowed(): void
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Sorting by the \'unknown_column\' is not allowed');
+
+        $request = $this->createRequestWithUser([
+            'sort' => 'name,unknown_column',
+        ]);
+
+        $this->repository->builder($request);
+    }
+
+    public function testKeepsRequestedSortOrder(): void
+    {
+        $request = $this->createRequestWithUser([
+            'sort' => '-created_at,name,id',
+        ]);
+
+        $query = $this->repository->builder($request);
+
+        $orders = $query->getQuery()->orders;
+        $this->assertSame(
+            [
+                ['column' => 'users.created_at', 'direction' => 'desc'],
+                ['column' => 'users.name', 'direction' => 'asc'],
+                ['column' => 'users.id', 'direction' => 'asc'],
+            ],
+            $orders
+        );
+    }
+
+    public function testAppliesSortFromExplicitAllowedList(): void
     {
         $repository = new class extends CrudRepository
         {
@@ -200,7 +231,7 @@ class CrudRepositorySortsTest extends TestCase
 
         $orders = $query->getQuery()->orders;
         $this->assertCount(1, $orders);
-        $this->assertEquals('name', $orders[0]['column']);
+        $this->assertEquals('users.name', $orders[0]['column']);
     }
 
     public function testCombinesSortsAndFilters(): void
@@ -217,7 +248,7 @@ class CrudRepositorySortsTest extends TestCase
         // Check sort is applied
         $orders = $query->getQuery()->orders;
         $this->assertCount(1, $orders);
-        $this->assertEquals('created_at', $orders[0]['column']);
+        $this->assertEquals('users.created_at', $orders[0]['column']);
         $this->assertEquals('desc', $orders[0]['direction']);
 
         // Check filter is applied
@@ -229,9 +260,10 @@ class CrudRepositorySortsTest extends TestCase
     {
         $query = $this->repository->builder();
 
-        // Should still have default sort
-        $orders = $query->getQuery()->orders ?? [];
-        // Without request, no sorting should be applied
-        $this->assertEmpty($orders);
+        // Falls back to the current request, which has no sorts
+        $orders = $query->getQuery()->orders;
+        $this->assertCount(1, $orders);
+        $this->assertEquals('users.id', $orders[0]['column']);
+        $this->assertEquals('asc', $orders[0]['direction']);
     }
 }

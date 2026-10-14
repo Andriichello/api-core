@@ -144,8 +144,8 @@ trait AllowsSorts
     }
 
     /**
-     * Get an array of sort columns to sort directions. By default,
-     * all allowed sorts will be returned. If given sorts
+     * Get an array of sort columns to sort directions, keeping
+     * the order in which they were given. If given sorts
      * are not allowed then an exception will be thrown.
      *
      * @param array $sorts
@@ -155,13 +155,10 @@ trait AllowsSorts
      */
     public function getAllowedSorts(array $sorts): array
     {
-        $allowed = $this->listOfAllowedSorts();
         $values = [];
 
-        foreach ($allowed as $name) {
-            if (key_exists($name, $sorts)) {
-                $values[$name] = $this->getAllowedSort($sorts, $name);
-            }
+        foreach (array_keys($sorts) as $name) {
+            $values[$name] = $this->getAllowedSort($sorts, $name);
         }
 
         return $values;
