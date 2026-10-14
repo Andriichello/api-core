@@ -4,6 +4,7 @@ namespace Core\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Core\Models\Traits\ChecksRolesAndPermissions;
+use Core\Models\Traits\LinksAccountsByEmail;
 use Core\Queries\UserQuery;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Authenticatable;
@@ -12,6 +13,7 @@ use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +24,7 @@ use Illuminate\Foundation\Auth\Access\Authorizable;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
@@ -74,6 +77,7 @@ class User extends BaseModel implements
     use SoftDeletes;
     use HasRoles;
     use ChecksRolesAndPermissions;
+    use LinksAccountsByEmail;
 
     /**
      * The attributes that are mass-assignable.
@@ -138,6 +142,19 @@ class User extends BaseModel implements
         'last_login_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Email of the user, which is stored in lowercase, so it is matched
+     * regardless of case on every database.
+     *
+     * @return Attribute
+     */
+    protected function email(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => $value === null ? null : Str::lower($value),
+        );
+    }
 
     /**
      * Organization associated with the model.
