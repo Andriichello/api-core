@@ -72,7 +72,7 @@ class FilterHelper
 
             // Don't allow array of values for non-IN operations
             if ($isNumericArray && $operation !== FilterOperation::IN) {
-                throw new InvalidArgumentException("Array of values is only supported by IN operation");
+                throw new InvalidArgumentException('Array of values is only supported by IN operation');
             }
 
             return [
@@ -81,7 +81,7 @@ class FilterHelper
                     'operation' => $operation,
                     'flags' => $flags,
                     'value' => $node,
-                ]
+                ],
             ];
         }
 
@@ -109,10 +109,9 @@ class FilterHelper
      * @throws InvalidArgumentException
      */
     protected static function parseOperation(
-        array           &$path,
+        array &$path,
         FilterOperation $default = FilterOperation::EQ
-    ): FilterOperation
-    {
+    ): FilterOperation {
         $operation = array_last($path);
 
         if ($operation === null) {
@@ -184,6 +183,7 @@ class FilterHelper
             foreach ($value as $item) {
                 array_push($result, ...static::flatten($item));
             }
+
             return $result;
         }
 

@@ -68,7 +68,10 @@ class InFilterTest extends TestCase
         $filter->apply($query, 'email', ['TEST@EXAMPLE.COM', 'ADMIN@EXAMPLE.COM']);
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(email) IN (LOWER(\'TEST@EXAMPLE.COM\'), LOWER(\'ADMIN@EXAMPLE.COM\'))', $sql);
+        $this->assertStringContainsString(
+            'LOWER(email) IN (LOWER(\'TEST@EXAMPLE.COM\'), LOWER(\'ADMIN@EXAMPLE.COM\'))',
+            $sql
+        );
     }
 
     public function testAppliesCaseInsensitiveWithNot(): void

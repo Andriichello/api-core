@@ -53,10 +53,17 @@ class User extends BaseModel implements
     AuthorizableContract,
     CanResetPasswordContract
 {
-    use Authenticatable, Authorizable, CanResetPassword, MustVerifyEmail;
+    use Authenticatable;
+    use Authorizable;
+    use CanResetPassword;
+    use MustVerifyEmail;
+
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
-    use HasRoles, ChecksRolesAndPermissions;
+    use HasFactory;
+
+    use Notifiable;
+    use HasRoles;
+    use ChecksRolesAndPermissions;
 
     /**
      * The attributes that are mass-assignable.

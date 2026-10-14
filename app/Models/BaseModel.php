@@ -22,7 +22,8 @@ class BaseModel extends Model implements
     HasOrgIdInterface,
     ListsColumnsInterface
 {
-    use HasOrgId, ListsColumns;
+    use HasOrgId;
+    use ListsColumns;
 
     /**
      * The loadable relationships for the model.
