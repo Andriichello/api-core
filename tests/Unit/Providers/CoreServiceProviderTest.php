@@ -87,6 +87,27 @@ class CoreServiceProviderTest extends TestCase
     }
 
     /**
+     * Test that a list in the api-core config of the application, even an empty one, replaces api-core's list.
+     *
+     * @return void
+     */
+    public function testReplacesListsOfApiCoreConfig(): void
+    {
+        config(['api-core' => ['http' => ['json_paths' => ['v1/*']]]]);
+
+        (new CoreServiceProvider($this->app))->register();
+
+        $this->assertSame(['v1/*'], config('api-core.http.json_paths'));
+        $this->assertSame(480, config('api-core.auth.access_token_lifetime'));
+
+        config(['api-core' => ['http' => ['json_paths' => []]]]);
+
+        (new CoreServiceProvider($this->app))->register();
+
+        $this->assertSame([], config('api-core.http.json_paths'));
+    }
+
+    /**
      * Test that the pagination config of the application is kept.
      *
      * @return void

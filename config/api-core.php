@@ -20,4 +20,13 @@ return [
          */
         'rate_limit' => (int) env('API_CORE_AUTH_RATE_LIMIT', 10),
     ],
+
+    'http' => [
+        /*
+         * Paths, on which requests always expect JSON, as if they had
+         * `Accept: application/json`, so their responses, errors included,
+         * are JSON. An empty array turns it off.
+         */
+        'json_paths' => ['api', 'api/*'],
+    ],
 ];

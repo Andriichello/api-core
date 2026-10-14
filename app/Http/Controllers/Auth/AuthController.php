@@ -24,8 +24,9 @@ use Laravel\Sanctum\NewAccessToken;
  * Class AuthController.
  *
  * Signs users in with Sanctum tokens. api-core registers no routes, so an
- * application registers these with `AuthController::routes()`, usually
- * under a prefix: `Route::prefix('auth')->group(fn () => AuthController::routes())`.
+ * application registers these with `AuthController::routes()`, usually under
+ * a prefix in `routes/api.php`, where responses are always JSON:
+ * `Route::prefix('auth')->group(fn () => AuthController::routes())`.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Controllers\Auth

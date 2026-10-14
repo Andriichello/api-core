@@ -2,6 +2,10 @@
 
 namespace Core\Providers;
 
+use Core\Http\Middleware\ForceJsonOnApi;
+use Illuminate\Contracts\Foundation\CachesConfiguration;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -10,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
  * Wires api-core into an application, which requires it as a package. It
  * merges api-core's config and lets the application publish the config and
  * migrations with the `api-core-config` and `api-core-migrations` tags.
+ * It also makes the responses on the API paths JSON with ForceJsonOnApi.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Providers
@@ -35,7 +40,7 @@ class CoreServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->replaceConfigRecursivelyFrom($this->packagePath('config/api-core.php'), 'api-core');
+        $this->mergeConfigRecursivelyFrom($this->packagePath('config/api-core.php'), 'api-core');
         $this->mergeConfigFrom($this->packagePath('config/pagination.php'), 'pagination');
     }
 
@@ -50,6 +55,57 @@ class CoreServiceProvider extends ServiceProvider
         ], static::CONFIG_TAG);
 
         $this->publishes($this->migrationsToPublish(), static::MIGRATIONS_TAG);
+
+        // Runs first, so the errors of the other global middleware are JSON too
+        $this->callAfterResolving(HttpKernel::class, function (HttpKernel $kernel) {
+            if ($kernel instanceof Kernel) {
+                $kernel->prependMiddleware(ForceJsonOnApi::class);
+            }
+        });
+    }
+
+    /**
+     * Merge the config file into the application's config under the key. Nested
+     * options are merged, so the application can override a single one of them,
+     * but lists are replaced as a whole, so the application's list (even an empty
+     * one) isn't mixed with api-core's.
+     *
+     * @param string $path
+     * @param string $key
+     *
+     * @return void
+     */
+    protected function mergeConfigRecursivelyFrom(string $path, string $key): void
+    {
+        if ($this->app instanceof CachesConfiguration && $this->app->configurationIsCached()) {
+            return;
+        }
+
+        /** @var array<array-key, mixed> $defaults */
+        $defaults = require $path;
+        $config = $this->app->make('config');
+
+        $config->set($key, $this->mergeConfig($defaults, $config->get($key, [])));
+    }
+
+    /**
+     * Merge the application's config into api-core's defaults.
+     *
+     * @param array<array-key, mixed> $defaults
+     * @param array<array-key, mixed> $config
+     *
+     * @return array<array-key, mixed>
+     */
+    protected function mergeConfig(array $defaults, array $config): array
+    {
+        foreach ($config as $key => $value) {
+            $isNested = is_array($value) && !array_is_list($value)
+                && is_array($defaults[$key] ?? null) && !array_is_list($defaults[$key]);
+
+            $defaults[$key] = $isNested ? $this->mergeConfig($defaults[$key], $value) : $value;
+        }
+
+        return $defaults;
     }
 
     /**
