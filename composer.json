@@ -1,7 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "andriichello/api-core",
-    "type": "project",
+    "type": "library",
     "description": "The core code for Laravel APIs.",
     "keywords": ["laravel", "framework", "core"],
     "license": "MIT",
@@ -30,7 +30,9 @@
     },
     "autoload": {
         "psr-4": {
-            "Core\\": "app/"
+            "Core\\": "app/",
+            "Core\\Database\\Factories\\": "database/factories/",
+            "Core\\Database\\Seeders\\": "database/seeders/"
         }
     },
     "autoload-dev": {
@@ -75,6 +77,11 @@
     },
     "extra": {
         "laravel": {
+            "providers": [
+                "Core\\Providers\\CoreServiceProvider",
+                "Core\\Providers\\AuthServiceProvider",
+                "Core\\Providers\\MorphServiceProvider"
+            ],
             "dont-discover": []
         }
     },

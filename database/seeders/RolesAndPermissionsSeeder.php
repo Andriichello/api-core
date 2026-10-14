@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace Core\Database\Seeders;
 
 use Core\Enums\UserRole;
 use Core\Models\Organization;
@@ -17,8 +17,8 @@ use Spatie\Permission\Models\Role;
  * Class RolesAndPermissionsSeeder.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Database\Seeders
- * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
+ * @package Core\Database\Seeders
+ * @SuppressWarnings("PHPMD.CouplingBetweenObjects")
  */
 class RolesAndPermissionsSeeder extends Seeder
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Factories;
+namespace Core\Database\Factories;
 
 use Core\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -12,10 +12,17 @@ use Illuminate\Support\Str;
  * @extends Factory<Organization>
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Database\Factories
+ * @package Core\Database\Factories
  */
 class OrganizationFactory extends Factory
 {
+    /**
+     * The name of the factory's corresponding model.
+     *
+     * @var class-string<Organization>
+     */
+    protected $model = Organization::class;
+
     /**
      * Define the model's default state.
      *

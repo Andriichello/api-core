@@ -2,8 +2,9 @@
 
 namespace Core\Models;
 
+use Core\Database\Factories\OrganizationFactory;
 use Core\Queries\OrganizationQuery;
-use Database\Factories\OrganizationFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Models
  */
+#[UseFactory(OrganizationFactory::class)]
 class Organization extends BaseModel
 {
     /** @use HasFactory<OrganizationFactory> */

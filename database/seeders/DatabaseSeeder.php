@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace Core\Database\Seeders;
 
 use Core\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -10,7 +10,7 @@ use Illuminate\Database\Seeder;
  * Class DatabaseSeeder.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Database\Seeders
+ * @package Core\Database\Seeders
  */
 class DatabaseSeeder extends Seeder
 {
