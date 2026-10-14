@@ -20,8 +20,7 @@ use Throwable;
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Repositories
  */
-abstract class CrudRepository extends BaseRepository implements
-    CrudRepositoryInterface
+abstract class CrudRepository extends BaseRepository implements CrudRepositoryInterface
 {
     use AllowsSorts;
     use AllowsFilters;
@@ -172,11 +171,12 @@ abstract class CrudRepository extends BaseRepository implements
      */
     public function delete(BaseModel $model): bool
     {
-        return $model->delete();
+        return (bool) $model->delete();
     }
 
     /**
-     * Force delete the given model.
+     * Force delete the given model. It is deleted with `delete()` first, so
+     * any logic of deleting runs for it too, and then removed permanently.
      *
      * @param BaseModel $model
      *
@@ -188,6 +188,11 @@ abstract class CrudRepository extends BaseRepository implements
             return false;
         }
 
-        return $model->forceDelete();
+        // Without soft deletes, delete() has already removed the model for good
+        if (!$this->isSoftDeletable()) {
+            return true;
+        }
+
+        return (bool) $model->forceDelete();
     }
 }

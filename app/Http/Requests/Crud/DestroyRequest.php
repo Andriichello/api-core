@@ -41,12 +41,23 @@ class DestroyRequest extends CrudRequest implements WithTargetInterface
     }
 
     /**
+     * Get ability, which should be checked on the request. Deleting
+     * permanently is an ability of its own: `forceDelete`.
+     *
+     * @return string|null
+     */
+    public function getAbility(): ?string
+    {
+        return $this->force() ? 'forceDelete' : $this->ability;
+    }
+
+    /**
      * Get force parameter.
      *
      * @return bool
      */
     public function force(): bool
     {
-        return (bool) $this->input('force', false);
+        return $this->boolean('force');
     }
 }
