@@ -3,6 +3,7 @@
 namespace Core\Tests\Unit\Repositories;
 
 use Core\Enums\FilterOperation;
+use Core\Http\Filters\DateFilter;
 use Core\Http\Filters\DefaultFilter;
 use Core\Models\BaseModel;
 use Core\Models\Organization;
@@ -522,5 +523,67 @@ class CrudRepositoryFiltersTest extends TestCase
             ["The 'ci' flag is not supported by the 'null' operation."],
             $this->errorsOf($caseInsensitive)['filter.email_verified_at']
         );
+    }
+
+    public function testDateFilterIsChosenForTimestampsAndDateCasts(): void
+    {
+        $this->assertSame(DateFilter::class, $this->repository->classOfAllowedFilter('created_at'));
+        $this->assertSame(DateFilter::class, $this->repository->classOfAllowedFilter('updated_at'));
+        $this->assertSame(DateFilter::class, $this->repository->classOfAllowedFilter('email_verified_at'));
+        $this->assertSame(DateFilter::class, $this->repository->classOfAllowedFilter('suspended_at'));
+        $this->assertSame(DateFilter::class, $this->repository->classOfAllowedFilter('last_login_at'));
+        $this->assertSame(DefaultFilter::class, $this->repository->classOfAllowedFilter('email'));
+    }
+
+    public function testFilterClassCanBeAllowedExplicitly(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected array $allowedFilters = [
+                'last_login_at' => DateFilter::class,
+                'created' => [DefaultFilter::class, 'created_at'],
+            ];
+        };
+
+        $this->assertSame(DateFilter::class, $repository->classOfAllowedFilter('last_login_at'));
+        $this->assertSame(DefaultFilter::class, $repository->classOfAllowedFilter('created'));
+    }
+
+    public function testInvalidDateAnswers422(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'created_at' => ['lte' => 'yesterday'],
+            ],
+        ]);
+
+        $this->assertStringStartsWith(
+            'A date filter takes a date, or a date and time',
+            $this->errorsOf($request)['filter.created_at'][0]
+        );
+    }
+
+    public function testDatesAreReadInTheTimezoneOfTheRequestUser(): void
+    {
+        $user = User::query()->forceCreate([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => 'password123',
+            'timezone' => 'Europe/Kyiv',
+        ]);
+
+        $request = Request::create('/users', 'GET', [
+            'filter' => [
+                'created_at' => ['eq' => '2026-06-30'],
+            ],
+        ]);
+        $request->setUserResolver(fn () => $user);
+
+        $sql = $this->repository->builder($request)->toRawSql();
+
+        $this->assertStringContainsString('"users"."created_at" >= \'2026-06-29 21:00:00\'', $sql);
+        $this->assertStringContainsString('"users"."created_at" < \'2026-06-30 21:00:00\'', $sql);
     }
 }

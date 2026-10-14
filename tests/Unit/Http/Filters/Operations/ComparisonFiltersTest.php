@@ -152,36 +152,6 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('LOWER("name") <= LOWER(\'Zebra\')', $sql);
     }
 
-    public function testLteOnADateCoversTheWholeDay(): void
-    {
-        $query = User::query();
-
-        (new LteFilter('users'))->apply($query, 'created_at', '2026-06-30');
-
-        $this->assertStringContainsString('"users"."created_at" < \'2026-07-01\'', $query->toRawSql());
-    }
-
-    public function testGtOnADateStartsWithTheNextDay(): void
-    {
-        $query = User::query();
-
-        (new GtFilter('users'))->apply($query, 'created_at', '2026-06-30');
-
-        $this->assertStringContainsString('"users"."created_at" >= \'2026-07-01\'', $query->toRawSql());
-    }
-
-    public function testNotLteAndNotGtOnADateAreTheirOpposites(): void
-    {
-        $notLte = User::query();
-        (new LteFilter('users'))->setFlags([FilterFlag::Not])->apply($notLte, 'created_at', '2026-06-30');
-
-        $notGt = User::query();
-        (new GtFilter('users'))->setFlags([FilterFlag::Not])->apply($notGt, 'created_at', '2026-06-30');
-
-        $this->assertStringContainsString('"users"."created_at" >= \'2026-07-01\'', $notLte->toRawSql());
-        $this->assertStringContainsString('"users"."created_at" < \'2026-07-01\'', $notGt->toRawSql());
-    }
-
     public function testValuesOtherThanADateAreComparedAsGiven(): void
     {
         $cases = [
@@ -199,28 +169,15 @@ class ComparisonFiltersTest extends TestCase
         }
     }
 
-    public function testADateCoversTheWholeDayOfATimestampColumn(): void
+    public function testDatesAreComparedAsGiven(): void
     {
-        $during = User::query()->forceCreate([
-            'name' => 'During',
-            'email' => 'during@example.com',
-            'password' => 'password123',
-            'created_at' => '2026-06-30 15:00:00',
-        ]);
-        $after = User::query()->forceCreate([
-            'name' => 'After',
-            'email' => 'after@example.com',
-            'password' => 'password123',
-            'created_at' => '2026-07-01 00:00:00',
-        ]);
-
         $upTo = User::query();
         (new LteFilter('users'))->apply($upTo, 'created_at', '2026-06-30');
 
-        $from = User::query();
-        (new GtFilter('users'))->apply($from, 'created_at', '2026-06-30');
+        $after = User::query();
+        (new GtFilter('users'))->apply($after, 'created_at', '2026-06-30');
 
-        $this->assertEquals([$during->id], $upTo->pluck('id')->all());
-        $this->assertEquals([$after->id], $from->pluck('id')->all());
+        $this->assertStringContainsString('"users"."created_at" <= \'2026-06-30\'', $upTo->toRawSql());
+        $this->assertStringContainsString('"users"."created_at" > \'2026-06-30\'', $after->toRawSql());
     }
 }

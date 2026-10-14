@@ -5,7 +5,6 @@ namespace Core\Http\Filters;
 use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
 use Core\Queries\BaseQuery;
-use Illuminate\Support\Carbon;
 
 /**
  * Class BaseFilter.
@@ -165,41 +164,9 @@ abstract class BaseFilter
         mixed $value,
         string $boolean = 'and'
     ): void {
-        [$operator, $value] = $this->wholeDay($operator, $value);
-
         $this->hasFlag(FilterFlag::CaseInsensitive)
             ? $query->whereRaw('LOWER(' . $this->wrap($query, $column) . ") $operator LOWER(?)", [$value], $boolean)
             : $query->where($this->qualify($column), $operator, $value, $boolean);
-    }
-
-    /**
-     * Make a date without time (`2026-06-30`) cover the whole day: `<=`
-     * and `>` on it compare to the start of the next day (`<` and `>=`
-     * `2026-07-01`), so a timestamp column keeps or skips the rows from
-     * during that day. Other operators and values are returned as given.
-     *
-     * @param string $operator
-     * @param mixed $value
-     *
-     * @return array{string, mixed}
-     */
-    protected function wholeDay(string $operator, mixed $value): array
-    {
-        $isDateOnly = in_array($operator, ['<=', '>'])
-            && is_string($value)
-            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value);
-
-        if (!$isDateOnly) {
-            return [$operator, $value];
-        }
-
-        $date = Carbon::createFromFormat('!Y-m-d', $value);
-
-        if (!$date || $date->format('Y-m-d') !== $value) {
-            return [$operator, $value];
-        }
-
-        return [$operator === '<=' ? '<' : '>=', $date->addDay()->format('Y-m-d')];
     }
 
     /**

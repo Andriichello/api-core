@@ -6,6 +6,7 @@ use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
 use Core\Helpers\FilterHelper;
 use Core\Http\Filters\BaseFilter;
+use Core\Http\Filters\DateFilter;
 use Core\Http\Filters\DefaultFilter;
 use Core\Repositories\CrudRepository;
 use Illuminate\Http\Request;
@@ -73,7 +74,9 @@ trait AllowsFilters
     }
 
     /**
-     * Get the class for the given filter.
+     * Get the class for the given filter: the one it is allowed with, or
+     * DateFilter for a timestamp or a date column of the model, and
+     * DefaultFilter for any other one.
      *
      * @param string $filter
      *
@@ -87,7 +90,37 @@ trait AllowsFilters
             return $entry;
         }
 
-        return data_get($entry, 0) ?? DefaultFilter::class;
+        return data_get($entry, 0)
+            ?? ($this->isDateFilter($filter) ? DateFilter::class : DefaultFilter::class);
+    }
+
+    /**
+     * Determine if the given filter is on a column of the model, which is
+     * a timestamp (such as `created_at`) or has a date or datetime cast.
+     *
+     * @param string $filter
+     *
+     * @return bool
+     */
+    public function isDateFilter(string $filter): bool
+    {
+        $model = $this->instance();
+        $table = $this->tableOfAllowedFilter($filter);
+
+        if (!$model || ($table !== null && $table !== $model->getTable())) {
+            return false;
+        }
+
+        $column = $this->columnOfAllowedFilter($filter) ?? $filter;
+
+        if (in_array($column, $model->getDates(), true)) {
+            return true;
+        }
+
+        $cast = $model->getCasts()[$column] ?? null;
+
+        return is_string($cast)
+            && preg_match('/^(immutable_)?(date|datetime|timestamp)(:|$)/', $cast) === 1;
     }
 
     /**

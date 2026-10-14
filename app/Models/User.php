@@ -33,9 +33,9 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $timezone
  * @property string $locale
  * @property array|null $metadata
- * @property string|null $email_verified_at
- * @property string|null $suspended_at
- * @property string|null $last_login_at
+ * @property Carbon|null $email_verified_at
+ * @property Carbon|null $suspended_at
+ * @property Carbon|null $last_login_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -119,6 +119,8 @@ class User extends BaseModel implements
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'suspended_at' => 'datetime',
+        'last_login_at' => 'datetime',
         'password' => 'hashed',
     ];
 

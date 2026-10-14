@@ -4,6 +4,7 @@ namespace Core\Repositories;
 
 use Core\Enums\FilterOperation;
 use Core\Http\Filters\BaseFilter;
+use Core\Http\Filters\DateFilter;
 use Core\Models\BaseModel;
 use Core\Queries\BaseQuery;
 use Core\Queries\Interfaces\IndexableInterface;
@@ -96,6 +97,11 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
                 $logic = new $class($table ?? $query->getModel()->getTable())
                     ->setOperation($filter['operation'])
                     ->setFlags($filter['flags'] ?? []);
+
+                // Dates without an offset are read in the user's timezone
+                if ($logic instanceof DateFilter) {
+                    $logic->setTimezone(data_get($request->user(), 'timezone'));
+                }
 
                 try {
                     $logic->apply($query, $column ?? $field, $value);
