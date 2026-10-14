@@ -1,0 +1,28 @@
+{
+    "preset": "laravel",
+    "rules": {
+        "braces_position": {
+            "anonymous_classes_opening_brace": "next_line_unless_newline_at_signature_end"
+        },
+        "class_definition": {
+            "multi_line_extends_each_single_line": true,
+            "single_item_single_line": true,
+            "single_line": false
+        },
+        "concat_space": {
+            "spacing": "one"
+        },
+        "no_superfluous_phpdoc_tags": false,
+        "not_operator_with_successor_space": false,
+        "ordered_traits": false,
+        "php_unit_method_casing": {
+            "case": "camel_case"
+        },
+        "phpdoc_align": {
+            "align": "left",
+            "spacing": 1
+        },
+        "phpdoc_no_package": false,
+        "phpdoc_separation": false
+    }
+}
