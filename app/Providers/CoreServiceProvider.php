@@ -35,6 +35,7 @@ class CoreServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->replaceConfigRecursivelyFrom($this->packagePath('config/api-core.php'), 'api-core');
         $this->mergeConfigFrom($this->packagePath('config/pagination.php'), 'pagination');
     }
 
@@ -44,6 +45,7 @@ class CoreServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->publishes([
+            $this->packagePath('config/api-core.php') => config_path('api-core.php'),
             $this->packagePath('config/pagination.php') => config_path('pagination.php'),
         ], static::CONFIG_TAG);
 

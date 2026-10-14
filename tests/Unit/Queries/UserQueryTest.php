@@ -19,6 +19,11 @@ class UserQueryTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Create an organization with a unique slug.
+     *
+     * @return Organization
+     */
     private function createOrganization(): Organization
     {
         return Organization::create([
@@ -27,6 +32,14 @@ class UserQueryTest extends TestCase
         ]);
     }
 
+    /**
+     * Create a user in the organization, which is linked to the main account, if they are given.
+     *
+     * @param Organization|null $organization
+     * @param User|null $mainAccount
+     *
+     * @return User
+     */
     private function createUser(?Organization $organization = null, ?User $mainAccount = null): User
     {
         return User::query()->forceCreate([
@@ -38,6 +51,13 @@ class UserQueryTest extends TestCase
         ]);
     }
 
+    /**
+     * Create a super admin in the organization, if it is given.
+     *
+     * @param Organization|null $organization
+     *
+     * @return User
+     */
     private function createSuperAdmin(?Organization $organization = null): User
     {
         Role::create(['name' => UserRole::SuperAdmin->value]);
@@ -48,6 +68,11 @@ class UserQueryTest extends TestCase
         return $user;
     }
 
+    /**
+     * Test that the index query returns nothing without a user.
+     *
+     * @return void
+     */
     public function testReturnsNothingWithoutUser(): void
     {
         $this->createUser();
@@ -58,6 +83,11 @@ class UserQueryTest extends TestCase
         $this->assertCount(0, $users);
     }
 
+    /**
+     * Test that the index query returns the user and the members of the user's organization.
+     *
+     * @return void
+     */
     public function testReturnsUserAndMembersOfTheSameOrganization(): void
     {
         $organization = $this->createOrganization();
@@ -73,6 +103,11 @@ class UserQueryTest extends TestCase
         $this->assertEqualsCanonicalizing([$user->id, $colleague->id], $ids);
     }
 
+    /**
+     * Test that the index query returns only the user, when the user has no organization.
+     *
+     * @return void
+     */
     public function testReturnsOnlyItselfForUserWithoutOrganization(): void
     {
         $user = $this->createUser();
@@ -85,6 +120,11 @@ class UserQueryTest extends TestCase
         $this->assertEquals([$user->id], $ids);
     }
 
+    /**
+     * Test that the index query returns all users for a super admin without an organization.
+     *
+     * @return void
+     */
     public function testReturnsAllUsersForSuperAdminWithoutOrganization(): void
     {
         $superAdmin = $this->createSuperAdmin();
@@ -97,6 +137,11 @@ class UserQueryTest extends TestCase
         $this->assertCount(3, $users);
     }
 
+    /**
+     * Test that the index query scopes a super admin with an organization to that organization.
+     *
+     * @return void
+     */
     public function testScopesSuperAdminWithOrganizationToThatOrganization(): void
     {
         $organization = $this->createOrganization();
@@ -112,6 +157,11 @@ class UserQueryTest extends TestCase
         $this->assertEqualsCanonicalizing([$superAdmin->id, $colleague->id], $ids);
     }
 
+    /**
+     * Test that the index query returns the linked accounts of a main account.
+     *
+     * @return void
+     */
     public function testReturnsLinkedAccountsForMainAccount(): void
     {
         $organization = $this->createOrganization();
@@ -128,6 +178,11 @@ class UserQueryTest extends TestCase
         $this->assertEqualsCanonicalizing([$main->id, $colleague->id, $linked->id], $ids);
     }
 
+    /**
+     * Test that the index query returns the main and sibling accounts of a linked account.
+     *
+     * @return void
+     */
     public function testReturnsMainAndSiblingAccountsForLinkedAccount(): void
     {
         $organization = $this->createOrganization();
@@ -149,6 +204,11 @@ class UserQueryTest extends TestCase
         );
     }
 
+    /**
+     * Test that the index query returns only the own accounts of a user without an organization.
+     *
+     * @return void
+     */
     public function testReturnsOnlyOwnAccountsForUserWithoutOrganization(): void
     {
         $main = $this->createUser();

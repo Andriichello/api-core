@@ -18,6 +18,11 @@ class RolesAndPermissionsSeederTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Test that the seeder creates every user role.
+     *
+     * @return void
+     */
     public function testSeedsRoles(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);

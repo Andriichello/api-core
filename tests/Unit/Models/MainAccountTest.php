@@ -19,6 +19,11 @@ class MainAccountTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Create an organization with a unique slug.
+     *
+     * @return Organization
+     */
     private function createOrganization(): Organization
     {
         return Organization::query()->create([
@@ -27,6 +32,14 @@ class MainAccountTest extends TestCase
         ]);
     }
 
+    /**
+     * Create a user in the organization, which is linked to the main account, if they are given.
+     *
+     * @param Organization|null $organization
+     * @param User|null $mainAccount
+     *
+     * @return User
+     */
     private function createUser(?Organization $organization = null, ?User $mainAccount = null): User
     {
         return User::query()->forceCreate([
@@ -38,6 +51,11 @@ class MainAccountTest extends TestCase
         ]);
     }
 
+    /**
+     * Test that linked accounts belong to their main account, which has them as its related accounts.
+     *
+     * @return void
+     */
     public function testLinkedAccountBelongsToMainAccount(): void
     {
         $main = $this->createUser($this->createOrganization());
@@ -53,6 +71,11 @@ class MainAccountTest extends TestCase
         $this->assertCount(0, $linked->relatedAccounts);
     }
 
+    /**
+     * Test that a main account is determined, along with the id of the main account of a linked one.
+     *
+     * @return void
+     */
     public function testDeterminesMainAccount(): void
     {
         $main = $this->createUser();
@@ -66,6 +89,11 @@ class MainAccountTest extends TestCase
         $this->assertSame($main->id, $linked->fresh()->mainAccountId());
     }
 
+    /**
+     * Test that a main account and its linked accounts are the same person, and accounts of others aren't.
+     *
+     * @return void
+     */
     public function testDeterminesSamePerson(): void
     {
         $main = $this->createUser($this->createOrganization());
@@ -87,6 +115,11 @@ class MainAccountTest extends TestCase
         $this->assertFalse($stranger->isSamePerson($linked));
     }
 
+    /**
+     * Test that the main account cannot be mass assigned.
+     *
+     * @return void
+     */
     public function testMainAccountIsNotMassAssignable(): void
     {
         $main = $this->createUser();
@@ -101,6 +134,11 @@ class MainAccountTest extends TestCase
         $this->assertNull($user->main_account_id);
     }
 
+    /**
+     * Test that the main account is hidden from serialization.
+     *
+     * @return void
+     */
     public function testMainAccountIsHiddenFromSerialization(): void
     {
         $linked = $this->createUser(mainAccount: $this->createUser());
@@ -108,6 +146,11 @@ class MainAccountTest extends TestCase
         $this->assertArrayNotHasKey('main_account_id', $linked->toArray());
     }
 
+    /**
+     * Test that a linked account becomes a main one, when its main account is deleted permanently.
+     *
+     * @return void
+     */
     public function testLinkedAccountsBecomeMainWhenMainAccountIsDeletedPermanently(): void
     {
         $main = $this->createUser();
@@ -119,6 +162,12 @@ class MainAccountTest extends TestCase
         $this->assertTrue($linked->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that a main account can impersonate its linked accounts, but not the other way around or accounts
+     * of others.
+     *
+     * @return void
+     */
     public function testMainAccountCanImpersonateItsLinkedAccounts(): void
     {
         $main = $this->createUser($this->createOrganization());
@@ -135,6 +184,11 @@ class MainAccountTest extends TestCase
         $this->assertFalse($stranger->canImpersonateUser($linked));
     }
 
+    /**
+     * Test that a super admin can impersonate any user.
+     *
+     * @return void
+     */
     public function testSuperAdminCanImpersonateAnyUser(): void
     {
         Role::create(['name' => UserRole::SuperAdmin->value]);

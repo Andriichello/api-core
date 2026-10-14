@@ -3,6 +3,7 @@
 namespace Core\Queries;
 
 use Core\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -16,9 +17,10 @@ use Illuminate\Database\Eloquent\Model;
  * @method User firstOrFail($columns = ['*'])
  * @method User create(array $attributes = [])
  * @method User forceCreate(array $attributes)
+ * @method Collection<int, User> get($columns = ['*'])
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Core\Queries\Api
+ * @package Core\Queries
  */
 class UserQuery extends BaseQuery
 {

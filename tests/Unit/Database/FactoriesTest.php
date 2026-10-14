@@ -19,12 +19,22 @@ class FactoriesTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Test that the models resolve their factories.
+     *
+     * @return void
+     */
     public function testModelsResolveTheirFactories(): void
     {
         $this->assertInstanceOf(UserFactory::class, User::factory());
         $this->assertInstanceOf(OrganizationFactory::class, Organization::factory());
     }
 
+    /**
+     * Test that the factories create verified users and activated organizations.
+     *
+     * @return void
+     */
     public function testFactoriesCreateTheirModels(): void
     {
         $user = User::factory()->create();
@@ -39,6 +49,11 @@ class FactoriesTest extends TestCase
         $this->assertNotNull($organization->activated_at);
     }
 
+    /**
+     * Test that the user factory creates an unverified user.
+     *
+     * @return void
+     */
     public function testCreatesUnverifiedUser(): void
     {
         $user = User::factory()->unverified()->create();
@@ -46,6 +61,11 @@ class FactoriesTest extends TestCase
         $this->assertFalse($user->hasVerifiedEmail());
     }
 
+    /**
+     * Test that the user factory creates a user of the given organization.
+     *
+     * @return void
+     */
     public function testCreatesUserOfOrganization(): void
     {
         $organization = Organization::factory()->create();

@@ -14,6 +14,11 @@ use Illuminate\Support\ServiceProvider;
  */
 class CoreServiceProviderTest extends TestCase
 {
+    /**
+     * Test that the config files are published under the config tag.
+     *
+     * @return void
+     */
     public function testPublishesConfig(): void
     {
         $paths = ServiceProvider::pathsToPublish(
@@ -22,11 +27,19 @@ class CoreServiceProviderTest extends TestCase
         );
 
         $this->assertSame(
-            [base_path('config/pagination.php') => config_path('pagination.php')],
+            [
+                base_path('config/api-core.php') => config_path('api-core.php'),
+                base_path('config/pagination.php') => config_path('pagination.php'),
+            ],
             $this->resolved($paths)
         );
     }
 
+    /**
+     * Test that every migration is published under its own name.
+     *
+     * @return void
+     */
     public function testPublishesEveryMigrationUnderItsOwnName(): void
     {
         $paths = ServiceProvider::pathsToPublish(
@@ -43,6 +56,11 @@ class CoreServiceProviderTest extends TestCase
         );
     }
 
+    /**
+     * Test that the pagination config is merged, when the application has none.
+     *
+     * @return void
+     */
     public function testMergesPaginationConfig(): void
     {
         config(['pagination' => []]);
@@ -53,6 +71,26 @@ class CoreServiceProviderTest extends TestCase
         $this->assertSame('page', config('pagination.pagination_parameter'));
     }
 
+    /**
+     * Test that the api-core config is merged recursively, keeping the keys, which the application overrides.
+     *
+     * @return void
+     */
+    public function testMergesApiCoreConfig(): void
+    {
+        config(['api-core' => ['auth' => ['access_token_lifetime' => 60]]]);
+
+        (new CoreServiceProvider($this->app))->register();
+
+        $this->assertSame(60, config('api-core.auth.access_token_lifetime'));
+        $this->assertSame(20160, config('api-core.auth.refresh_token_lifetime'));
+    }
+
+    /**
+     * Test that the pagination config of the application is kept.
+     *
+     * @return void
+     */
     public function testKeepsPaginationConfigOfTheApplication(): void
     {
         config(['pagination.default_size' => 25]);

@@ -98,6 +98,26 @@ class Organization extends BaseModel
     }
 
     /**
+     * Determine if the organization is suspended.
+     *
+     * @return bool
+     */
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
+    /**
+     * Determine if the organization is deactivated.
+     *
+     * @return bool
+     */
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
+    }
+
+    /**
      * Returns id of the organization, to which the record belongs.
      *
      * @return int|null

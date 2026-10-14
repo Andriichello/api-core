@@ -17,6 +17,14 @@ class LinksAccountsByEmailTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Create an account with the email, which is verified, in a new organization.
+     *
+     * @param string $email
+     * @param array<string, mixed> $attributes
+     *
+     * @return User
+     */
     private function createAccount(string $email, array $attributes = []): User
     {
         $organization = Organization::query()->create([
@@ -34,11 +42,24 @@ class LinksAccountsByEmailTest extends TestCase
         ]);
     }
 
+    /**
+     * Create an account with the email, which isn't verified, in a new organization.
+     *
+     * @param string $email
+     * @param array<string, mixed> $attributes
+     *
+     * @return User
+     */
     private function createUnverifiedAccount(string $email, array $attributes = []): User
     {
         return $this->createAccount($email, ['email_verified_at' => null, ...$attributes]);
     }
 
+    /**
+     * Test that a new account is linked to the account with the same verified email.
+     *
+     * @return void
+     */
     public function testLinksNewAccountToAccountWithTheSameVerifiedEmail(): void
     {
         $main = $this->createAccount('bob@example.com');
@@ -50,6 +71,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($main->id, $other->fresh()->main_account_id);
     }
 
+    /**
+     * Test that accounts with different emails aren't linked.
+     *
+     * @return void
+     */
     public function testDoesNotLinkAccountsWithDifferentEmails(): void
     {
         $this->createAccount('bob@example.com');
@@ -58,6 +84,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($account->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that accounts with unverified emails aren't linked.
+     *
+     * @return void
+     */
     public function testDoesNotLinkUnverifiedAccounts(): void
     {
         $unverified = $this->createUnverifiedAccount('bob@example.com');
@@ -69,6 +100,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($another->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that an account is linked, when its email is verified.
+     *
+     * @return void
+     */
     public function testLinksAccountWhenItsEmailIsVerified(): void
     {
         $main = $this->createAccount('bob@example.com');
@@ -79,6 +115,12 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($main->id, $account->fresh()->main_account_id);
     }
 
+    /**
+     * Test that an earlier account is linked to a later one, when its email is verified after the later
+     * one's.
+     *
+     * @return void
+     */
     public function testLinksEarlierAccountWhenItsEmailIsVerifiedLater(): void
     {
         $earlier = $this->createUnverifiedAccount('bob@example.com');
@@ -90,6 +132,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($main->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that an account isn't linked to itself.
+     *
+     * @return void
+     */
     public function testDoesNotLinkAccountToItself(): void
     {
         $account = $this->createUnverifiedAccount('bob@example.com');
@@ -100,6 +147,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($account->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that an account is linked to the main account of the oldest account with the same email.
+     *
+     * @return void
+     */
     public function testLinksToTheMainAccountOfTheOldestAccount(): void
     {
         $main = $this->createAccount('alice@example.com');
@@ -111,6 +163,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($main->id, $account->fresh()->main_account_id);
     }
 
+    /**
+     * Test that emails are matched regardless of their case.
+     *
+     * @return void
+     */
     public function testMatchesEmailsRegardlessOfCase(): void
     {
         $main = $this->createAccount('Bob@Example.com');
@@ -120,6 +177,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($main->id, $linked->fresh()->main_account_id);
     }
 
+    /**
+     * Test that a main account, which is given explicitly, is kept.
+     *
+     * @return void
+     */
     public function testKeepsMainAccountGivenExplicitly(): void
     {
         $this->createAccount('bob@example.com');
@@ -130,6 +192,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($main->id, $account->fresh()->main_account_id);
     }
 
+    /**
+     * Test that an account, which is unlinked explicitly, stays unlinked.
+     *
+     * @return void
+     */
     public function testKeepsAccountUnlinkedExplicitly(): void
     {
         $this->createAccount('bob@example.com');
@@ -143,6 +210,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($account->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that an account is unlinked, when its email changes.
+     *
+     * @return void
+     */
     public function testUnlinksAccountWhenItsEmailChanges(): void
     {
         $this->createAccount('bob@example.com');
@@ -153,6 +225,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($account->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that an account is linked by its new email, when the new email is verified.
+     *
+     * @return void
+     */
     public function testLinksAccountAgainByItsNewEmailWhenItIsVerified(): void
     {
         $this->createAccount('bob@example.com');
@@ -167,6 +244,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($robert->id, $account->fresh()->main_account_id);
     }
 
+    /**
+     * Test that an account isn't linked by its new email with the verification of the old one.
+     *
+     * @return void
+     */
     public function testDoesNotLinkAccountByNewEmailWithVerificationOfTheOldOne(): void
     {
         $this->createAccount('bob@example.com');
@@ -179,6 +261,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($account->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that an account isn't linked by its new email, until the new email is verified.
+     *
+     * @return void
+     */
     public function testDoesNotLinkAccountByNewEmailUntilItIsVerified(): void
     {
         $this->createAccount('bob@example.com');
@@ -194,6 +281,12 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($robert->id, $account->fresh()->main_account_id);
     }
 
+    /**
+     * Test that linked accounts, including deleted ones, are handed over to the oldest of them, when the
+     * email of the main account changes.
+     *
+     * @return void
+     */
     public function testHandsOverLinkedAccountsWhenMainAccountEmailChanges(): void
     {
         $main = $this->createAccount('bob@example.com');
@@ -211,6 +304,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($first->id, $third->fresh()->main_account_id);
     }
 
+    /**
+     * Test that a main account is linked by its new email, after handing over its linked accounts.
+     *
+     * @return void
+     */
     public function testMainAccountWithLinkedAccountsIsLinkedByItsNewEmail(): void
     {
         $robert = $this->createAccount('robert@example.com');
@@ -226,6 +324,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertTrue($linked->fresh()->isMainAccount());
     }
 
+    /**
+     * Test that a main account, which has linked accounts, isn't linked, so accounts don't form chains.
+     *
+     * @return void
+     */
     public function testDoesNotLinkMainAccountWhichHasLinkedAccounts(): void
     {
         $this->createAccount('bob@example.com');
@@ -238,6 +341,12 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($main->id, $linked->fresh()->main_account_id);
     }
 
+    /**
+     * Test that linked accounts are handed over to the oldest of them, when the main account is deleted
+     * permanently.
+     *
+     * @return void
+     */
     public function testHandsOverLinkedAccountsWhenMainAccountIsDeletedPermanently(): void
     {
         $main = $this->createAccount('bob@example.com');
@@ -250,6 +359,11 @@ class LinksAccountsByEmailTest extends TestCase
         $this->assertSame($first->id, $second->fresh()->main_account_id);
     }
 
+    /**
+     * Test that linked accounts stay linked, when the main account is soft deleted.
+     *
+     * @return void
+     */
     public function testKeepsLinkedAccountsWhenMainAccountIsSoftDeleted(): void
     {
         $main = $this->createAccount('bob@example.com');

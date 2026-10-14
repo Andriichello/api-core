@@ -26,6 +26,9 @@ use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\TransientToken;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
@@ -52,6 +55,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Organization|null $organization
  * @property User|null $mainAccount
  * @property Collection<int, User> $relatedAccounts
+ * @property Collection<int, AccessToken> $tokens
  * @property Collection<int, Role> $roles
  * @property Collection<int, Permission> $permissions
  * @property Collection<int, DatabaseNotification> $notifications
@@ -77,6 +81,10 @@ class User extends BaseModel implements
 
     use Notifiable;
     use SoftDeletes;
+
+    /** @use HasApiTokens<PersonalAccessToken|TransientToken> */
+    use HasApiTokens;
+
     use HasRoles;
     use ChecksRolesAndPermissions;
     use LinksAccountsByEmail;
@@ -186,6 +194,39 @@ class User extends BaseModel implements
     public function relatedAccounts(): HasMany
     {
         return $this->hasMany(User::class, 'main_account_id');
+    }
+
+    /**
+     * Determine if the user is suspended.
+     *
+     * @return bool
+     */
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
+    /**
+     * Determine if the user can sign in: neither the user nor the organization
+     * is suspended, and the organization is neither deactivated nor deleted.
+     *
+     * @return bool
+     */
+    public function canSignIn(): bool
+    {
+        if ($this->isSuspended()) {
+            return false;
+        }
+
+        if ($this->organization_id === null) {
+            return true;
+        }
+
+        $organization = $this->organization;
+
+        return $organization !== null
+            && !$organization->isSuspended()
+            && !$organization->isDeactivated();
     }
 
     /**
