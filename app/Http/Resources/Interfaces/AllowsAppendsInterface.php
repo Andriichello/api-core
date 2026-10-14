@@ -20,6 +20,25 @@ use Illuminate\Http\Request;
 interface AllowsAppendsInterface
 {
     /**
+     * Get the list of columns the request asks to append,
+     * as the collection of the resource parsed it, or null.
+     *
+     * @return array|null
+     */
+    public function getAppendsOfRequest(): ?array;
+
+    /**
+     * Set the list of columns the request asks to append,
+     * parsed once by the collection of the resource, so
+     * that none of its items parses the request again.
+     *
+     * @param array|null $appends
+     *
+     * @return $this
+     */
+    public function setAppendsOfRequest(?array $appends): static;
+
+    /**
      * Get a list of columns that are allowed as
      * appends on request.
      *

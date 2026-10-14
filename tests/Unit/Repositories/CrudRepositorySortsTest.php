@@ -8,12 +8,14 @@ use Core\Repositories\CrudRepository;
 use Core\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class CrudRepositorySortsTest.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Tests\Unit\Repositories
+ * @SuppressWarnings("PHPMD.TooManyFields")
  */
 class CrudRepositorySortsTest extends TestCase
 {
@@ -254,6 +256,61 @@ class CrudRepositorySortsTest extends TestCase
         // Check filter is applied
         $sql = $query->toRawSql();
         $this->assertStringContainsString('"email" LIKE \'%@example.com\'', $sql);
+    }
+
+    public function testHiddenColumnsAreNotSortableByDefault(): void
+    {
+        $request = $this->createRequestWithUser([
+            'sort' => 'password',
+        ]);
+
+        try {
+            $this->repository->builder($request);
+        } catch (ValidationException $exception) {
+            $message = $exception->errors()['sort'][0];
+
+            $this->assertStringStartsWith("Sorting by the 'password' is not allowed. Allowed sorts: ", $message);
+            $this->assertStringContainsString('email', $message);
+
+            return;
+        }
+
+        $this->fail('The sort did not answer with 422.');
+    }
+
+    public function testHiddenColumnCanBeAllowedExplicitly(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected array $allowedSorts = ['password'];
+        };
+        $request = $this->createRequestWithUser([
+            'sort' => '-password',
+        ]);
+
+        $orders = $repository->builder($request)->getQuery()->orders;
+
+        $this->assertEquals('users.password', $orders[0]['column']);
+        $this->assertEquals('desc', $orders[0]['direction']);
+    }
+
+    public function testSortParameterThatIsNotAStringAnswers422(): void
+    {
+        $request = $this->createRequestWithUser([
+            'sort' => ['name'],
+        ]);
+
+        try {
+            $this->repository->builder($request);
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('sort', $exception->errors());
+
+            return;
+        }
+
+        $this->fail('The sort did not answer with 422.');
     }
 
     public function testBuilderWithoutRequestApplesDefaultSort(): void

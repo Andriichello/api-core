@@ -49,6 +49,16 @@ trait AllowsIncludes
     protected ?array $passedIncludes = null;
 
     /**
+     * List of includes the request asks for, parsed once
+     * by the collection of the resource for all its items.
+     * Used instead of parsing the request again, when no
+     * includes were passed.
+     *
+     * @var array<int, string>|null
+     */
+    protected ?array $includesOfRequest = null;
+
+    /**
      * Get a list of includes that were passed from parent
      * resource. Needed for nested includes.
      *
@@ -70,6 +80,33 @@ trait AllowsIncludes
     public function setPassedIncludes(?array $includes): static
     {
         $this->passedIncludes = $includes;
+
+        return $this;
+    }
+
+    /**
+     * Get list of includes the request asks for, as the
+     * collection of the resource parsed it, or null.
+     *
+     * @return array|null
+     */
+    public function getIncludesOfRequest(): ?array
+    {
+        return $this->includesOfRequest;
+    }
+
+    /**
+     * Set list of includes the request asks for, parsed
+     * once by the collection of the resource, so that
+     * none of its items parses the request again.
+     *
+     * @param array|null $includes
+     *
+     * @return $this
+     */
+    public function setIncludesOfRequest(?array $includes): static
+    {
+        $this->includesOfRequest = $includes;
 
         return $this;
     }
@@ -158,7 +195,7 @@ trait AllowsIncludes
             $this->resource->relationLoaded($relation);
 
         if (!$isLoaded) {
-            return new MissingValue();
+            return new MissingValue;
         }
 
         $value = $this->resource->getRelation($relation);
@@ -227,7 +264,7 @@ trait AllowsIncludes
     public function getRequestedIncludes(Request $request): array
     {
         return $this->getAllowedIncludes(
-            $this->passedIncludes ?? Helpers::requestedIncludes($request)
+            $this->passedIncludes ?? $this->includesOfRequest ?? Helpers::requestedIncludes($request)
         );
     }
 

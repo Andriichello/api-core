@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method User findOrFail($id, $columns = ['*'])
  * @method User|null first($columns = ['*'])
  * @method User firstOrFail($columns = ['*'])
+ * @method User create(array $attributes = [])
+ * @method User forceCreate(array $attributes)
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Queries\Api
@@ -27,11 +29,13 @@ class UserQuery extends BaseQuery
      * @param array $params
      *
      * @return UserQuery
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
      */
     public function index(?Model $user, array $params = []): UserQuery
     {
         if (!$user) {
             $this->whereRaw('1 = 0');
+
             return $this;
         }
 

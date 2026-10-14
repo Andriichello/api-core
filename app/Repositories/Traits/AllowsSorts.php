@@ -2,21 +2,23 @@
 
 namespace Core\Repositories\Traits;
 
-use Exception;
-use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Core\Helpers\Helpers;
 use Core\Repositories\CrudRepository;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Trait AllowsSorts.
  *
  * Contains logic for getting the list of sorts,
  * which should be applied for given request.
- * Throws exception when asked sort is not allowed.
+ * Throws a validation exception (422) when asked sort
+ * is not allowed or the sort parameter is malformed.
  *
  * By default, all model's fillable columns along with
- * its primary key and timestamps will be allowed.
+ * its primary key and timestamps will be allowed,
+ * except for its hidden columns.
  *
  * @mixin CrudRepository
  *
@@ -28,7 +30,8 @@ trait AllowsSorts
     /**
      * Determines if all fillable columns as well as
      * timestamps and identifiers should be allowed
-     * to sort by.
+     * to sort by. Hidden columns are never among
+     * them, unless they are listed explicitly.
      *
      * @var bool
      */
@@ -56,13 +59,13 @@ trait AllowsSorts
      */
     public function listOfAllowedSorts(): array
     {
-        $allowed = $this->allowedSorts ?? [];
+        $allowed = $this->allowedSorts;
 
         if (!$this->allowAllSorts && count($allowed)) {
             return $allowed;
         }
 
-        $all = array_merge($allowed, $this->instance()?->listOfColumns() ?? []);
+        $all = array_merge($allowed, $this->instance()?->listOfQueryableColumns() ?? []);
         $list = [];
 
         foreach ($all as $key => $value) {
@@ -81,7 +84,8 @@ trait AllowsSorts
      */
     public function columnOfAllowedSort(string $sort): ?string
     {
-        $entry = data_get($this->allowedSorts ?? [], $sort);
+        $entry = data_get($this->allowedSorts, $sort);
+
         return data_get($entry, 0);
     }
 
@@ -94,7 +98,8 @@ trait AllowsSorts
      */
     public function tableOfAllowedSort(string $sort): ?string
     {
-        $entry = data_get($this->allowedSorts ?? [], $sort);
+        $entry = data_get($this->allowedSorts, $sort);
+
         return data_get($entry, 1);
     }
 
@@ -121,21 +126,25 @@ trait AllowsSorts
 
     /**
      * Get sort value. If it's not allowed then
-     * an exception will be thrown.
+     * a validation exception (422) will be thrown.
      *
      * @param array $sorts
      * @param string $name
      *
      * @return string|string[]
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedSort(array $sorts, string $name): string|array
     {
         if (!$this->hasAllowedSorts($name)) {
-            $message = "Sorting by the '$name' is not allowed on "
-                . static::class;
+            $allowed = array_unique($this->listOfAllowedSorts());
 
-            throw new Exception($message);
+            throw ValidationException::withMessages([
+                'sort' => [
+                    "Sorting by the '$name' is not allowed. Allowed sorts: "
+                    . implode(', ', $allowed) . '.',
+                ],
+            ]);
         }
 
         $values = explode(',', $sorts[$name]);
@@ -151,7 +160,7 @@ trait AllowsSorts
      * @param array $sorts
      *
      * @return array<string, string|string[]>
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedSorts(array $sorts): array
     {
@@ -185,15 +194,27 @@ trait AllowsSorts
     }
 
     /**
-     * Get an array of default sorts.
+     * Get an array of requested sorts. If the sort parameter
+     * is malformed, or names a sort that is not allowed, then
+     * a validation exception (422) will be thrown.
      *
      * @param Request $request
      *
      * @return array
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getRequestedSorts(Request $request): array
     {
+        $input = $request->input('sort');
+
+        if ($input !== null && !is_string($input)) {
+            throw ValidationException::withMessages([
+                'sort' => [
+                    'The sort parameter must list the sorts, such as sort=name,-created_at.',
+                ],
+            ]);
+        }
+
         return $this->getAllowedSorts(Helpers::requestedSorts($request));
     }
 }

@@ -85,6 +85,10 @@ class FilterHelper
             ];
         }
 
+        if (!is_array($node)) {
+            throw new InvalidArgumentException('A filter value must be a string or a list of strings.');
+        }
+
         $result = [];
 
         foreach ($node as $key => $child) {
@@ -146,21 +150,29 @@ class FilterHelper
             return [];
         }
 
-        try {
-            return array_map(
-                function ($flag) {
-                    try {
-                        return $flag instanceof FilterFlag
-                            ? $flag : FilterFlag::from($flag);
-                    } catch (Throwable) {
-                        throw new InvalidArgumentException('Invalid filter flag provided: ' . $flag);
-                    }
-                },
-                $path
-            );
-        } catch (Throwable) {
-            throw new InvalidArgumentException('Invalid filter flag provided');
-        }
+        return array_map(
+            function ($flag) {
+                $parsed = $flag instanceof FilterFlag
+                    ? $flag : FilterFlag::tryFrom((string) $flag);
+
+                if ($parsed !== null) {
+                    return $parsed;
+                }
+
+                if (FilterOperation::tryFrom((string) $flag) !== null) {
+                    throw new InvalidArgumentException(
+                        "The '$flag' operation must come after the flags, such as [not][$flag]."
+                    );
+                }
+
+                throw new InvalidArgumentException(
+                    "Unknown filter operation or flag '$flag'. Operations: "
+                    . implode(', ', FilterOperation::values()) . '; flags: '
+                    . implode(', ', FilterFlag::values()) . '.'
+                );
+            },
+            $path
+        );
     }
 
     /**

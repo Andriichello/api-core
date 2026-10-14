@@ -4,23 +4,26 @@ namespace Core\Repositories\Traits;
 
 use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
+use Core\Helpers\FilterHelper;
+use Core\Http\Filters\BaseFilter;
 use Core\Http\Filters\DefaultFilter;
-use Exception;
+use Core\Repositories\CrudRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Core\Helpers\Helpers;
-use Core\Http\Filters\BaseFilter;
-use Core\Repositories\CrudRepository;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 /**
  * Trait AllowsFilters.
  *
  * Contains logic for getting the list of filters,
  * which should be applied for the given request.
- * Throws exception when asked filter is not allowed.
+ * Throws a validation exception (422) when asked filter
+ * is not allowed or the filter parameter is malformed.
  *
  * By default, all model's fillable columns along with
- * its primary key and timestamps will be allowed.
+ * its primary key and timestamps will be allowed,
+ * except for its hidden columns.
  *
  * @mixin CrudRepository
  *
@@ -32,7 +35,8 @@ trait AllowsFilters
     /**
      * Determines if all fillable columns as well as
      * timestamps and identifiers should be allowed
-     * to filter on.
+     * to filter on. Hidden columns are never among
+     * them, unless they are listed explicitly.
      *
      * @var bool
      */
@@ -41,7 +45,7 @@ trait AllowsFilters
     /**
      * List of filters allowed on request.
      *
-     * @var array<int|string, string|BaseFilter|array{string, ?string, ?string}>
+     * @var array<int|string, string|BaseFilter|array{0: string, 1?: string|null, 2?: string|null}>
      */
     protected array $allowedFilters = [];
 
@@ -52,13 +56,13 @@ trait AllowsFilters
      */
     public function listOfAllowedFilters(): array
     {
-        $allowed = $this->allowedFilters ?? [];
+        $allowed = $this->allowedFilters;
 
         if (!$this->allowAllFilters && count($allowed)) {
             return $allowed;
         }
 
-        $all = array_merge($allowed, $this->instance()?->listOfColumns() ?? []);
+        $all = array_merge($allowed, $this->instance()?->listOfQueryableColumns() ?? []);
         $list = [];
 
         foreach ($all as $key => $value) {
@@ -77,7 +81,7 @@ trait AllowsFilters
      */
     public function classOfAllowedFilter(string $filter): string
     {
-        $entry = data_get($this->allowedFilters ?? [], $filter);
+        $entry = data_get($this->allowedFilters, $filter);
 
         if (is_string($entry)) {
             return $entry;
@@ -95,7 +99,8 @@ trait AllowsFilters
      */
     public function columnOfAllowedFilter(string $filter): ?string
     {
-        $entry = data_get($this->allowedFilters ?? [], $filter);
+        $entry = data_get($this->allowedFilters, $filter);
+
         return data_get($entry, 1);
     }
 
@@ -108,7 +113,8 @@ trait AllowsFilters
      */
     public function tableOfAllowedFilter(string $filter): ?string
     {
-        $entry = data_get($this->allowedFilters ?? [], $filter);
+        $entry = data_get($this->allowedFilters, $filter);
+
         return data_get($entry, 2);
     }
 
@@ -136,7 +142,8 @@ trait AllowsFilters
     /**
      * Get an array of filter keys to values. By default,
      * all allowed filters will be returned. If given filters
-     * are not allowed, then an exception will be thrown.
+     * are not allowed, then a validation exception (422)
+     * will be thrown.
      *
      * @param array $filters
      * @param string|array|null $names
@@ -147,7 +154,7 @@ trait AllowsFilters
      *       flags: FilterFlag[],
      *       value: mixed,
      *   }>
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getAllowedFilters(array $filters, string|array|null $names = null): array
     {
@@ -157,7 +164,7 @@ trait AllowsFilters
         $allowed = [];
 
         $fields = array_map(
-            fn($filter) => $filter['field'] ?? null,
+            fn ($filter) => $filter['field'] ?? null,
             $filters
         );
 
@@ -166,17 +173,14 @@ trait AllowsFilters
         foreach ($names as $name) {
             if (in_array($name, $fields)) {
                 if (!$this->hasAllowedFilters($name)) {
-                    $message = "The '$name' filter is not allowed on "
-                        . static::class;
-
-                    throw new Exception($message);
+                    throw $this->notAllowedFilter($name);
                 }
 
                 array_push(
                     $allowed,
                     ...array_filter(
                         $filters,
-                        fn($filter) => $filter['field'] === $name
+                        fn ($filter) => $filter['field'] === $name
                     )
                 );
             }
@@ -186,8 +190,9 @@ trait AllowsFilters
     }
 
     /**
-     * Get an array of requested filters. If requested filters
-     * are not allowed, then an exception will be thrown.
+     * Get an array of requested filters. If the filter parameter
+     * is malformed, or names a filter that is not allowed, then
+     * a validation exception (422) will be thrown.
      *
      * @param Request $request
      *
@@ -197,15 +202,65 @@ trait AllowsFilters
      *      flags: FilterFlag[],
      *      value: mixed,
      *  }>
-     * @throws Exception
+     * @throws ValidationException
      */
     public function getRequestedFilters(Request $request): array
     {
-        $filters = Helpers::requestedFilters($request);
+        $input = $request->input('filter');
+
+        if ($input === null || $input === '') {
+            return [];
+        }
+
+        if (!is_array($input)) {
+            throw ValidationException::withMessages([
+                'filter' => [
+                    'The filter parameter must name the filters, such as filter[name][eq]=value.',
+                ],
+            ]);
+        }
+
+        $filters = [];
+
+        foreach ($input as $field => $node) {
+            $field = (string) $field;
+
+            if (!$this->hasAllowedFilters($field)) {
+                throw $this->notAllowedFilter($field);
+            }
+
+            try {
+                array_push($filters, ...FilterHelper::parseNode($field, $node));
+            } catch (InvalidArgumentException $exception) {
+                throw ValidationException::withMessages([
+                    "filter.$field" => [$exception->getMessage()],
+                ]);
+            }
+        }
 
         return $this->getAllowedFilters(
             $filters,
             array_values(array_unique(array_column($filters, 'field')))
         );
+    }
+
+    /**
+     * Get a validation exception (422) for the given filter,
+     * which is not allowed, naming the filters that are.
+     *
+     * @param string $name
+     *
+     * @return ValidationException
+     */
+    protected function notAllowedFilter(string $name): ValidationException
+    {
+        $allowed = array_unique($this->listOfAllowedFilters());
+
+        return ValidationException::withMessages([
+            "filter.$name" => [
+                "The '$name' filter is not allowed. Allowed filters: "
+                . implode(', ', $allowed) . '.',
+            ],
+        ]);
     }
 }

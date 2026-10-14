@@ -76,6 +76,25 @@ class FilterHelperTest extends TestCase
         FilterHelper::parseNode('name', ['eq' => ['gt' => 'John']]);
     }
 
+    public function testParseNodeInvalidByNullValue(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('A filter value must be a string or a list of strings.');
+
+        FilterHelper::parseNode('name', ['eq' => null]);
+    }
+
+    public function testParseNodeInvalidByUnknownKeyNamesTheValidOnes(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            "Unknown filter operation or flag 'foo'. "
+            . 'Operations: eq, in, null, like, gt, gte, lt, lte; flags: not, ci.'
+        );
+
+        FilterHelper::parseNode('name', ['foo' => 'John']);
+    }
+
     public function testParseValid(): void
     {
         $data = FilterHelper::parse(['name' => ['like' => '%John%']]);
@@ -98,7 +117,7 @@ class FilterHelperTest extends TestCase
         $filters = [
             'name' => [
                 ['like' => '%John%'],
-                ['like' => '%Smith%']
+                ['like' => '%Smith%'],
             ],
         ];
 

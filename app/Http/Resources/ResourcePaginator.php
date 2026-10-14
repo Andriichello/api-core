@@ -4,7 +4,9 @@ namespace Core\Http\Resources;
 
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\Paginator as PaginatorContract;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Str;
 
@@ -26,26 +28,27 @@ class ResourcePaginator extends Paginator
     /**
      * Paginator instance, which was passed in the constructor.
      *
-     * @var Paginator|LengthAwarePaginator
+     * @var PaginatorContract|LengthAwarePaginator
      */
-    protected Paginator|LengthAwarePaginator $paginator;
+    protected PaginatorContract|LengthAwarePaginator $paginator;
 
     /**
      * ResourcePaginator constructor.
      *
-     * @param Paginator|LengthAwarePaginator $paginator
+     * @param PaginatorContract|LengthAwarePaginator $paginator
      * @param class-string<BaseCollection> $collectionClass
      *
      * @throws Exception
      */
     public function __construct(
-        Paginator|LengthAwarePaginator $paginator,
+        PaginatorContract|LengthAwarePaginator $paginator,
         string $collectionClass
     ) {
-        $size = $paginator->perPage;
-        $page = $paginator->currentPage;
-        $items = $paginator->items;
-        $options = $paginator->options;
+        $size = $paginator->perPage();
+        $page = $paginator->currentPage();
+        $items = $paginator->items();
+        $options = $paginator instanceof AbstractPaginator
+            ? $paginator->getOptions() : [];
 
         parent::__construct($items, $size, $page, $options);
 
@@ -77,9 +80,9 @@ class ResourcePaginator extends Paginator
     /**
      * Get paginator instance, which was passed in the constructor.
      *
-     * @return Paginator|LengthAwarePaginator
+     * @return PaginatorContract|LengthAwarePaginator
      */
-    public function paginator(): Paginator|LengthAwarePaginator
+    public function paginator(): PaginatorContract|LengthAwarePaginator
     {
         return $this->paginator;
     }
@@ -186,7 +189,7 @@ class ResourcePaginator extends Paginator
                 'prev' => $this->previousPageUrl(),
                 'self' => $this->url($this->currentPage()),
                 'next' => $this->nextPageUrl(),
-                'last' => $this->url($this->lastPage()),
+                'last' => $this->lastPage() !== null ? $this->url($this->lastPage()) : null,
             ],
         ];
     }
@@ -198,9 +201,7 @@ class ResourcePaginator extends Paginator
      */
     public function hasMorePages(): bool
     {
-        $total = $this->total() ?? 0;
-        $limit = $this->currentPage * $this->perPage;
-
-        return ($total - $limit) > 0;
+        // A simple paginator knows it without a total, by fetching one more item
+        return $this->paginator->hasMorePages();
     }
 }

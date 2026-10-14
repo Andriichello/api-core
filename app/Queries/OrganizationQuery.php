@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method Organization findOrFail($id, $columns = ['*'])
  * @method Organization|null first($columns = ['*'])
  * @method Organization firstOrFail($columns = ['*'])
+ * @method Organization create(array $attributes = [])
+ * @method Organization forceCreate(array $attributes)
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Queries\Api
@@ -28,11 +30,13 @@ class OrganizationQuery extends BaseQuery
      * @param array $params
      *
      * @return OrganizationQuery
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
      */
     public function index(?Model $user, array $params = []): OrganizationQuery
     {
         if (!$user) {
             $this->whereRaw('1 = 0');
+
             return $this;
         }
 

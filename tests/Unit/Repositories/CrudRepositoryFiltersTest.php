@@ -12,6 +12,7 @@ use Core\Repositories\CrudRepository;
 use Core\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class CrudRepositoryFiltersTest.
@@ -38,7 +39,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
     private function createRequestWithUser(array $data = []): Request
     {
-        $user = User::create([
+        $user = User::query()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password123',
@@ -47,6 +48,17 @@ class CrudRepositoryFiltersTest extends TestCase
         $request->setUserResolver(fn () => $user);
 
         return $request;
+    }
+
+    private function errorsOf(Request $request, ?CrudRepository $repository = null): array
+    {
+        try {
+            ($repository ?? $this->repository)->builder($request);
+        } catch (ValidationException $exception) {
+            return $exception->errors();
+        }
+
+        $this->fail('The filters did not answer with 422.');
     }
 
     public function testAppliesSingleFilter(): void
@@ -273,7 +285,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
     public function testFiltersNarrowDownTheResults(): void
     {
-        $organization = Organization::create([
+        $organization = Organization::query()->create([
             'slug' => 'acme',
             'name' => 'Acme',
         ]);
@@ -304,9 +316,121 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertEquals([$colleague->id], $ids);
     }
 
+    public function testHiddenColumnsAreNotFilterableByDefault(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'password' => ['like' => '$2y$%'],
+            ],
+        ]);
+
+        $errors = $this->errorsOf($request);
+
+        $this->assertArrayHasKey('filter.password', $errors);
+    }
+
+    public function testHiddenColumnCanBeAllowedExplicitly(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected array $allowedFilters = ['password'];
+        };
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'password' => ['eq' => 'secret'],
+            ],
+        ]);
+
+        $sql = $repository->builder($request)->toRawSql();
+
+        $this->assertStringContainsString('"password" = \'secret\'', $sql);
+    }
+
+    public function testNotAllowedFilterNamesTheAllowedOnes(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'unknown_column' => ['eq' => 'value'],
+            ],
+        ]);
+
+        $message = $this->errorsOf($request)['filter.unknown_column'][0];
+
+        $this->assertStringStartsWith("The 'unknown_column' filter is not allowed. Allowed filters: ", $message);
+        $this->assertStringContainsString('email', $message);
+        $this->assertStringNotContainsString('password', $message);
+    }
+
+    public function testFilterParameterThatIsNotAnArrayAnswers422(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => 'email',
+        ]);
+
+        $this->assertArrayHasKey('filter', $this->errorsOf($request));
+    }
+
+    public function testEmptyFilterParameterIsIgnored(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => '',
+        ]);
+
+        $query = $this->repository->builder($request);
+
+        $this->assertCount(1, $query->getQuery()->wheres);
+    }
+
+    public function testNullFilterValueAnswers422(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => 'password123',
+        ]);
+        $request = Request::create('/users', 'POST', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode(['filter' => ['email' => null]]));
+        $request->setUserResolver(fn () => $user);
+
+        $this->assertEquals(
+            ['A filter value must be a string or a list of strings.'],
+            $this->errorsOf($request)['filter.email']
+        );
+    }
+
+    public function testUnknownOperationAnswers422(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'email' => ['contains' => 'example'],
+            ],
+        ]);
+
+        $message = $this->errorsOf($request)['filter.email'][0];
+
+        $this->assertStringStartsWith("Unknown filter operation or flag 'contains'.", $message);
+    }
+
+    public function testOperationBeforeFlagAnswers422(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'email' => ['eq' => ['not' => 'test@example.com']],
+            ],
+        ]);
+
+        $this->assertEquals(
+            ["The 'eq' operation must come after the flags, such as [not][eq]."],
+            $this->errorsOf($request)['filter.email']
+        );
+    }
+
     public function testBuilderWithoutRequestReturnsBaseQuery(): void
     {
-        $user = User::create([
+        $user = User::query()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password123',

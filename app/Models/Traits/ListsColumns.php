@@ -45,4 +45,22 @@ trait ListsColumns
 
         return array_values(array_unique($columns));
     }
+
+    /**
+     * Returns a list of columns that may be filtered and sorted on by default.
+     * These are the model's columns without its hidden ones: a filter or a sort
+     * on a password or a token would reveal it, one request at a time, without
+     * the value ever being returned.
+     *
+     * @return array<int, string>
+     */
+    public function listOfQueryableColumns(): array
+    {
+        return array_values(
+            array_diff(
+                $this->listOfColumns(),
+                $this->getHidden(),
+            )
+        );
+    }
 }

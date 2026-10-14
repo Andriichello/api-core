@@ -2,6 +2,7 @@
 
 namespace Core\Http\Requests;
 
+use Core\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
@@ -9,8 +10,6 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
-use Core\Models\User;
 use Symfony\Component\HttpFoundation\InputBag;
 use Throwable;
 
@@ -180,20 +179,6 @@ abstract class BaseRequest extends FormRequest
         $obj->setRedirector(app(Redirector::class));
 
         return $obj;
-    }
-
-    /**
-     * Get the validated data from the request.
-     *
-     * @param array|int|string|null $key
-     * @param mixed $default
-     *
-     * @return mixed
-     * @throws ValidationException
-     */
-    public function validated($key = null, $default = null): mixed
-    {
-        return data_get($this->validator->validate(), $key, $default);
     }
 
     /**

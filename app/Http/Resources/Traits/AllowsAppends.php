@@ -2,10 +2,10 @@
 
 namespace Core\Http\Resources\Traits;
 
+use Core\Helpers\Helpers;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Core\Helpers\Helpers;
 
 /**
  * Trait AllowsAppends.
@@ -38,6 +38,16 @@ trait AllowsAppends
     protected ?array $passedAppends = null;
 
     /**
+     * List of columns the request asks to append, parsed
+     * once by the collection of the resource for all its
+     * items. Used instead of parsing the request again,
+     * when no appends were passed.
+     *
+     * @var array<int, string>|null
+     */
+    protected ?array $appendsOfRequest = null;
+
+    /**
      * Get the list of columns that were passed from the parent
      * resource. Needed for nested appending.
      *
@@ -59,6 +69,33 @@ trait AllowsAppends
     public function setPassedAppends(?array $appends): static
     {
         $this->passedAppends = $appends;
+
+        return $this;
+    }
+
+    /**
+     * Get the list of columns the request asks to append,
+     * as the collection of the resource parsed it, or null.
+     *
+     * @return array|null
+     */
+    public function getAppendsOfRequest(): ?array
+    {
+        return $this->appendsOfRequest;
+    }
+
+    /**
+     * Set the list of columns the request asks to append,
+     * parsed once by the collection of the resource, so
+     * that none of its items parses the request again.
+     *
+     * @param array|null $appends
+     *
+     * @return $this
+     */
+    public function setAppendsOfRequest(?array $appends): static
+    {
+        $this->appendsOfRequest = $appends;
 
         return $this;
     }
@@ -153,7 +190,7 @@ trait AllowsAppends
     public function getRequestedAppends(Request $request): array
     {
         return $this->getAllowedAppends(
-            $this->passedAppends ?? Helpers::requestedAppends($request)
+            $this->passedAppends ?? $this->appendsOfRequest ?? Helpers::requestedAppends($request)
         );
     }
 }

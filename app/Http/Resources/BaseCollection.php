@@ -2,6 +2,7 @@
 
 namespace Core\Http\Resources;
 
+use Core\Helpers\Helpers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
@@ -90,18 +91,21 @@ class BaseCollection extends ResourceCollection
      */
     public function toArray(Request $request): array
     {
-        $collection = $this->collection->map(
-            function (BaseResource $resource) use ($request) {
-                $appends = $this->getPassedAppends();
-                $includes = $this->getPassedIncludes();
+        $appends = $this->getPassedAppends();
+        $includes = $this->getPassedIncludes();
 
-                $resource->setPassedAppends($appends);
-                $resource->setPassedIncludes($includes);
+        // Where nothing was passed, the items use what the request asks for, parsed
+        // here once instead of by each of them, since reading the request is slow
+        $appendsOfRequest = $appends === null ? Helpers::requestedAppends($request) : null;
+        $includesOfRequest = $includes === null ? Helpers::requestedIncludes($request) : null;
 
-                return $resource->toArray($request);
-            }
-        );
-
-        return $collection->all();
+        return $this->collection
+            ->map(fn (BaseResource $resource) => $resource
+                ->setPassedAppends($appends)
+                ->setPassedIncludes($includes)
+                ->setAppendsOfRequest($appendsOfRequest)
+                ->setIncludesOfRequest($includesOfRequest)
+                ->toArray($request))
+            ->all();
     }
 }

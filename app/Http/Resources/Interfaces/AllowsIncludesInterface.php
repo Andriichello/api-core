@@ -35,6 +35,25 @@ interface AllowsIncludesInterface
     public function setPassedIncludes(?array $includes): static;
 
     /**
+     * Get list of includes the request asks for, as the
+     * collection of the resource parsed it, or null.
+     *
+     * @return array|null
+     */
+    public function getIncludesOfRequest(): ?array;
+
+    /**
+     * Set list of includes the request asks for, parsed
+     * once by the collection of the resource, so that
+     * none of its items parses the request again.
+     *
+     * @param array|null $includes
+     *
+     * @return $this
+     */
+    public function setIncludesOfRequest(?array $includes): static;
+
+    /**
      * Get a list of columns that are allowed as
      * includes on request.
      *

@@ -19,4 +19,12 @@ interface ListsColumnsInterface
      * @SuppressWarnings(PHPMD)
      */
     public function listOfColumns(bool $guarded = false): array;
+
+    /**
+     * Returns a list of columns that may be filtered and sorted on by default:
+     * the model's columns without its hidden ones.
+     *
+     * @return array<int, string>
+     */
+    public function listOfQueryableColumns(): array;
 }

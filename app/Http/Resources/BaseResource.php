@@ -132,7 +132,9 @@ class BaseResource extends JsonResource implements
     {
         $requested = $this->getRequestedIncludes($request);
 
-        $appends = $this->getPassedAppends() ?? Helpers::requestedAppends($request);
+        $appends = $this->getPassedAppends()
+            ?? $this->getAppendsOfRequest()
+            ?? Helpers::requestedAppends($request);
 
         foreach ($appends as $append) {
             if (str_contains($append, '.')) {
