@@ -6,7 +6,7 @@ use Core\Enums\Interfaces\BaseEnumInterface;
 use Core\Enums\Traits\BaseEnum;
 
 /**
- * Enum FilterOperation.
+ * Enum FilterFlag.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Enums

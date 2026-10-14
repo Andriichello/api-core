@@ -5,7 +5,7 @@ namespace Core\Enums\Interfaces;
 use BackedEnum;
 
 /**
- * Trait BaseEnumInterface.
+ * Interface BaseEnumInterface.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Enums\Interfaces
