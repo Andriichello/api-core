@@ -3,6 +3,7 @@
 namespace Core\Http\Filters;
 
 use Core\Enums\FilterOperation;
+use Core\Http\Filters\Operations\ContainsFilter;
 use Core\Http\Filters\Operations\EqFilter;
 use Core\Http\Filters\Operations\GteFilter;
 use Core\Http\Filters\Operations\GtFilter;
@@ -50,6 +51,7 @@ class DefaultFilter extends BaseFilter
             FilterOperation::LT => new LtFilter($this->table),
             FilterOperation::LTE => new LteFilter($this->table),
             FilterOperation::LIKE => new LikeFilter($this->table),
+            FilterOperation::CONTAINS => new ContainsFilter($this->table),
         };
 
         // Will throw an exception if there is an operation mismatch

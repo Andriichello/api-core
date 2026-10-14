@@ -89,7 +89,7 @@ class FilterHelperTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(
             "Unknown filter operation or flag 'foo'. "
-            . 'Operations: eq, in, null, like, gt, gte, lt, lte; flags: not, ci.'
+            . 'Operations: eq, in, null, like, contains, gt, gte, lt, lte; flags: not, ci.'
         );
 
         FilterHelper::parseNode('name', ['foo' => 'John']);

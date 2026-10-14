@@ -70,9 +70,13 @@ class FilterHelper
             $operation = static::parseOperation($path);
             $flags = static::parseFlags($path);
 
-            // Don't allow array of values for non-IN operations
-            if ($isNumericArray && $operation !== FilterOperation::IN) {
-                throw new InvalidArgumentException('Array of values is only supported by IN operation');
+            // Lists of values are only for the operations that match any of them
+            $takesList = in_array($operation, [FilterOperation::IN, FilterOperation::LIKE, FilterOperation::CONTAINS]);
+
+            if ($isNumericArray && !$takesList) {
+                throw new InvalidArgumentException(
+                    "A list of values is only supported by the 'in', 'like' and 'contains' operations."
+                );
             }
 
             return [

@@ -52,7 +52,7 @@ class InFilter extends OperationFilter
 
         $this->hasFlag(FilterFlag::CaseInsensitive)
             ? $this->applyCI($query, $column, $value, $boolean)
-            : $query->whereIn($column, $value, $boolean, not: $this->hasFlag(FilterFlag::Not));
+            : $query->whereIn($this->qualify($column), $value, $boolean, not: $this->hasFlag(FilterFlag::Not));
     }
 
     /**
@@ -70,6 +70,6 @@ class InFilter extends OperationFilter
         $operator = $this->hasFlag(FilterFlag::Not) ? 'NOT IN' : 'IN';
         $placeholders = implode(', ', array_fill(0, count($value), 'LOWER(?)'));
 
-        $query->whereRaw("LOWER({$column}) {$operator} ({$placeholders})", $value, $boolean);
+        $query->whereRaw('LOWER(' . $this->wrap($query, $column) . ") {$operator} ({$placeholders})", $value, $boolean);
     }
 }

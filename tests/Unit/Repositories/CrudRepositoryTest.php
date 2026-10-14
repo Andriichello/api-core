@@ -174,7 +174,7 @@ class CrudRepositoryTest extends TestCase
         $query = $repo->builder($request);
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(email) = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
+        $this->assertStringContainsString('LOWER("users"."email") = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 
     public function testApplesFilterWithMultipleFlags(): void
@@ -193,7 +193,7 @@ class CrudRepositoryTest extends TestCase
         $query = $repo->builder($request);
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(email) NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
+        $this->assertStringContainsString('LOWER("users"."email") NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
     }
 
     public function testUsesCustomFilterClass(): void

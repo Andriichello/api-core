@@ -22,6 +22,7 @@ enum FilterOperation: string implements BaseEnumInterface
 
     // Search:
     case LIKE = 'like';
+    case CONTAINS = 'contains';
 
     // Greater:
     case GT = 'gt';

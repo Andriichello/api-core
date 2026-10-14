@@ -5,6 +5,7 @@ namespace Core\Http\Filters;
 use Core\Enums\FilterFlag;
 use Core\Enums\FilterOperation;
 use Core\Queries\BaseQuery;
+use Illuminate\Support\Carbon;
 
 /**
  * Class BaseFilter.
@@ -111,6 +112,94 @@ abstract class BaseFilter
         }
 
         return true;
+    }
+
+    /**
+     * Get the given column, prefixed with the filter's table,
+     * unless the column already names its table.
+     *
+     * @param string $column
+     *
+     * @return string
+     */
+    protected function qualify(string $column): string
+    {
+        if (empty($this->table) || str_contains($column, '.')) {
+            return $column;
+        }
+
+        return $this->table . '.' . $column;
+    }
+
+    /**
+     * Get the given column, qualified and wrapped, to be written into raw SQL.
+     *
+     * @param BaseQuery $query
+     * @param string $column
+     *
+     * @return string
+     */
+    protected function wrap(BaseQuery $query, string $column): string
+    {
+        return $query->getQuery()
+            ->getGrammar()
+            ->wrap($this->qualify($column));
+    }
+
+    /**
+     * Compare the column to the value with the given operator,
+     * case-insensitively when the filter has the `ci` flag.
+     *
+     * @param BaseQuery $query
+     * @param string $column
+     * @param string $operator
+     * @param mixed $value
+     * @param string $boolean
+     *
+     * @return void
+     */
+    protected function compare(
+        BaseQuery $query,
+        string $column,
+        string $operator,
+        mixed $value,
+        string $boolean = 'and'
+    ): void {
+        [$operator, $value] = $this->wholeDay($operator, $value);
+
+        $this->hasFlag(FilterFlag::CaseInsensitive)
+            ? $query->whereRaw('LOWER(' . $this->wrap($query, $column) . ") $operator LOWER(?)", [$value], $boolean)
+            : $query->where($this->qualify($column), $operator, $value, $boolean);
+    }
+
+    /**
+     * Make a date without time (`2026-06-30`) cover the whole day: `<=`
+     * and `>` on it compare to the start of the next day (`<` and `>=`
+     * `2026-07-01`), so a timestamp column keeps or skips the rows from
+     * during that day. Other operators and values are returned as given.
+     *
+     * @param string $operator
+     * @param mixed $value
+     *
+     * @return array{string, mixed}
+     */
+    protected function wholeDay(string $operator, mixed $value): array
+    {
+        $isDateOnly = in_array($operator, ['<=', '>'])
+            && is_string($value)
+            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value);
+
+        if (!$isDateOnly) {
+            return [$operator, $value];
+        }
+
+        $date = Carbon::createFromFormat('!Y-m-d', $value);
+
+        if (!$date || $date->format('Y-m-d') !== $value) {
+            return [$operator, $value];
+        }
+
+        return [$operator === '<=' ? '<' : '>=', $date->addDay()->format('Y-m-d')];
     }
 
     /**

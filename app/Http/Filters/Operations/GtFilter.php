@@ -37,8 +37,6 @@ class GtFilter extends OperationFilter
     {
         $operator = $this->hasFlag(FilterFlag::Not) ? '<=' : '>';
 
-        $this->hasFlag(FilterFlag::CaseInsensitive)
-            ? $query->whereRaw("LOWER({$column}) {$operator} LOWER(?)", [$value], $boolean)
-            : $query->where($column, $operator, $value, $boolean);
+        $this->compare($query, $column, $operator, $value, $boolean);
     }
 }

@@ -136,7 +136,7 @@ class ComparisonFiltersTest extends TestCase
         $filter->apply($query, 'name', 'John');
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(name) > LOWER(\'John\')', $sql);
+        $this->assertStringContainsString('LOWER("name") > LOWER(\'John\')', $sql);
     }
 
     public function testAppliesCaseInsensitiveLteFilter(): void
@@ -149,6 +149,78 @@ class ComparisonFiltersTest extends TestCase
         $filter->apply($query, 'name', 'Zebra');
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(name) <= LOWER(\'Zebra\')', $sql);
+        $this->assertStringContainsString('LOWER("name") <= LOWER(\'Zebra\')', $sql);
+    }
+
+    public function testLteOnADateCoversTheWholeDay(): void
+    {
+        $query = User::query();
+
+        (new LteFilter('users'))->apply($query, 'created_at', '2026-06-30');
+
+        $this->assertStringContainsString('"users"."created_at" < \'2026-07-01\'', $query->toRawSql());
+    }
+
+    public function testGtOnADateStartsWithTheNextDay(): void
+    {
+        $query = User::query();
+
+        (new GtFilter('users'))->apply($query, 'created_at', '2026-06-30');
+
+        $this->assertStringContainsString('"users"."created_at" >= \'2026-07-01\'', $query->toRawSql());
+    }
+
+    public function testNotLteAndNotGtOnADateAreTheirOpposites(): void
+    {
+        $notLte = User::query();
+        (new LteFilter('users'))->setFlags([FilterFlag::Not])->apply($notLte, 'created_at', '2026-06-30');
+
+        $notGt = User::query();
+        (new GtFilter('users'))->setFlags([FilterFlag::Not])->apply($notGt, 'created_at', '2026-06-30');
+
+        $this->assertStringContainsString('"users"."created_at" >= \'2026-07-01\'', $notLte->toRawSql());
+        $this->assertStringContainsString('"users"."created_at" < \'2026-07-01\'', $notGt->toRawSql());
+    }
+
+    public function testValuesOtherThanADateAreComparedAsGiven(): void
+    {
+        $cases = [
+            [new LteFilter('users'), '2026-06-30 12:00:00', '<= \'2026-06-30 12:00:00\''],
+            [new LteFilter('users'), '2026-02-30', '<= \'2026-02-30\''],
+            [new LtFilter('users'), '2026-06-30', '< \'2026-06-30\''],
+            [new GteFilter('users'), '2026-06-30', '>= \'2026-06-30\''],
+        ];
+
+        foreach ($cases as [$filter, $value, $expected]) {
+            $query = User::query();
+            $filter->apply($query, 'created_at', $value);
+
+            $this->assertStringContainsString('"users"."created_at" ' . $expected, $query->toRawSql());
+        }
+    }
+
+    public function testADateCoversTheWholeDayOfATimestampColumn(): void
+    {
+        $during = User::query()->forceCreate([
+            'name' => 'During',
+            'email' => 'during@example.com',
+            'password' => 'password123',
+            'created_at' => '2026-06-30 15:00:00',
+        ]);
+        $after = User::query()->forceCreate([
+            'name' => 'After',
+            'email' => 'after@example.com',
+            'password' => 'password123',
+            'created_at' => '2026-07-01 00:00:00',
+        ]);
+
+        $upTo = User::query();
+        (new LteFilter('users'))->apply($upTo, 'created_at', '2026-06-30');
+
+        $from = User::query();
+        (new GtFilter('users'))->apply($from, 'created_at', '2026-06-30');
+
+        $this->assertEquals([$during->id], $upTo->pluck('id')->all());
+        $this->assertEquals([$after->id], $from->pluck('id')->all());
     }
 }

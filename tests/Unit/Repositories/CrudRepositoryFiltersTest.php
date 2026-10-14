@@ -162,7 +162,7 @@ class CrudRepositoryFiltersTest extends TestCase
         $query = $this->repository->builder($request);
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(email) = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
+        $this->assertStringContainsString('LOWER("users"."email") = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 
     public function testApplesFilterWithMultipleFlags(): void
@@ -176,7 +176,7 @@ class CrudRepositoryFiltersTest extends TestCase
         $query = $this->repository->builder($request);
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(email) NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
+        $this->assertStringContainsString('LOWER("users"."email") NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
     }
 
     public function testUsesCustomFilterClass(): void
@@ -405,13 +405,13 @@ class CrudRepositoryFiltersTest extends TestCase
     {
         $request = $this->createRequestWithUser([
             'filter' => [
-                'email' => ['contains' => 'example'],
+                'email' => ['between' => 'example'],
             ],
         ]);
 
         $message = $this->errorsOf($request)['filter.email'][0];
 
-        $this->assertStringStartsWith("Unknown filter operation or flag 'contains'.", $message);
+        $this->assertStringStartsWith("Unknown filter operation or flag 'between'.", $message);
     }
 
     public function testOperationBeforeFlagAnswers422(): void
@@ -440,5 +440,49 @@ class CrudRepositoryFiltersTest extends TestCase
         $query = $this->repository->builder();
 
         $this->assertInstanceOf(BaseQuery::class, $query);
+    }
+
+    public function testEmptyFilterValuesAreSkipped(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'email' => ['eq' => ''],
+                'email_verified_at' => ['null' => ''],
+            ],
+        ]);
+
+        $sql = $this->repository->builder($request)->toRawSql();
+
+        $this->assertStringNotContainsString('"email" =', $sql);
+        $this->assertStringContainsString('"users"."email_verified_at" is null', $sql);
+    }
+
+    public function testLikeAndContainsTakeAListOfValues(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'email' => ['like' => ['a%', 'b%']],
+                'name' => ['contains' => ['John', 'Jane']],
+            ],
+        ]);
+
+        $sql = $this->repository->builder($request)->toRawSql();
+
+        $this->assertStringContainsString('("users"."email" LIKE \'a%\' or "users"."email" LIKE \'b%\')', $sql);
+        $this->assertStringContainsString('"users"."name" LIKE \'%Jane%\' ESCAPE \'!\'', $sql);
+    }
+
+    public function testListOfValuesForAComparisonAnswers422(): void
+    {
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'id' => ['gt' => [1, 2]],
+            ],
+        ]);
+
+        $this->assertEquals(
+            ["A list of values is only supported by the 'in', 'like' and 'contains' operations."],
+            $this->errorsOf($request)['filter.id']
+        );
     }
 }

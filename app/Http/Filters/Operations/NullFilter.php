@@ -43,7 +43,7 @@ class NullFilter extends OperationFilter
         }
 
         $this->hasFlag(FilterFlag::Not)
-            ? $query->whereNotNull($column, $boolean)
-            : $query->whereNull($column, $boolean);
+            ? $query->whereNotNull($this->qualify($column), $boolean)
+            : $query->whereNull($this->qualify($column), $boolean);
     }
 }

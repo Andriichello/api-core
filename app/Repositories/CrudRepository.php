@@ -2,6 +2,7 @@
 
 namespace Core\Repositories;
 
+use Core\Enums\FilterOperation;
 use Core\Http\Filters\BaseFilter;
 use Core\Models\BaseModel;
 use Core\Queries\BaseQuery;
@@ -78,6 +79,12 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
             foreach ($filters as $filter) {
                 $field = $filter['field'];
                 $value = $filter['value'] ?? '';
+
+                // An empty value (`filter[name][eq]=`) filters nothing, except for
+                // the null operation, which does not use the value at all
+                if ($value === '' && $filter['operation'] !== FilterOperation::NULL) {
+                    continue;
+                }
 
                 /** @var class-string<BaseFilter> $class */
                 $class = $this->classOfAllowedFilter($field);

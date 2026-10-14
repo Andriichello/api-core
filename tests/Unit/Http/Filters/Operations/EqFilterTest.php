@@ -55,7 +55,7 @@ class EqFilterTest extends TestCase
         $filter->apply($query, 'email', 'TEST@EXAMPLE.COM');
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(email) = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
+        $this->assertStringContainsString('LOWER("email") = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 
     public function testAppliesCaseInsensitiveNotEqualsFilter(): void
@@ -68,6 +68,6 @@ class EqFilterTest extends TestCase
         $filter->apply($query, 'email', 'TEST@EXAMPLE.COM');
 
         $sql = $query->toRawSql();
-        $this->assertStringContainsString('LOWER(email) != LOWER(\'TEST@EXAMPLE.COM\')', $sql);
+        $this->assertStringContainsString('LOWER("email") != LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 }
