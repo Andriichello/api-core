@@ -86,7 +86,8 @@ class UserRepository extends CrudRepository
      * Set the password of every person, who has an account with the email, as
      * whoever controls the email may reset the password of any of them. It is
      * set with one query on all accounts of those people, deleted ones included,
-     * as SharesPasswordAcrossAccounts would set it, so no model events are fired.
+     * as SharesPasswordAcrossAccounts would set it, so no model events are fired,
+     * and it counts as updated by the person (`password_updated_at`).
      *
      * @param string $email
      * @param string $password
@@ -105,7 +106,7 @@ class UserRepository extends CrudRepository
         User::query()
             ->withoutGlobalScope(SoftDeletingScope::class)
             ->ofPeople(...$accounts)
-            ->update(['password' => Hash::make($password)]);
+            ->update(['password' => Hash::make($password), 'password_updated_at' => now()]);
 
         return $accounts;
     }

@@ -44,6 +44,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $name
  * @property string $email
  * @property string $password
+ * @property Carbon|null $password_updated_at
  * @property string $timezone
  * @property string $locale
  * @property array|null $metadata
@@ -123,6 +124,7 @@ class User extends BaseModel implements
         'organization_id',
         'main_account_id',
         'metadata',
+        'password_updated_at',
         'email_verified_at',
         'suspended_at',
         'last_login_at',
@@ -163,6 +165,7 @@ class User extends BaseModel implements
         'suspended_at' => 'datetime',
         'last_login_at' => 'datetime',
         'password' => 'hashed',
+        'password_updated_at' => 'datetime',
     ];
 
     /**
@@ -172,10 +175,17 @@ class User extends BaseModel implements
      */
     protected static function booted(): void
     {
-        // A new email isn't verified, unless it is verified along with the change
         static::saving(function (User $user) {
+            // A new email isn't verified, unless it is verified along with the change
             if ($user->exists && $user->isDirty('email') && !$user->isDirty('email_verified_at')) {
                 $user->email_verified_at = null;
+            }
+
+            // A password counts as updated only when the person sets it, and the code,
+            // which lets them, stamps `password_updated_at` along with it, so one set
+            // by anyone else (an admin, a seeder) is to be updated
+            if ($user->isDirty('password') && !$user->isDirty('password_updated_at')) {
+                $user->password_updated_at = null;
             }
         });
     }
@@ -307,6 +317,39 @@ class User extends BaseModel implements
             ->withoutGlobalScope(SoftDeletingScope::class)
             ->whereKey($this->main_account_id)
             ->value('password') ?? $this->password;
+    }
+
+    /**
+     * Get the time, when the person last set the password: the one of the main
+     * account, even when it is deleted, as it is the person's password, which
+     * all of their accounts share. It is null, when someone else set it.
+     *
+     * @return Carbon|null
+     */
+    public function passwordUpdatedAt(): ?Carbon
+    {
+        if ($this->isMainAccount()) {
+            return $this->password_updated_at;
+        }
+
+        /** @var User|null $main */
+        $main = static::query()
+            ->withoutGlobalScope(SoftDeletingScope::class)
+            ->select(['id', 'password_updated_at'])
+            ->find($this->main_account_id);
+
+        return $main === null ? $this->password_updated_at : $main->password_updated_at;
+    }
+
+    /**
+     * Determine if the person must set a new password, because the current
+     * one was set by someone else (see RequireUpdatedPassword).
+     *
+     * @return bool
+     */
+    public function isPasswordUpdateRequired(): bool
+    {
+        return $this->passwordUpdatedAt() === null;
     }
 
     /**

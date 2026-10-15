@@ -4,6 +4,7 @@ namespace Core\Providers;
 
 use Core\Http\Controllers\Auth\AuthController;
 use Core\Http\Middleware\AuthenticateSession;
+use Core\Http\Middleware\RequireUpdatedPassword;
 use Core\Http\Requests\Auth\VerifyEmailRequest;
 use Core\Models\AccessToken;
 use Core\Models\User;
@@ -43,6 +44,8 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Sanctum::$personalAccessTokenModel = AccessToken::class;
+
+        $this->app['router']->aliasMiddleware(RequireUpdatedPassword::ALIAS, RequireUpdatedPassword::class);
 
         // A token of a user, who can no longer sign in, stops working right away
         Sanctum::authenticateAccessTokensUsing(

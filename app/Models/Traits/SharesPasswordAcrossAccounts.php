@@ -4,6 +4,7 @@ namespace Core\Models\Traits;
 
 use Core\Models\User;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Arr;
 
 /**
  * Trait SharesPasswordAcrossAccounts.
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
  * account, when it is linked to one. Passwords are checked against the main
  * account (`User::getAuthPassword()`), while the copies make sure an account,
  * which becomes the main one or is unlinked, keeps the person's password.
+ * The time, when the person set it (`password_updated_at`), goes along with it.
  *
  * @mixin User
  *
@@ -22,6 +24,13 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
  */
 trait SharesPasswordAcrossAccounts
 {
+    /**
+     * Attributes, which make up the person's password.
+     *
+     * @var array<int, string>
+     */
+    protected static array $passwordAttributes = ['password', 'password_updated_at'];
+
     /**
      * Boot the trait, registering its model event listeners. They run after
      * the account is saved, so it is already linked by LinksAccountsByEmail.
@@ -39,8 +48,8 @@ trait SharesPasswordAcrossAccounts
                 return;
             }
 
-            if ($user->wasChanged('password')) {
-                $user->sharePasswordWithOtherAccounts();
+            if ($user->wasChanged(static::$passwordAttributes)) {
+                $user->sharePasswordWithAllAccounts();
             }
         });
     }
@@ -56,35 +65,43 @@ trait SharesPasswordAcrossAccounts
             return;
         }
 
-        $password = static::query()
+        $main = static::query()
             ->withoutGlobalScope(SoftDeletingScope::class)
             ->whereKey($this->main_account_id)
-            ->value('password');
+            ->toBase()
+            ->first(static::$passwordAttributes);
 
-        if ($password === null || $password === $this->password) {
+        if ($main === null) {
+            return;
+        }
+
+        $password = Arr::only((array) $main, static::$passwordAttributes);
+
+        if ($password === Arr::only($this->getAttributes(), static::$passwordAttributes)) {
             return;
         }
 
         static::query()
             ->withoutGlobalScope(SoftDeletingScope::class)
             ->whereKey($this->getKey())
-            ->update(['password' => $password]);
+            ->update($password);
 
-        $this->attributes['password'] = $password;
-        $this->syncOriginalAttribute('password');
+        $this->attributes = array_merge($this->attributes, $password);
+        $this->syncOriginalAttributes(static::$passwordAttributes);
     }
 
     /**
-     * Set the account's password on the other accounts of the person.
+     * Set the account's password on all accounts of the person. It is set on
+     * this one too, because a stale model doesn't write `password_updated_at`,
+     * which it sees as null already, while another account has set it since.
      *
      * @return void
      */
-    protected function sharePasswordWithOtherAccounts(): void
+    protected function sharePasswordWithAllAccounts(): void
     {
         static::query()
             ->withoutGlobalScope(SoftDeletingScope::class)
             ->ofPerson($this)
-            ->whereKeyNot($this->getKey())
-            ->update(['password' => $this->password]);
+            ->update(Arr::only($this->getAttributes(), static::$passwordAttributes));
     }
 }

@@ -40,7 +40,19 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'password_updated_at' => now(),
         ];
+    }
+
+    /**
+     * Indicate that the model's password was set by someone else, so the user
+     * must set a new one.
+     */
+    public function requiringPasswordUpdate(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'password_updated_at' => null,
+        ]);
     }
 
     /**

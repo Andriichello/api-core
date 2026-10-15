@@ -2,7 +2,9 @@
 
 namespace Core\Tests\Feature\Http\Controllers\Auth;
 
+use Core\Enums\UserRole;
 use Core\Http\Controllers\Auth\AuthController;
+use Core\Http\Middleware\RequireUpdatedPassword;
 use Core\Models\AccessToken;
 use Core\Models\Organization;
 use Core\Models\User;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Spatie\Permission\Models\Role;
 
 /**
  * Class AuthControllerSessionTest.
@@ -353,6 +356,37 @@ class AuthControllerSessionTest extends TestCase
         $this->spa('GET', '/auth/me')->assertOk()->assertJsonPath('data.id', $linked->id);
         $this->resetPasswordElsewhere($main, 'newer-password')->assertOk();
         $this->spa('GET', '/auth/me')->assertUnauthorized();
+    }
+
+    /**
+     * Test that a session, which a super admin switched to another account, is checked by the super admin's
+     * password: a user, whose password must be updated, is let through, while the super admin's own requirement
+     * applies.
+     *
+     * @return void
+     */
+    public function testSwitchedSessionChecksPasswordOfUserWhoSignedIn(): void
+    {
+        Route::middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum', RequireUpdatedPassword::ALIAS])
+            ->get('protected', fn () => 'OK');
+
+        Role::findOrCreate(UserRole::SuperAdmin->value);
+
+        $superAdmin = $this->createUser('admin@example.com');
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+        $user = $this->createUser('user@example.com', $this->acme, ['password_updated_at' => null]);
+
+        $this->login(['email' => 'admin@example.com'])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $user->id])->assertOk();
+        $this->spa('GET', '/protected')->assertOk();
+
+        $this->spa('POST', '/auth/switch', ['user_id' => $superAdmin->id])->assertOk();
+        User::query()->whereKey($superAdmin->id)->update(['password_updated_at' => null]);
+        $this->spa('POST', '/auth/switch', ['user_id' => $user->id])->assertOk();
+
+        $this->spa('GET', '/protected')
+            ->assertForbidden()
+            ->assertJsonPath('message', RequireUpdatedPassword::MESSAGE);
     }
 
     /**

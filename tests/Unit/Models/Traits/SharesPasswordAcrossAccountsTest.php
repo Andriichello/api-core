@@ -161,6 +161,54 @@ class SharesPasswordAcrossAccountsTest extends TestCase
     }
 
     /**
+     * Test that the time, when the person updated the password, is shared along with it, and so is a password,
+     * which someone else set, so every account of the person must update it.
+     *
+     * @return void
+     */
+    public function testSharesPasswordUpdateWithThePassword(): void
+    {
+        $main = $this->createAccount('bob@example.com', ['password_updated_at' => null]);
+        $linked = $this->createLinkedAccount($main);
+        $deleted = $this->createLinkedAccount($main);
+        $deleted->delete();
+
+        $linked->forceFill(['password' => 'chosen-password', 'password_updated_at' => now()])->save();
+
+        foreach ([$main, $linked, $deleted] as $account) {
+            $this->assertNotNull($account->fresh()->password_updated_at);
+        }
+
+        $main->forceFill(['password' => 'set-by-admin'])->save();
+
+        foreach ([$main, $linked, $deleted] as $account) {
+            $this->assertNull($account->fresh()->password_updated_at);
+        }
+
+        $this->assertPassword('set-by-admin', $main, $linked, $deleted);
+    }
+
+    /**
+     * Test that a linked account takes the time, when the main account's password was updated, along with the
+     * password.
+     *
+     * @return void
+     */
+    public function testLinkedAccountTakesPasswordUpdateOfMainAccount(): void
+    {
+        $updated = $this->createAccount('bob@example.com');
+        $notUpdated = $this->createAccount('alice@example.com', ['password_updated_at' => null]);
+
+        $first = $this->createLinkedAccount($updated, ['password_updated_at' => null]);
+        $second = $this->createLinkedAccount($notUpdated, ['password_updated_at' => now()]);
+
+        $this->assertEquals($updated->fresh()->password_updated_at, $first->fresh()->password_updated_at);
+        $this->assertNotNull($first->password_updated_at);
+        $this->assertNull($second->password_updated_at);
+        $this->assertNull($second->fresh()->password_updated_at);
+    }
+
+    /**
      * Test that a linked account is authenticated with the password of the main account, even when its own
      * one differs, or the main account is deleted.
      *
