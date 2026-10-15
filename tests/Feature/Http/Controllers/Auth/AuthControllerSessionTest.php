@@ -359,6 +359,40 @@ class AuthControllerSessionTest extends TestCase
     }
 
     /**
+     * Test that the session, with which the password is changed, stays signed in, whether it is signed in to the
+     * main account or switched to a linked one.
+     *
+     * @return void
+     */
+    public function testPasswordChangeKeepsCurrentSession(): void
+    {
+        $main = $this->createUser('user@example.com', $this->acme);
+        $linked = $this->createUser('user@example.com', $this->createOrganization('beta'), [
+            'main_account_id' => $main->id,
+        ]);
+
+        $this->login(['email' => 'user@example.com'])->assertOk();
+        $this->spa('GET', '/auth/me')->assertOk();
+
+        $this->spa('POST', '/auth/change-password', [
+            'current_password' => 'password123',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ])->assertOk();
+
+        $this->spa('GET', '/auth/me')->assertOk()->assertJsonPath('data.id', $main->id);
+
+        $this->spa('POST', '/auth/switch', ['user_id' => $linked->id])->assertOk();
+        $this->spa('POST', '/auth/change-password', [
+            'current_password' => 'new-password',
+            'password' => 'newer-password',
+            'password_confirmation' => 'newer-password',
+        ])->assertOk();
+
+        $this->spa('GET', '/auth/me')->assertOk()->assertJsonPath('data.id', $linked->id);
+    }
+
+    /**
      * Test that a session, which a super admin switched to another account, is checked by the super admin's
      * password: a user, whose password must be updated, is let through, while the super admin's own requirement
      * applies.

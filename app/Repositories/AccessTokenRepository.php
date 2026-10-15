@@ -115,13 +115,14 @@ class AccessTokenRepository
     /**
      * Delete the tokens of every account of the people, who own the accounts,
      * deleted accounts included, along with the tokens, with which they switched
-     * to other accounts, and the refresh tokens of both.
+     * to other accounts, and the refresh tokens of both, but the given token.
      *
-     * @param User ...$users
+     * @param array<int, User> $users
+     * @param AccessToken|null $except
      *
      * @return int The number of deleted tokens.
      */
-    public function deleteOfPeople(User ...$users): int
+    public function deleteOfPeople(array $users, ?AccessToken $except = null): int
     {
         if (empty($users)) {
             return 0;
@@ -131,7 +132,8 @@ class AccessTokenRepository
             User::query()
                 ->withoutGlobalScope(SoftDeletingScope::class)
                 ->ofPeople(...$users)
-                ->select('users.id')
+                ->select('users.id'),
+            $except
         );
     }
 
@@ -154,20 +156,25 @@ class AccessTokenRepository
 
     /**
      * Delete the tokens of the accounts with the ids, along with the tokens,
-     * with which they switched to other accounts.
+     * with which they switched to other accounts, but the given token.
      *
      * @param Builder|array<int, int> $accountIds A query, which selects them, or the ids.
+     * @param AccessToken|null $except
      *
      * @return int The number of deleted tokens.
      */
-    protected function deleteOfAccountsIn(Builder|array $accountIds): int
+    protected function deleteOfAccountsIn(Builder|array $accountIds, ?AccessToken $except = null): int
     {
         return AccessToken::query()
             ->where(function (Builder $query) use ($accountIds) {
-                $query->where('tokenable_type', (new User)->getMorphClass())
-                    ->whereIn('tokenable_id', $accountIds);
+                $query
+                    ->where(function (Builder $query) use ($accountIds) {
+                        $query->where('tokenable_type', (new User)->getMorphClass())
+                            ->whereIn('tokenable_id', $accountIds);
+                    })
+                    ->orWhereIn('impersonator_id', $accountIds);
             })
-            ->orWhereIn('impersonator_id', $accountIds)
+            ->when($except !== null, fn (Builder $query) => $query->whereKeyNot($except->getKey()))
             ->delete();
     }
 }

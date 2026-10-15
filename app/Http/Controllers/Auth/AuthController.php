@@ -3,6 +3,7 @@
 namespace Core\Http\Controllers\Auth;
 
 use Core\Http\Controllers\BaseController;
+use Core\Http\Requests\Auth\ChangePasswordRequest;
 use Core\Http\Requests\Auth\ForgotPasswordRequest;
 use Core\Http\Requests\Auth\LoginRequest;
 use Core\Http\Requests\Auth\RefreshRequest;
@@ -50,6 +51,7 @@ use Laravel\Sanctum\TransientToken;
  * A forgotten password is reset with a link, which `forgot-password` emails.
  * It leads to the SPA's page (`api-core.auth.password_reset_url`), which
  * posts the token from it with the new password to `reset-password`.
+ * A signed-in user, who knows the password, changes it with `change-password`.
  *
  * An email is verified with a link, which `email/verification-notification`
  * emails to the signed-in user. It leads to the SPA's page
@@ -63,8 +65,8 @@ use Laravel\Sanctum\TransientToken;
 class AuthController extends BaseController
 {
     /**
-     * Name of the rate limiter of the login, refresh, password reset and email
-     * verification routes.
+     * Name of the rate limiter of the login, refresh, password reset, password
+     * change and email verification routes.
      *
      * @var string
      */
@@ -103,6 +105,9 @@ class AuthController extends BaseController
             Route::post('email/verification-notification', [static::class, 'sendVerificationEmail'])
                 ->middleware('throttle:' . static::RATE_LIMITER)
                 ->name('auth.verification-notification');
+            Route::post('change-password', [static::class, 'changePassword'])
+                ->middleware('throttle:' . static::RATE_LIMITER)
+                ->name('auth.change-password');
         });
     }
 
@@ -204,7 +209,7 @@ class AuthController extends BaseController
             function (User $user, string $password) {
                 $accounts = $this->users->resetPassword($user->getEmailForPasswordReset(), $password);
 
-                $this->tokens->deleteOfPeople(...$accounts);
+                $this->tokens->deleteOfPeople($accounts->all());
 
                 $accounts->each(fn (User $account) => event(new PasswordReset($account)));
             }
@@ -218,6 +223,33 @@ class AuthController extends BaseController
         }
 
         return ApiResponse::ok([], __(PasswordBroker::PASSWORD_RESET));
+    }
+
+    /**
+     * Change the password of the signed-in user, who knows the current one.
+     * It is set for the person, on all of their accounts, as updated by them
+     * (see RequireUpdatedPassword). Their other tokens, and the tokens, with
+     * which they switched to other accounts, are deleted, and their other
+     * sessions are signed out by AuthenticateSession, while the token or the
+     * session, with which the password was changed, stays signed in.
+     *
+     * @param ChangePasswordRequest $request
+     *
+     * @return ApiResponse
+     */
+    public function changePassword(ChangePasswordRequest $request): ApiResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $token = $user->currentAccessToken();
+
+        DB::transaction(function () use ($request, $user, $token) {
+            $this->users->updatePassword($user, $request->string('password')->value());
+
+            $this->tokens->deleteOfPeople([$user], $token instanceof AccessToken ? $token : null);
+        });
+
+        return ApiResponse::ok([], 'Your password has been changed.');
     }
 
     /**

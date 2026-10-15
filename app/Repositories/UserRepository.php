@@ -83,6 +83,20 @@ class UserRepository extends CrudRepository
     }
 
     /**
+     * Set the password, which the person chose, on all of their accounts (see
+     * SharesPasswordAcrossAccounts), as updated by them (`password_updated_at`).
+     *
+     * @param User $user
+     * @param string $password
+     *
+     * @return void
+     */
+    public function updatePassword(User $user, string $password): void
+    {
+        $user->forceFill(['password' => $password, 'password_updated_at' => now()])->save();
+    }
+
+    /**
      * Set the password of every person, who has an account with the email, as
      * whoever controls the email may reset the password of any of them. It is
      * set with one query on all accounts of those people, deleted ones included,
