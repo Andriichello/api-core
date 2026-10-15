@@ -2,6 +2,7 @@
 
 namespace Core\Policies;
 
+use Core\Enums\UserRole;
 use Core\Http\Requests\CrudRequest;
 use Core\Http\Requests\Interfaces\WithTargetInterface;
 use Core\Models\BaseModel;
@@ -161,7 +162,8 @@ class CrudPolicy extends BasePolicy implements ChecksPermissionsInterface
     }
 
     /**
-     * Determine whether the user has any role above a guest.
+     * Determine whether the user has any role but a guest's, which may change
+     * models, as far as the permissions allow.
      *
      * @param User|null $user
      *
@@ -169,6 +171,7 @@ class CrudPolicy extends BasePolicy implements ChecksPermissionsInterface
      */
     protected function hasAnyRole(mixed $user): bool
     {
-        return $user?->isUser() || $user?->isAdmin() || $user?->isSuperAdmin();
+        return $user instanceof User
+            && $user->getRoleNames()->contains(fn (string $role) => $role !== UserRole::Guest->value);
     }
 }

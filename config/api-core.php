@@ -1,5 +1,9 @@
 <?php
 
+use Core\Models\Organization;
+use Core\Models\User;
+use Spatie\Permission\Models\Role;
+
 return [
     'auth' => [
         /*
@@ -40,6 +44,41 @@ return [
             'API_CORE_EMAIL_VERIFICATION_URL',
             rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/verify-email'
         ),
+    ],
+
+    /*
+     * Roles of users from the highest to the lowest, with the actions, which
+     * each of them has on a resource (a model class): `viewAny`, `view`,
+     * `create`, `update`, `delete`, `forceDelete`, custom ones, or `all` for
+     * the first five. The order ranks them, so a user is higher than another,
+     * whose roles are all lower. `super-admin` is api-core's own role above
+     * all of them, which needs no permissions. It is a list, so the
+     * application's list replaces this one as a whole, and
+     * `RolesAndPermissionsSeeder` syncs the database with it.
+     */
+    'roles' => [
+        [
+            'name' => 'admin',
+            'permissions' => [
+                User::class => ['all', 'attachRole', 'attachAnyRole', 'detachRole'],
+                Organization::class => ['viewAny', 'view', 'update'],
+                Role::class => ['attachUser', 'attachAnyUser', 'detachUser'],
+            ],
+        ],
+        [
+            'name' => 'user',
+            'permissions' => [
+                User::class => ['viewAny', 'view'],
+                Organization::class => ['viewAny', 'view'],
+            ],
+        ],
+        [
+            'name' => 'guest',
+            'permissions' => [
+                User::class => ['viewAny', 'view'],
+                Organization::class => ['viewAny', 'view'],
+            ],
+        ],
     ],
 
     'http' => [

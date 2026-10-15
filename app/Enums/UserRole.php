@@ -8,6 +8,10 @@ use Core\Enums\Traits\BaseEnum;
 /**
  * Enum UserRole.
  *
+ * The super admin, api-core's own role above all others, which needs no
+ * permissions, and the default roles of `api-core.roles`, which an
+ * application may replace with its own (see RoleRepository).
+ *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Enums
  */

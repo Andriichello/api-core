@@ -9,7 +9,7 @@ use Spatie\Permission\Models\Permission;
  * Class PermissionRepository.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Speedgoat\Count\Repositories\Api
+ * @package Core\Repositories
  */
 class PermissionRepository
 {
@@ -62,7 +62,7 @@ class PermissionRepository
         if (in_array('all', $permissions)) {
             $permissions = array_filter(
                 $permissions,
-                fn(string $permission) => $permission !== 'all'
+                fn (string $permission) => $permission !== 'all'
             );
 
             $permissions = array_merge($permissions, array_values($this->actions));

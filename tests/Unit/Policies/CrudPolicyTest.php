@@ -31,8 +31,18 @@ class CrudPolicyTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Policy of users, which is checked.
+     *
+     * @var CrudPolicy
+     */
     private CrudPolicy $policy;
 
+    /**
+     * Create the policy of users.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -43,7 +53,15 @@ class CrudPolicyTest extends TestCase
         };
     }
 
-    private function createUser(?UserRole $role = null, ?Organization $organization = null): User
+    /**
+     * Create a user with the role, if it is given, in the organization, if it is given.
+     *
+     * @param UserRole|string|null $role
+     * @param Organization|null $organization
+     *
+     * @return User
+     */
+    private function createUser(UserRole|string|null $role = null, ?Organization $organization = null): User
     {
         $user = User::query()->forceCreate([
             'organization_id' => $organization?->id,
@@ -53,20 +71,30 @@ class CrudPolicyTest extends TestCase
         ]);
 
         if ($role) {
-            $user->assignRole(Role::findOrCreate($role->value));
+            $user->assignRole(Role::findOrCreate($role instanceof UserRole ? $role->value : $role));
         }
 
         return $user;
     }
 
-    private function grant(UserRole $role, string ...$abilities): void
+    /**
+     * Give the role the permissions for the abilities on users.
+     *
+     * @param UserRole|string $role
+     * @param string ...$abilities
+     *
+     * @return void
+     */
+    private function grant(UserRole|string $role, string ...$abilities): void
     {
         $permissions = app(PermissionRepository::class)->create(User::class, ...$abilities);
 
-        Role::findOrCreate($role->value)->givePermissionTo($permissions);
+        Role::findOrCreate($role instanceof UserRole ? $role->value : $role)->givePermissionTo($permissions);
     }
 
     /**
+     * Create a CRUD request of the class, which is made by the user.
+     *
      * @template T of CrudRequest
      *
      * @param class-string<T> $class
@@ -83,6 +111,11 @@ class CrudPolicyTest extends TestCase
         return $request;
     }
 
+    /**
+     * Test that a super admin needs no permissions, even to delete permanently.
+     *
+     * @return void
+     */
     public function testSuperAdminNeedsNoPermissions(): void
     {
         $superAdmin = $this->createUser(UserRole::SuperAdmin);
@@ -96,6 +129,11 @@ class CrudPolicyTest extends TestCase
         );
     }
 
+    /**
+     * Test that a user needs the permission for the ability.
+     *
+     * @return void
+     */
     public function testUserNeedsThePermission(): void
     {
         $user = $this->createUser(UserRole::User);
@@ -107,6 +145,11 @@ class CrudPolicyTest extends TestCase
         $this->assertTrue($this->policy->determine($this->request(StoreRequest::class, $user->fresh())));
     }
 
+    /**
+     * Test that a guest may view, but can't create, even with the permission.
+     *
+     * @return void
+     */
     public function testGuestCannotCreateEvenWithThePermission(): void
     {
         $this->grant(UserRole::Guest, 'viewAny', 'create');
@@ -117,6 +160,28 @@ class CrudPolicyTest extends TestCase
         $this->assertFalse($this->policy->determine($this->request(StoreRequest::class, $guest)));
     }
 
+    /**
+     * Test that a role, which the application defines, may change models with the permission, as the default
+     * roles may.
+     *
+     * @return void
+     */
+    public function testRoleOfTheApplicationNeedsThePermission(): void
+    {
+        $accountant = $this->createUser('accountant');
+
+        $this->assertFalse($this->policy->determine($this->request(StoreRequest::class, $accountant)));
+
+        $this->grant('accountant', 'create');
+
+        $this->assertTrue($this->policy->determine($this->request(StoreRequest::class, $accountant->fresh())));
+    }
+
+    /**
+     * Test that a request without a user is denied, whatever the permissions.
+     *
+     * @return void
+     */
     public function testRequestWithoutUserIsDenied(): void
     {
         $this->grant(UserRole::User, 'all');
@@ -125,6 +190,11 @@ class CrudPolicyTest extends TestCase
         $this->assertFalse($this->policy->determine($this->request(IndexRequest::class, null)));
     }
 
+    /**
+     * Test that a target outside of the user's scope isn't found.
+     *
+     * @return void
+     */
     public function testTargetOutsideOfTheUserScopeIsNotFound(): void
     {
         $this->grant(UserRole::User, 'all');
@@ -137,6 +207,11 @@ class CrudPolicyTest extends TestCase
         $this->policy->determine($this->request(UpdateRequest::class, $user)->setId($stranger->id));
     }
 
+    /**
+     * Test that a permanent delete needs its own permission, which `all` doesn't include.
+     *
+     * @return void
+     */
     public function testForceDeleteIsAuthorizedOnItsOwn(): void
     {
         $this->grant(UserRole::User, 'all');
@@ -151,6 +226,11 @@ class CrudPolicyTest extends TestCase
         $this->assertFalse($this->policy->determine($forceDelete));
     }
 
+    /**
+     * Test that `force=false` is a plain delete.
+     *
+     * @return void
+     */
     public function testForceFalseIsAPlainDelete(): void
     {
         $request = $this->request(DestroyRequest::class, null, ['force' => 'false']);
@@ -159,6 +239,11 @@ class CrudPolicyTest extends TestCase
         $this->assertSame('delete', $request->getAbility());
     }
 
+    /**
+     * Test that an ability, which the policy has no method for, is denied.
+     *
+     * @return void
+     */
     public function testAbilityWithoutMethodIsDenied(): void
     {
         $superAdmin = $this->createUser(UserRole::SuperAdmin);
@@ -166,6 +251,11 @@ class CrudPolicyTest extends TestCase
         $this->assertFalse($this->policy->__call('export', [$superAdmin]));
     }
 
+    /**
+     * Test that permissions are defined, once they are created.
+     *
+     * @return void
+     */
     public function testPermissionsAreDefinedOnceCreated(): void
     {
         $this->assertFalse($this->policy->arePermissionsDefined(['view', 'update']));
@@ -176,6 +266,11 @@ class CrudPolicyTest extends TestCase
         $this->assertFalse($this->policy->arePermissionsDefined(['view', 'forceDelete']));
     }
 
+    /**
+     * Test that LimitsCUD lets only super admins create, update and delete.
+     *
+     * @return void
+     */
     public function testLimitsCUDAllowsOnlySuperAdminsToChange(): void
     {
         $policy = new class extends CrudPolicy implements LimitsCUDInterface

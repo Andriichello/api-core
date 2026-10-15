@@ -5,6 +5,7 @@ namespace Core\Models\Traits;
 use Core\Enums\UserRole;
 use Core\Helpers\Helpers;
 use Core\Models\User;
+use Core\Repositories\RoleRepository;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -113,7 +114,10 @@ trait ChecksRolesAndPermissions
     }
 
     /**
-     * Determines if the current user is higher than the given role.
+     * Determines if the current user is higher than the given role: one of
+     * the user's roles ranks above it in `api-core.roles`, or the user is a
+     * super admin. A role, which isn't defined there, is only below the super
+     * admin.
      *
      * @param UserRole|Role|string $role The role to compare against
      *
@@ -121,51 +125,51 @@ trait ChecksRolesAndPermissions
      */
     public function isHigherThanRole(UserRole|Role|string $role): bool
     {
-        if (is_string($role)) {
-            $role = UserRole::from($role);
+        $name = match (true) {
+            $role instanceof UserRole => $role->value,
+            $role instanceof Role => $role->name,
+            default => $role,
+        };
+
+        $ownRank = $this->rankOfHighestRole();
+
+        if ($ownRank === null) {
+            return false;
         }
 
-        if ($role instanceof Role) {
-            $role = UserRole::from($role->name);
-        }
+        $rank = app(RoleRepository::class)->rankOf($name);
 
-        // Define the role hierarchy from highest to lowest.
-        $roles = [
-            UserRole::SuperAdmin,
-            UserRole::Admin,
-            UserRole::User,
-            UserRole::Guest,
-        ];
-
-        foreach ($roles as $ceiling) {
-            // If the current role matches the provided role,
-            // the user does not have a higher role.
-            if ($role === $ceiling) {
-                return false;
-            }
-
-            // If the current user's role matches the ceiling (a higher role in the hierarchy),
-            // return true as their role is higher than the provided one.
-            if ($this->isOfRole($ceiling)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $rank === null ? $ownRank === 0 : $ownRank < $rank;
     }
 
     /**
-     * Returns an array of roles that are available to current user.
+     * Get the rank of the user's highest role, which is defined, where 0 is
+     * the super admin, or null, when the user has none of them.
      *
-     * @return array
+     * @return int|null
+     */
+    public function rankOfHighestRole(): ?int
+    {
+        $roles = app(RoleRepository::class);
+
+        return $this->getRoleNames()
+            ->map(fn (string $name) => $roles->rankOf($name))
+            ->filter(fn (?int $rank) => $rank !== null)
+            ->min();
+    }
+
+    /**
+     * Returns the roles, which are available to the current user: the user's
+     * own roles and the lower ones, from the highest to the lowest.
+     *
+     * @return array<int, string>
      */
     public function availableRoles(): array
     {
-        return array_filter(
-            UserRole::values(),
-            fn (string $role) => $this->isOfRole($role)
-                || $this->isHigherThanRole($role)
-        );
+        return array_values(array_filter(
+            app(RoleRepository::class)->names(),
+            fn (string $role) => $this->isOfRole($role) || $this->isHigherThanRole($role)
+        ));
     }
 
     /**
