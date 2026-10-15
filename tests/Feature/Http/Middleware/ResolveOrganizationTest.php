@@ -213,4 +213,32 @@ class ResolveOrganizationTest extends TestCase
             $this->getJson('/users')->assertOk()->json()
         );
     }
+
+    /**
+     * Test that a super admin names the organization with the query parameter too, which must match the header,
+     * when both are given, while others still may name only their own organization with it.
+     *
+     * @return void
+     */
+    public function testQueryParameterNamesTheOrganizationToo(): void
+    {
+        $user = User::factory()->create(['organization_id' => $this->acme->id]);
+        $superAdmin = $this->createSuperAdmin();
+        $query = '/current?' . ResolveOrganization::QUERY . '=';
+
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson($query . $this->globex->id)->assertOk()->assertJsonPath('organization_id', $this->globex->id);
+        $this->getJson($query . $this->globex->id, [ResolveOrganization::HEADER => (string) $this->globex->id])
+            ->assertOk()
+            ->assertJsonPath('organization_id', $this->globex->id);
+        $this->getJson($query . $this->globex->id, [ResolveOrganization::HEADER => (string) $this->acme->id])
+            ->assertBadRequest();
+        $this->getJson('/current?' . ResolveOrganization::QUERY . '[]=1')->assertBadRequest();
+
+        Sanctum::actingAs($user);
+
+        $this->getJson($query . $this->acme->id)->assertOk()->assertJsonPath('organization_id', $this->acme->id);
+        $this->getJson($query . $this->globex->id)->assertForbidden();
+    }
 }
