@@ -278,7 +278,7 @@ class AuthControllerPasswordResetTest extends TestCase
 
     /**
      * Test that the password of every person, who has an account with the email, is reset on all of their
-     * accounts, the ones with other emails included, but not the password of other people.
+     * accounts, the ones with other emails and deleted ones included, but not the password of other people.
      *
      * @return void
      */
@@ -288,7 +288,10 @@ class AuthControllerPasswordResetTest extends TestCase
 
         $main = $this->createUser('bob@example.com');
         $linked = $this->createUser('robert@example.com', $globex, ['main_account_id' => $main->id]);
+        $deleted = $this->createUser('robert@example.com', $this->acme, ['main_account_id' => $main->id]);
+        $deleted->delete();
         $other = $this->createUser('bob@example.com', $globex);
+        $otherLinked = $this->createUser('bobby@example.com', $this->acme, ['main_account_id' => $other->id]);
         $stranger = $this->createUser('alice@example.com');
 
         Event::fake([PasswordReset::class]);
@@ -296,7 +299,7 @@ class AuthControllerPasswordResetTest extends TestCase
         $this->resetPassword(['email' => 'bob@example.com', 'token' => Password::createToken($main)])
             ->assertOk();
 
-        $this->assertPassword('new-password', $main, $linked, $other);
+        $this->assertPassword('new-password', $main, $linked, $deleted, $other, $otherLinked);
         $this->assertPassword('password123', $stranger);
 
         Event::assertDispatchedTimes(PasswordReset::class, 2);
