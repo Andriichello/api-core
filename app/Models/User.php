@@ -2,7 +2,6 @@
 
 namespace Core\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Core\Database\Factories\UserFactory;
 use Core\Models\Traits\ChecksRolesAndPermissions;
 use Core\Models\Traits\LinksAccountsByEmail;
@@ -14,6 +13,7 @@ use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
@@ -71,7 +71,8 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends BaseModel implements
     AuthenticatableContract,
     AuthorizableContract,
-    CanResetPasswordContract
+    CanResetPasswordContract,
+    MustVerifyEmailContract
 {
     use Authenticatable;
     use Authorizable;
@@ -163,6 +164,21 @@ class User extends BaseModel implements
         'last_login_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Perform any actions required after the model boots.
+     *
+     * @return void
+     */
+    protected static function booted(): void
+    {
+        // A new email isn't verified, unless it is verified along with the change
+        static::saving(function (User $user) {
+            if ($user->exists && $user->isDirty('email') && !$user->isDirty('email_verified_at')) {
+                $user->email_verified_at = null;
+            }
+        });
+    }
 
     /**
      * Email of the user, which is stored in lowercase, so it is matched

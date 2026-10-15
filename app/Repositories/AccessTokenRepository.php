@@ -127,11 +127,41 @@ class AccessTokenRepository
             return 0;
         }
 
-        $accountIds = User::query()
-            ->withoutGlobalScope(SoftDeletingScope::class)
-            ->ofPeople(...$users)
-            ->select('users.id');
+        return $this->deleteOfAccountsIn(
+            User::query()
+                ->withoutGlobalScope(SoftDeletingScope::class)
+                ->ofPeople(...$users)
+                ->select('users.id')
+        );
+    }
 
+    /**
+     * Delete the tokens of the accounts, along with the tokens, with which they
+     * switched to other accounts, and the refresh tokens of both.
+     *
+     * @param User ...$accounts
+     *
+     * @return int The number of deleted tokens.
+     */
+    public function deleteOfAccounts(User ...$accounts): int
+    {
+        if (empty($accounts)) {
+            return 0;
+        }
+
+        return $this->deleteOfAccountsIn(array_map(fn (User $account) => $account->getKey(), $accounts));
+    }
+
+    /**
+     * Delete the tokens of the accounts with the ids, along with the tokens,
+     * with which they switched to other accounts.
+     *
+     * @param Builder|array<int, int> $accountIds A query, which selects them, or the ids.
+     *
+     * @return int The number of deleted tokens.
+     */
+    protected function deleteOfAccountsIn(Builder|array $accountIds): int
+    {
         return AccessToken::query()
             ->where(function (Builder $query) use ($accountIds) {
                 $query->where('tokenable_type', (new User)->getMorphClass())

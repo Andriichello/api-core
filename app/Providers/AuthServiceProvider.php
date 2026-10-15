@@ -4,9 +4,11 @@ namespace Core\Providers;
 
 use Core\Http\Controllers\Auth\AuthController;
 use Core\Http\Middleware\AuthenticateSession;
+use Core\Http\Requests\Auth\VerifyEmailRequest;
 use Core\Models\AccessToken;
 use Core\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Http\Request;
@@ -22,6 +24,7 @@ use Laravel\Sanctum\Sanctum;
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Providers
+ * @SuppressWarnings("PHPMD.CouplingBetweenObjects")
  */
 class AuthServiceProvider extends ServiceProvider
 {
@@ -47,9 +50,13 @@ class AuthServiceProvider extends ServiceProvider
                 && (!$token->tokenable instanceof User || $token->tokenable->canSignIn())
         );
 
+        // Requests of a signed-in user, which have no email, count for the user's email
         RateLimiter::for(AuthController::RATE_LIMITER, function (Request $request) {
+            $email = $request->has('email')
+                ? $request->string('email')->value() : (string) $request->user()?->email;
+
             return Limit::perMinute(config('api-core.auth.rate_limit'))
-                ->by(Str::lower($request->string('email')->value()) . '|' . $request->ip());
+                ->by(Str::lower($email) . '|' . $request->ip());
         });
 
         // The link in the password reset email leads to the SPA's page, and
@@ -57,6 +64,13 @@ class AuthServiceProvider extends ServiceProvider
         ResetPassword::createUrlUsing(
             fn (CanResetPassword $user, string $token) => Uri::of(config('api-core.auth.password_reset_url'))
                 ->withQuery(['token' => $token, 'email' => $user->getEmailForPasswordReset()])
+                ->value()
+        );
+
+        // So does the link in the email verification email
+        VerifyEmail::createUrlUsing(
+            fn (User $user) => Uri::of(config('api-core.auth.email_verification_url'))
+                ->withQuery(VerifyEmailRequest::linkParameters($user))
                 ->value()
         );
     }

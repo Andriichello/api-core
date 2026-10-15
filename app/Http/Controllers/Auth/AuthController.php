@@ -8,6 +8,7 @@ use Core\Http\Requests\Auth\LoginRequest;
 use Core\Http\Requests\Auth\RefreshRequest;
 use Core\Http\Requests\Auth\ResetPasswordRequest;
 use Core\Http\Requests\Auth\SwitchAccountRequest;
+use Core\Http\Requests\Auth\VerifyEmailRequest;
 use Core\Http\Resources\MeResource;
 use Core\Http\Responses\ApiResponse;
 use Core\Models\AccessToken;
@@ -19,6 +20,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Http\Request;
@@ -49,6 +51,11 @@ use Laravel\Sanctum\TransientToken;
  * It leads to the SPA's page (`api-core.auth.password_reset_url`), which
  * posts the token from it with the new password to `reset-password`.
  *
+ * An email is verified with a link, which `email/verification-notification`
+ * emails to the signed-in user. It leads to the SPA's page
+ * (`api-core.auth.email_verification_url`), which posts the parameters
+ * from it to `verify-email`, with or without being signed in.
+ *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Controllers\Auth
  * @SuppressWarnings("PHPMD.CouplingBetweenObjects")
@@ -56,7 +63,8 @@ use Laravel\Sanctum\TransientToken;
 class AuthController extends BaseController
 {
     /**
-     * Name of the rate limiter of the login, refresh and password reset routes.
+     * Name of the rate limiter of the login, refresh, password reset and email
+     * verification routes.
      *
      * @var string
      */
@@ -85,12 +93,16 @@ class AuthController extends BaseController
             Route::post('refresh', [static::class, 'refresh'])->name('auth.refresh');
             Route::post('forgot-password', [static::class, 'forgotPassword'])->name('auth.forgot-password');
             Route::post('reset-password', [static::class, 'resetPassword'])->name('auth.reset-password');
+            Route::post('verify-email', [static::class, 'verifyEmail'])->name('auth.verify-email');
         });
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('me', [static::class, 'me'])->name('auth.me');
             Route::post('logout', [static::class, 'logout'])->name('auth.logout');
             Route::post('switch', [static::class, 'switchAccount'])->name('auth.switch');
+            Route::post('email/verification-notification', [static::class, 'sendVerificationEmail'])
+                ->middleware('throttle:' . static::RATE_LIMITER)
+                ->name('auth.verification-notification');
         });
     }
 
@@ -206,6 +218,66 @@ class AuthController extends BaseController
         }
 
         return ApiResponse::ok([], __(PasswordBroker::PASSWORD_RESET));
+    }
+
+    /**
+     * Email a link to verify the email of the signed-in user, unless it is
+     * verified already.
+     *
+     * @param Request $request
+     *
+     * @return ApiResponse
+     */
+    public function sendVerificationEmail(Request $request): ApiResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return ApiResponse::ok([], 'Your email is already verified.');
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return ApiResponse::ok([], 'A link to verify your email has been sent to it.');
+    }
+
+    /**
+     * Verify the email with the link, which was emailed to it. A verified email
+     * links the account to the person's other accounts with it (see
+     * LinksAccountsByEmail), and then it takes their password, so the tokens,
+     * which were issued with its old password, are deleted.
+     *
+     * @param VerifyEmailRequest $request
+     *
+     * @return ApiResponse
+     * @throws AuthorizationException
+     */
+    public function verifyEmail(VerifyEmailRequest $request): ApiResponse
+    {
+        $account = $request->account();
+
+        if ($account->hasVerifiedEmail()) {
+            return ApiResponse::ok([], 'Your email is already verified.');
+        }
+
+        $isLinked = DB::transaction(function () use ($account) {
+            $account->markEmailAsVerified();
+
+            if (!$account->wasChanged('main_account_id')) {
+                return false;
+            }
+
+            $this->tokens->deleteOfAccounts($account);
+
+            return true;
+        });
+
+        event(new Verified($account));
+
+        return ApiResponse::ok([], $isLinked
+            ? 'Your email has been verified, and the account now signs in with the password of your other accounts.'
+            : 'Your email has been verified.');
     }
 
     /**
