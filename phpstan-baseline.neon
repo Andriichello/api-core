@@ -43,12 +43,6 @@ parameters:
 			path: app/Models/AccessToken.php
 
 		-
-			message: '#^PHPDoc tag @implements has invalid value \(HasOrgIdInterface\)\: Unexpected token "\\n \*", expected ''\<'' at offset 78 on line 5$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: app/Models/Traits/HasOrgId.php
-
-		-
 			message: '#^PHPDoc tag @implements has invalid value \(ListsColumnsInterface\)\: Unexpected token "\\n \*", expected ''\<'' at offset 86 on line 5$#'
 			identifier: phpDoc.parseError
 			count: 1

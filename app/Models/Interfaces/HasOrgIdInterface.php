@@ -19,15 +19,18 @@ interface HasOrgIdInterface
      * @return int|null
      */
     public function orgId(): ?int;
+
     /**
-     * Returns the semantic context of the record.
+     * Returns the semantic context of the record: `tenant`, when it belongs
+     * to an organization, OrgContext::Internal, when it belongs to none,
+     * OrgContext::Global, when it is shared with all tenants, or `unknown`.
      *
      * @return OrgContext|string
      */
     public function orgContext(): OrgContext|string;
 
     /**
-     * Returns id of the organization, to which the record belongs.
+     * Returns true if the record belongs to no organization.
      *
      * @return bool
      */
@@ -44,7 +47,7 @@ interface HasOrgIdInterface
     public function hasSameOrg(BaseModel|int|null $context): bool;
 
     /**
-     * Returns true if the record has global organization context.
+     * Returns true if the record belongs to a tenant organization.
      *
      * @return bool
      */

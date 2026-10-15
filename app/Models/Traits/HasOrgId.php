@@ -10,7 +10,7 @@ use Core\Models\Interfaces\HasOrgIdInterface;
  * Trait HasOrgId.
  *
  * @mixin BaseModel
- * @implements HasOrgIdInterface
+ * @see HasOrgIdInterface
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Models\Traits
@@ -28,13 +28,20 @@ trait HasOrgId
     }
 
     /**
-     * Returns the semantic context of the record.
+     * Returns the semantic context of the record: `tenant`, when it belongs
+     * to an organization, OrgContext::Internal, when it belongs to none, like
+     * a super admin, or to the internal one, OrgContext::Global, when it is
+     * shared with all tenants, or `unknown`.
      *
      * @return OrgContext|string
      */
     public function orgContext(): OrgContext|string
     {
         $orgId = $this->orgId();
+
+        if ($orgId === null) {
+            return OrgContext::Internal;
+        }
 
         if ($orgId > 0) {
             return 'tenant';
@@ -44,13 +51,13 @@ trait HasOrgId
     }
 
     /**
-     * Returns id of the organization, to which the record belongs.
+     * Returns true if the record belongs to no organization.
      *
      * @return bool
      */
     public function hasNoOrg(): bool
     {
-        return $this->orgContext() === OrgContext::Global;
+        return $this->orgId() === null;
     }
 
     /**
@@ -70,7 +77,7 @@ trait HasOrgId
     }
 
     /**
-     * Returns true if the record has global organization context.
+     * Returns true if the record belongs to a tenant organization.
      *
      * @return bool
      */
