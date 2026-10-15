@@ -3,6 +3,7 @@
 namespace Core\Models;
 
 use Core\Database\Factories\UserFactory;
+use Core\Helpers\CurrentOrganization;
 use Core\Models\Traits\ChecksRolesAndPermissions;
 use Core\Models\Traits\LinksAccountsByEmail;
 use Core\Models\Traits\SharesPasswordAcrossAccounts;
@@ -285,6 +286,32 @@ class User extends BaseModel implements
     public function mainAccountId(): int
     {
         return $this->main_account_id ?? $this->id;
+    }
+
+    /**
+     * Get id of the organization, in which the user acts: for a super admin,
+     * the current one (see ResolveOrganization), when it is set, and the
+     * user's own one otherwise. Other users always act in their own one, so
+     * a current organization never widens what they see.
+     *
+     * @return int|null
+     */
+    public function actingOrgId(): ?int
+    {
+        $current = CurrentOrganization::id();
+
+        return $current !== null && $this->isSuperAdmin() ? $current : $this->orgId();
+    }
+
+    /**
+     * Determine if the user acts in all organizations: a super admin of no
+     * organization (an internal one), who doesn't act in a particular one.
+     *
+     * @return bool
+     */
+    public function actsInAllOrganizations(): bool
+    {
+        return $this->isSuperAdmin() && $this->hasInternalOrg() && !CurrentOrganization::isSet();
     }
 
     /**

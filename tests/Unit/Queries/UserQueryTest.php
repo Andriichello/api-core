@@ -3,6 +3,7 @@
 namespace Core\Tests\Unit\Queries;
 
 use Core\Enums\UserRole;
+use Core\Helpers\CurrentOrganization;
 use Core\Models\Organization;
 use Core\Models\User;
 use Core\Tests\TestCase;
@@ -155,6 +156,49 @@ class UserQueryTest extends TestCase
         $ids = User::query()->index($superAdmin)->pluck('id')->all();
 
         $this->assertEqualsCanonicalizing([$superAdmin->id, $colleague->id], $ids);
+    }
+
+    /**
+     * Test that a super admin, who acts in an organization, gets its users and their own accounts only.
+     *
+     * @return void
+     */
+    public function testScopesSuperAdminToTheOrganizationInWhichTheyAct(): void
+    {
+        $organization = $this->createOrganization();
+
+        $superAdmin = $this->createSuperAdmin();
+        $member = $this->createUser($organization);
+
+        $this->createUser($this->createOrganization());
+        $this->createUser();
+
+        $ids = CurrentOrganization::run(
+            $organization,
+            fn () => User::query()->index($superAdmin)->pluck('id')->all()
+        );
+
+        $this->assertEqualsCanonicalizing([$superAdmin->id, $member->id], $ids);
+    }
+
+    /**
+     * Test that a current organization, which isn't the user's one, doesn't change what a user, who isn't a super
+     * admin, gets.
+     *
+     * @return void
+     */
+    public function testCurrentOrganizationDoesNotWidenOtherUsers(): void
+    {
+        $organization = $this->createOrganization();
+        $other = $this->createOrganization();
+
+        $user = $this->createUser($organization);
+        $colleague = $this->createUser($organization);
+        $this->createUser($other);
+
+        $ids = CurrentOrganization::run($other, fn () => User::query()->index($user)->pluck('id')->all());
+
+        $this->assertEqualsCanonicalizing([$user->id, $colleague->id], $ids);
     }
 
     /**

@@ -84,6 +84,9 @@ class ResolveOrganizationTest extends TestCase
         Route::middleware(['auth:sanctum', ResolveOrganization::ALIAS])
             ->get('current', fn () => ['organization_id' => CurrentOrganization::id()]);
 
+        Route::middleware(['auth:sanctum', ResolveOrganization::ALIAS])
+            ->get('users', fn () => User::query()->index(request()->user())->pluck('id')->all());
+
         Route::bind('note', fn (string $id) => $notes::query()->findOrFail($id));
         Route::middleware([SubstituteBindings::class, 'auth:sanctum', ResolveOrganization::ALIAS])
             ->get('notes/{note}', fn (BaseModel $note) => ['title' => $note->getAttribute('title')]);
@@ -184,5 +187,30 @@ class ResolveOrganizationTest extends TestCase
         $this->getJson('/notes/' . $globexNote->getKey(), [ResolveOrganization::HEADER => (string) $this->globex->id])
             ->assertOk()
             ->assertJsonPath('title', 'Globex');
+    }
+
+    /**
+     * Test that a super admin, who names an organization in the header, lists the users of that organization,
+     * and all users without it.
+     *
+     * @return void
+     */
+    public function testHeaderNarrowsTheListsOfSuperAdmin(): void
+    {
+        $member = User::factory()->create(['organization_id' => $this->globex->id]);
+        $stranger = User::factory()->create(['organization_id' => $this->acme->id]);
+        $superAdmin = $this->createSuperAdmin();
+
+        Sanctum::actingAs($superAdmin);
+
+        $this->assertEqualsCanonicalizing(
+            [$superAdmin->id, $member->id],
+            $this->getJson('/users', [ResolveOrganization::HEADER => (string) $this->globex->id])->assertOk()->json()
+        );
+
+        $this->assertEqualsCanonicalizing(
+            [$superAdmin->id, $member->id, $stranger->id],
+            $this->getJson('/users')->assertOk()->json()
+        );
     }
 }

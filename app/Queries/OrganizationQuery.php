@@ -24,7 +24,9 @@ use Illuminate\Database\Eloquent\Model;
 class OrganizationQuery extends BaseQuery
 {
     /**
-     * Apply index query conditions for a given user.
+     * Apply index query conditions for a given user: the organization, in
+     * which the user acts, or all of them for a super admin, who acts in all
+     * organizations.
      *
      * @param User|null $user
      * @param array $params
@@ -40,12 +42,12 @@ class OrganizationQuery extends BaseQuery
             return $this;
         }
 
-        if ($user->hasInternalOrg() && $user->isSuperAdmin()) {
+        if ($user->actsInAllOrganizations()) {
             return $this;
         }
 
         $this->where(function (OrganizationQuery $query) use ($user) {
-            $query->where('organizations.id', $user->orgId());
+            $query->where('organizations.id', $user->actingOrgId());
         });
 
         return $this;

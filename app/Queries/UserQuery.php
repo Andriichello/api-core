@@ -25,7 +25,9 @@ use Illuminate\Database\Eloquent\Model;
 class UserQuery extends BaseQuery
 {
     /**
-     * Apply index query conditions for a given user.
+     * Apply index query conditions for a given user: the person's own accounts
+     * and the users of the organization, in which the user acts, or all users
+     * for a super admin, who acts in all organizations.
      *
      * @param User|null $user
      * @param array $params
@@ -41,18 +43,20 @@ class UserQuery extends BaseQuery
             return $this;
         }
 
-        if ($user->hasInternalOrg() && $user->isSuperAdmin()) {
+        if ($user->actsInAllOrganizations()) {
             return $this;
         }
 
-        $this->where(function (UserQuery $query) use ($user) {
+        $orgId = $user->actingOrgId();
+
+        $this->where(function (UserQuery $query) use ($user, $orgId) {
             // Accounts of the same person, linked by the main account, see each other
             $query->where('users.id', $user->mainAccountId())
                 ->orWhere('users.main_account_id', $user->mainAccountId());
 
             // Users without an organization can only see their own accounts
-            if ($user->orgId() !== null) {
-                $query->orWhere('users.organization_id', $user->orgId());
+            if ($orgId !== null) {
+                $query->orWhere('users.organization_id', $orgId);
             }
         });
 
