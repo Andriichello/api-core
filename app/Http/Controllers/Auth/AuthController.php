@@ -15,18 +15,28 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\NewAccessToken;
+use Laravel\Sanctum\TransientToken;
 
 /**
  * Class AuthController.
  *
- * Signs users in with Sanctum tokens. api-core registers no routes, so an
- * application registers these with `AuthController::routes()`, usually under
- * a prefix in `routes/api.php`, where responses are always JSON:
+ * Signs users in with Sanctum tokens or, when the request comes from the SPA,
+ * with a session. api-core registers no routes, so an application registers
+ * these with `AuthController::routes()`, usually under a prefix in
+ * `routes/api.php`, where responses are always JSON:
  * `Route::prefix('auth')->group(fn () => AuthController::routes())`.
+ *
+ * Requests from the SPA have a session, when the application calls
+ * `$middleware->statefulApi()` and lists the SPA's domain in Sanctum's
+ * stateful domains. The SPA gets a CSRF cookie from `/sanctum/csrf-cookie`
+ * first, and then its login, logout and switch work on the session cookie.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Controllers\Auth
@@ -70,8 +80,9 @@ class AuthController extends BaseController
     }
 
     /**
-     * Sign in with an email and password, getting an access token
-     * and a refresh token.
+     * Sign in with an email and password. A request from the SPA signs in to
+     * its session, and any other request gets an access token and a refresh
+     * token.
      *
      * @param LoginRequest $request
      *
@@ -82,6 +93,16 @@ class AuthController extends BaseController
     {
         $user = $request->authenticate();
         $user->forceFill(['last_login_at' => now()])->save();
+
+        if ($request->hasSession()) {
+            $this->loginToSession($request, $user);
+
+            return ApiResponse::ok([
+                'data' => [
+                    'user' => new MeResource($user->withAccessToken(new TransientToken)),
+                ],
+            ]);
+        }
 
         event(new Login('sanctum', $user, false));
 
@@ -134,8 +155,8 @@ class AuthController extends BaseController
     }
 
     /**
-     * Sign out, deleting the access token, which the request was made with,
-     * along with its refresh token.
+     * Sign out of the session or, with a token, delete the access token,
+     * which the request was made with, along with its refresh token.
      *
      * @param Request $request
      *
@@ -145,6 +166,13 @@ class AuthController extends BaseController
     {
         /** @var User $user */
         $user = $request->user();
+
+        if ($user->isSignedInWithSession()) {
+            $this->logoutOfSession($request);
+
+            return ApiResponse::ok([], 'Logged out');
+        }
+
         $token = $user->currentAccessToken();
 
         if ($token instanceof AccessToken) {
@@ -157,9 +185,11 @@ class AuthController extends BaseController
     }
 
     /**
-     * Switch to another account, getting an access token for it, on which
-     * the current user is recorded as the impersonator. There is no refresh
-     * token, so the client returns to its own token, when this one expires.
+     * Switch to another account. With a session, the session is switched to
+     * it, and switching to the user, who signed in, switches back. Otherwise,
+     * an access token is issued for it, on which the current user is recorded
+     * as the impersonator. There is no refresh token, so the client returns
+     * to its own token, when this one expires.
      *
      * @param SwitchAccountRequest $request
      *
@@ -170,13 +200,97 @@ class AuthController extends BaseController
     public function switchAccount(SwitchAccountRequest $request): ApiResponse
     {
         $account = $request->account();
-        $token = $this->tokens->create($account, $request->userAgent(), $request->user());
+        $user = $request->originalUser();
+        $impersonator = $account->is($user) ? null : $user;
+
+        /** @var User $current */
+        $current = $request->user();
+
+        if ($current->isSignedInWithSession()) {
+            $this->switchSession($request, $account, $impersonator);
+
+            return ApiResponse::ok([
+                'data' => [
+                    'user' => new MeResource($account->withAccessToken(new TransientToken)),
+                ],
+            ]);
+        }
+
+        $token = $this->tokens->create($account, $request->userAgent(), $impersonator);
 
         return ApiResponse::ok([
             'data' => $this->tokenData($token) + [
                 'user' => new MeResource($account->withAccessToken($token->accessToken)),
             ],
         ]);
+    }
+
+    /**
+     * Get the guard, which keeps the signed-in user in the session: the first
+     * of the guards, which Sanctum checks before looking for a token.
+     *
+     * @return SessionGuard
+     */
+    protected function sessionGuard(): SessionGuard
+    {
+        /** @var SessionGuard $guard */
+        $guard = Auth::guard(Arr::first(Arr::wrap(config('sanctum.guard', 'web'))));
+
+        return $guard;
+    }
+
+    /**
+     * Sign the session in to the user. The guard gives the session a new id,
+     * so the id it had before signing in can't be used to take it over.
+     *
+     * @param Request $request
+     * @param User $user
+     *
+     * @return void
+     */
+    protected function loginToSession(Request $request, User $user): void
+    {
+        $request->session()->forget(User::IMPERSONATOR_SESSION_KEY);
+
+        $this->sessionGuard()->login($user);
+    }
+
+    /**
+     * Sign out of the session, invalidating it along with its CSRF token.
+     *
+     * @param Request $request
+     *
+     * @return void
+     */
+    protected function logoutOfSession(Request $request): void
+    {
+        $this->sessionGuard()->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+    }
+
+    /**
+     * Switch the session to the account, recording the impersonator in it, and
+     * give the session a new id. Unlike signing in, it doesn't fire the Login
+     * event, as switching with tokens doesn't either.
+     *
+     * @param Request $request
+     * @param User $account
+     * @param User|null $impersonator
+     *
+     * @return void
+     */
+    protected function switchSession(Request $request, User $account, ?User $impersonator): void
+    {
+        $guard = $this->sessionGuard();
+        $session = $request->session();
+
+        $session->put($guard->getName(), $account->getAuthIdentifier());
+        $session->put(User::IMPERSONATOR_SESSION_KEY, $impersonator?->getAuthIdentifier());
+        $session->migrate(true);
+
+        $guard->setUser($account);
     }
 
     /**

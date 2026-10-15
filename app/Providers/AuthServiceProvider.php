@@ -3,6 +3,7 @@
 namespace Core\Providers;
 
 use Core\Http\Controllers\Auth\AuthController;
+use Core\Http\Middleware\AuthenticateSession;
 use Core\Models\AccessToken;
 use Core\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -10,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\Http\Middleware\AuthenticateSession as SanctumAuthenticateSession;
 use Laravel\Sanctum\Sanctum;
 
 /**
@@ -25,7 +27,8 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // A session of a user, who can no longer sign in, stops working right away
+        $this->app->bind(SanctumAuthenticateSession::class, AuthenticateSession::class);
     }
 
     /**

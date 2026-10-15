@@ -2,7 +2,6 @@
 
 namespace Core\Http\Resources;
 
-use Core\Models\AccessToken;
 use Core\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -13,7 +12,7 @@ use Throwable;
  *
  * The signed-in user, with what a client needs to know about the session:
  * the organization, roles and permissions, the main account, and the user,
- * who switched to this account, if the token was issued that way.
+ * who switched to this account, if the token or session was switched to it.
  *
  * @property User $resource
  *
@@ -33,8 +32,7 @@ class MeResource extends BaseResource
     public function toArray(Request $request): array
     {
         $user = $this->resource;
-        $token = $user->currentAccessToken();
-        $impersonator = $token instanceof AccessToken ? $token->impersonator : null;
+        $impersonator = $user->currentImpersonator();
 
         return array_merge(
             Arr::except(parent::toArray($request), ['organization', 'roles', 'permissions']),

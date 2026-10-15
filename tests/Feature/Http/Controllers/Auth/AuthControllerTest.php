@@ -486,6 +486,31 @@ class AuthControllerTest extends TestCase
     }
 
     /**
+     * Test that a token, which was issued by switching, cannot switch back to the impersonator or on to the
+     * impersonator's other accounts, as the client keeps the impersonator's own token for that.
+     *
+     * @return void
+     */
+    public function testSwitchedTokenCannotSwitchBackOrOn(): void
+    {
+        $main = $this->createUser('user@example.com', $this->acme);
+        $beta = $this->createUser('user@example.com', $this->createOrganization('beta'), [
+            'main_account_id' => $main->id,
+        ]);
+        $gamma = $this->createUser('user@example.com', $this->createOrganization('gamma'), [
+            'main_account_id' => $main->id,
+        ]);
+
+        $token = $this->login(['email' => 'user@example.com'])->json('data.access_token');
+        $switched = $this->asBearer($token)
+            ->postJson('/auth/switch', ['user_id' => $beta->id])
+            ->json('data.access_token');
+
+        $this->asBearer($switched)->postJson('/auth/switch', ['user_id' => $main->id])->assertForbidden();
+        $this->asBearer($switched)->postJson('/auth/switch', ['user_id' => $gamma->id])->assertForbidden();
+    }
+
+    /**
      * Test that a super admin switches to any account.
      *
      * @return void

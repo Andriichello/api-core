@@ -90,6 +90,14 @@ class User extends BaseModel implements
     use LinksAccountsByEmail;
 
     /**
+     * Key, under which a session keeps id of the user, who signed in
+     * and then switched to another account.
+     *
+     * @var string
+     */
+    public const string IMPERSONATOR_SESSION_KEY = 'api-core.impersonator_id';
+
+    /**
      * The attributes that are mass-assignable.
      *
      * @var array<int, string>
@@ -261,6 +269,38 @@ class User extends BaseModel implements
     public function isSamePerson(User $user): bool
     {
         return $this->mainAccountId() === $user->mainAccountId();
+    }
+
+    /**
+     * Determine if the user is signed in with a session (the SPA's cookie),
+     * which Sanctum marks with a transient token, rather than with an
+     * access token.
+     *
+     * @return bool
+     */
+    public function isSignedInWithSession(): bool
+    {
+        return $this->currentAccessToken() instanceof TransientToken;
+    }
+
+    /**
+     * Get the user, who switched to this account: the impersonator recorded
+     * on the current access token or, with a session, in the session.
+     *
+     * @return User|null
+     */
+    public function currentImpersonator(): ?User
+    {
+        $token = $this->currentAccessToken();
+
+        if ($token instanceof AccessToken) {
+            return $token->impersonator;
+        }
+
+        $impersonatorId = $this->isSignedInWithSession()
+            ? session(static::IMPERSONATOR_SESSION_KEY) : null;
+
+        return $impersonatorId === null ? null : static::query()->find($impersonatorId);
     }
 
     /**

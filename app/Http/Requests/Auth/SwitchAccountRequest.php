@@ -49,6 +49,8 @@ class SwitchAccountRequest extends BaseRequest
     /**
      * Get the account to switch to, when the user may switch to it: a main
      * account may switch to its linked accounts, and a super admin to any.
+     * With a session, it is checked for the user, who signed in, who may
+     * also switch back to their own account.
      *
      * @return User
      * @throws AuthorizationException
@@ -56,11 +58,10 @@ class SwitchAccountRequest extends BaseRequest
      */
     public function account(): User
     {
-        /** @var User $user */
-        $user = $this->user();
+        $user = $this->originalUser();
         $account = User::query()->findOrFail($this->integer('user_id'));
 
-        if (!$user->canImpersonateUser($account)) {
+        if (!$account->is($user) && !$user->canImpersonateUser($account)) {
             throw new AuthorizationException('You may not switch to this account.');
         }
 
@@ -71,5 +72,22 @@ class SwitchAccountRequest extends BaseRequest
         }
 
         return $account;
+    }
+
+    /**
+     * Get the user, on whose behalf the switch is made. A session is switched
+     * as a whole, so it is the user, who signed in to it, even after switching
+     * to another account. A token is issued for the account switched to, while
+     * the client keeps its own token, so it is the user of the current token.
+     *
+     * @return User
+     */
+    public function originalUser(): User
+    {
+        /** @var User $user */
+        $user = $this->user();
+
+        return $user->isSignedInWithSession()
+            ? $user->currentImpersonator() ?? $user : $user;
     }
 }
