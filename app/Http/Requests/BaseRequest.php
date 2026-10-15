@@ -2,6 +2,7 @@
 
 namespace Core\Http\Requests;
 
+use Core\Helpers\CurrentOrganization;
 use Core\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -11,7 +12,6 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\InputBag;
-use Throwable;
 
 /**
  * Class BaseRequest.
@@ -73,7 +73,9 @@ abstract class BaseRequest extends FormRequest
     }
 
     /**
-     * Get the organization id, which should be used within the request.
+     * Get id of the organization, in which the request acts: the current one
+     * (see ResolveOrganization), or the signed-in user's one, when the route
+     * doesn't resolve it. It is never taken from the request's input.
      *
      * @return int|null
      */
@@ -82,13 +84,7 @@ abstract class BaseRequest extends FormRequest
         /** @var User|null $user */
         $user = $this->user();
 
-        try {
-            $organizationId = $user?->orgId();
-        } catch (Throwable) {
-            $organizationId = null;
-        }
-
-        return $organizationId ?: $this->input('organization_id');
+        return CurrentOrganization::id() ?? $user?->orgId();
     }
 
     /**

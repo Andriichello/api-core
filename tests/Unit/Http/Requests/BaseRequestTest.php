@@ -2,7 +2,9 @@
 
 namespace Core\Tests\Unit\Http\Requests;
 
+use Core\Helpers\CurrentOrganization;
 use Core\Http\Requests\BaseRequest;
+use Core\Models\User;
 use Core\Tests\TestCase;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -344,5 +346,24 @@ class BaseRequestTest extends TestCase
         $this->expectException(ValidationException::class);
 
         $request::createFrom(Request::create('/test', 'POST', []))->validated();
+    }
+
+    /**
+     * Test that the request acts in the current organization, or in the user's one, but never in the one of its
+     * input.
+     *
+     * @return void
+     */
+    public function testOrgIdIsTheCurrentOrganizationOrTheUsersOne(): void
+    {
+        $request = new class extends BaseRequest {};
+        $request = $request::createFrom(Request::create('/test', 'POST', ['organization_id' => 99]));
+
+        $this->assertNull($request->orgId());
+
+        $request->setUserResolver(fn () => User::factory()->make(['organization_id' => 5]));
+        $this->assertSame(5, $request->orgId());
+
+        CurrentOrganization::run(7, fn () => $this->assertSame(7, $request->orgId()));
     }
 }

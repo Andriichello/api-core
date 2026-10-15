@@ -3,6 +3,8 @@
 namespace Core\Providers;
 
 use Core\Http\Middleware\ForceJsonOnApi;
+use Core\Http\Middleware\ResolveOrganization;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Http\Kernel;
@@ -14,7 +16,8 @@ use Illuminate\Support\ServiceProvider;
  * Wires api-core into an application, which requires it as a package. It
  * merges api-core's config and lets the application publish the config and
  * migrations with the `api-core-config` and `api-core-migrations` tags.
- * It also makes the responses on the API paths JSON with ForceJsonOnApi.
+ * It also makes the responses on the API paths JSON with ForceJsonOnApi, and
+ * registers ResolveOrganization, which sets the request's organization.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Providers
@@ -56,10 +59,16 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->publishes($this->migrationsToPublish(), static::MIGRATIONS_TAG);
 
-        // Runs first, so the errors of the other global middleware are JSON too
+        $this->app['router']->aliasMiddleware(ResolveOrganization::ALIAS, ResolveOrganization::class);
+
         $this->callAfterResolving(HttpKernel::class, function (HttpKernel $kernel) {
             if ($kernel instanceof Kernel) {
+                // Runs first, so the errors of the other global middleware are JSON too
                 $kernel->prependMiddleware(ForceJsonOnApi::class);
+
+                // Runs right after authentication, so route model bindings find
+                // the models of the request's organization
+                $kernel->addToMiddlewarePriorityAfter(AuthenticatesRequests::class, ResolveOrganization::class);
             }
         });
     }
