@@ -36,11 +36,11 @@ use Throwable;
  * `profiles/{profile}/clients/{client}/contracts/{id}`: the operations then
  * see only the models of the parents, and new models belong to them.
  *
- * @method ApiResponse index(Request $request)
- * @method ApiResponse show(Request $request)
- * @method ApiResponse store(Request $request)
- * @method ApiResponse update(Request $request)
- * @method ApiResponse destroy(Request $request)
+ * The operations are methods, so the attributes, which are chained before a
+ * route (`Route::middleware(...)->get(...)`), apply to it. Extra operations,
+ * which a controller adds to `$operations`, are handled through `__call()`,
+ * which Laravel doesn't see as their method, so their routes get attributes
+ * only from a group, or with a `Controller@operation` action.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Controllers
@@ -86,7 +86,72 @@ abstract class CrudController extends ResourceController
     ) {}
 
     /**
-     * Handle the operation, which has the given name.
+     * Handle the `index` operation.
+     *
+     * @param Request $request
+     *
+     * @return ApiResponse
+     * @throws Throwable
+     */
+    public function index(Request $request): ApiResponse
+    {
+        return $this->handle('index', $request);
+    }
+
+    /**
+     * Handle the `show` operation.
+     *
+     * @param Request $request
+     *
+     * @return ApiResponse
+     * @throws Throwable
+     */
+    public function show(Request $request): ApiResponse
+    {
+        return $this->handle('show', $request);
+    }
+
+    /**
+     * Handle the `store` operation.
+     *
+     * @param Request $request
+     *
+     * @return ApiResponse
+     * @throws Throwable
+     */
+    public function store(Request $request): ApiResponse
+    {
+        return $this->handle('store', $request);
+    }
+
+    /**
+     * Handle the `update` operation.
+     *
+     * @param Request $request
+     *
+     * @return ApiResponse
+     * @throws Throwable
+     */
+    public function update(Request $request): ApiResponse
+    {
+        return $this->handle('update', $request);
+    }
+
+    /**
+     * Handle the `destroy` operation.
+     *
+     * @param Request $request
+     *
+     * @return ApiResponse
+     * @throws Throwable
+     */
+    public function destroy(Request $request): ApiResponse
+    {
+        return $this->handle('destroy', $request);
+    }
+
+    /**
+     * Handle an extra operation, which has the given name.
      *
      * @param string $method
      * @param array $parameters
@@ -96,12 +161,6 @@ abstract class CrudController extends ResourceController
      */
     public function __call($method, $parameters): ApiResponse
     {
-        if (!in_array($method, $this->getOperations())) {
-            throw new BadMethodCallException(
-                sprintf('Method %s::%s does not exist.', static::class, $method)
-            );
-        }
-
         $request = Arr::first(
             Arr::wrap($parameters),
             fn ($param) => $param instanceof Request,
@@ -118,10 +177,17 @@ abstract class CrudController extends ResourceController
      * @param Request $request
      *
      * @return ApiResponse
+     * @throws BadMethodCallException When the controller doesn't handle the operation.
      * @throws Throwable
      */
     protected function handle(string $operation, Request $request): ApiResponse
     {
+        if (!in_array($operation, $this->getOperations())) {
+            throw new BadMethodCallException(
+                sprintf('Method %s::%s does not exist.', static::class, $operation)
+            );
+        }
+
         $class = $this->getOperationRequest($operation);
 
         $crudRequest = $class::createFrom($request);
