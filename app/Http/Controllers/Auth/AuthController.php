@@ -3,22 +3,29 @@
 namespace Core\Http\Controllers\Auth;
 
 use Core\Http\Controllers\BaseController;
+use Core\Http\Requests\Auth\ForgotPasswordRequest;
 use Core\Http\Requests\Auth\LoginRequest;
 use Core\Http\Requests\Auth\RefreshRequest;
+use Core\Http\Requests\Auth\ResetPasswordRequest;
 use Core\Http\Requests\Auth\SwitchAccountRequest;
 use Core\Http\Resources\MeResource;
 use Core\Http\Responses\ApiResponse;
 use Core\Models\AccessToken;
 use Core\Models\User;
 use Core\Repositories\AccessTokenRepository;
+use Core\Repositories\UserRepository;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\SessionGuard;
+use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\NewAccessToken;
@@ -38,6 +45,10 @@ use Laravel\Sanctum\TransientToken;
  * stateful domains. The SPA gets a CSRF cookie from `/sanctum/csrf-cookie`
  * first, and then its login, logout and switch work on the session cookie.
  *
+ * A forgotten password is reset with a link, which `forgot-password` emails.
+ * It leads to the SPA's page (`api-core.auth.password_reset_url`), which
+ * posts the token from it with the new password to `reset-password`.
+ *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Controllers\Auth
  * @SuppressWarnings("PHPMD.CouplingBetweenObjects")
@@ -45,7 +56,7 @@ use Laravel\Sanctum\TransientToken;
 class AuthController extends BaseController
 {
     /**
-     * Name of the rate limiter of the login and refresh routes.
+     * Name of the rate limiter of the login, refresh and password reset routes.
      *
      * @var string
      */
@@ -55,9 +66,11 @@ class AuthController extends BaseController
      * Create a new controller instance.
      *
      * @param AccessTokenRepository $tokens
+     * @param UserRepository $users
      */
     public function __construct(
-        protected AccessTokenRepository $tokens
+        protected AccessTokenRepository $tokens,
+        protected UserRepository $users
     ) {}
 
     /**
@@ -70,6 +83,8 @@ class AuthController extends BaseController
         Route::middleware('throttle:' . static::RATE_LIMITER)->group(function () {
             Route::post('login', [static::class, 'login'])->name('auth.login');
             Route::post('refresh', [static::class, 'refresh'])->name('auth.refresh');
+            Route::post('forgot-password', [static::class, 'forgotPassword'])->name('auth.forgot-password');
+            Route::post('reset-password', [static::class, 'resetPassword'])->name('auth.reset-password');
         });
 
         Route::middleware('auth:sanctum')->group(function () {
@@ -138,6 +153,59 @@ class AuthController extends BaseController
         return ApiResponse::ok([
             'data' => $this->tokenData(...$tokens),
         ]);
+    }
+
+    /**
+     * Email a link to reset the password. The response is the same, whether
+     * the email belongs to an account or not, and when a link was sent to it
+     * shortly before, so it doesn't tell, which emails have accounts.
+     *
+     * @param ForgotPasswordRequest $request
+     *
+     * @return ApiResponse
+     */
+    public function forgotPassword(ForgotPasswordRequest $request): ApiResponse
+    {
+        Password::broker()->sendResetLink($request->credentials());
+
+        return ApiResponse::ok(
+            [],
+            'If the email belongs to an account, a link to reset the password has been sent to it.'
+        );
+    }
+
+    /**
+     * Reset the password with the token from the email. It is set for every
+     * person, who has an account with the email, and their access tokens are
+     * deleted. Their sessions are signed out by AuthenticateSession, as the
+     * password hash, which it keeps in them, no longer matches.
+     *
+     * @param ResetPasswordRequest $request
+     *
+     * @return ApiResponse
+     * @throws ValidationException
+     */
+    public function resetPassword(ResetPasswordRequest $request): ApiResponse
+    {
+        $status = DB::transaction(fn () => Password::broker()->reset(
+            $request->credentials(),
+            function (User $user, string $password) {
+                $accounts = $this->users->resetPassword($user->getEmailForPasswordReset(), $password);
+
+                $this->tokens->deleteOfPeople(...$accounts);
+
+                $accounts->each(fn (User $account) => event(new PasswordReset($account)));
+            }
+        ));
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            // An unknown email gets the error of a wrong token, so it doesn't tell, which emails have accounts
+            throw ValidationException::withMessages([
+                'email' => __(PasswordBroker::INVALID_TOKEN),
+            ]);
+        }
+
+        return ApiResponse::ok([], __(PasswordBroker::PASSWORD_RESET));
     }
 
     /**

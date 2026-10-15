@@ -4,6 +4,8 @@ namespace Core\Repositories;
 
 use Core\Models\AccessToken;
 use Core\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\NewAccessToken;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -108,5 +110,34 @@ class AccessTokenRepository
     public function delete(AccessToken $token): void
     {
         $token->delete();
+    }
+
+    /**
+     * Delete the tokens of every account of the people, who own the accounts,
+     * deleted accounts included, along with the tokens, with which they switched
+     * to other accounts, and the refresh tokens of both.
+     *
+     * @param User ...$users
+     *
+     * @return int The number of deleted tokens.
+     */
+    public function deleteOfPeople(User ...$users): int
+    {
+        if (empty($users)) {
+            return 0;
+        }
+
+        $accountIds = User::query()
+            ->withoutGlobalScope(SoftDeletingScope::class)
+            ->ofPeople(...$users)
+            ->select('users.id');
+
+        return AccessToken::query()
+            ->where(function (Builder $query) use ($accountIds) {
+                $query->where('tokenable_type', (new User)->getMorphClass())
+                    ->whereIn('tokenable_id', $accountIds);
+            })
+            ->orWhereIn('impersonator_id', $accountIds)
+            ->delete();
     }
 }

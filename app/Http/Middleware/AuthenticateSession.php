@@ -18,6 +18,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Sanctum's middleware, which signs a session out, when the user's password
  * changes, extended to sign it out, when the user can no longer sign in, so
  * a suspended user's session stops working right away, as their tokens do.
+ * Sanctum keeps the password hash in the session only after a request, which
+ * starts signed in, so it is also kept, when a request signs in, and a session
+ * is signed out by a password change even before its next request.
  * AuthServiceProvider binds it in place of Sanctum's one.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
@@ -38,6 +41,10 @@ class AuthenticateSession extends SanctumAuthenticateSession
     {
         $user = $request->hasSession() ? $request->user() : null;
 
+        if ($user === null) {
+            return $this->storePasswordHashOnSignIn($request, $next);
+        }
+
         if ($user instanceof User && !$user->canSignIn()) {
             $guards = $this->sessionGuards();
             $guards->each->logoutCurrentDevice();
@@ -48,6 +55,29 @@ class AuthenticateSession extends SanctumAuthenticateSession
         }
 
         return parent::handle($request, $next);
+    }
+
+    /**
+     * Handle a request, which isn't signed in, keeping the password hash in its
+     * session, when it signs in.
+     *
+     * @param Request $request
+     * @param Closure(Request): Response $next
+     *
+     * @return Response
+     */
+    protected function storePasswordHashOnSignIn(Request $request, Closure $next): Response
+    {
+        $response = $next($request);
+
+        $guard = $request->hasSession()
+            ? $this->getFirstGuardWithUser($this->sessionGuards()->keys()) : null;
+
+        if ($guard !== null) {
+            $this->storePasswordHashInSession($request, $guard);
+        }
+
+        return $response;
     }
 
     /**

@@ -69,9 +69,26 @@ class UserQuery extends BaseQuery
      */
     public function ofPerson(User $user): UserQuery
     {
-        $this->where(function (UserQuery $query) use ($user) {
-            $query->where('users.id', $user->mainAccountId())
-                ->orWhere('users.main_account_id', $user->mainAccountId());
+        return $this->ofPeople($user);
+    }
+
+    /**
+     * Limit the query to the accounts of the people, who own the accounts:
+     * their main accounts and the accounts linked to them.
+     *
+     * @param User ...$users
+     *
+     * @return UserQuery
+     */
+    public function ofPeople(User ...$users): UserQuery
+    {
+        $mainAccountIds = array_values(array_unique(
+            array_map(fn (User $user) => $user->mainAccountId(), $users)
+        ));
+
+        $this->where(function (UserQuery $query) use ($mainAccountIds) {
+            $query->whereIn('users.id', $mainAccountIds)
+                ->orWhereIn('users.main_account_id', $mainAccountIds);
         });
 
         return $this;

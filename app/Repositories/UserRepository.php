@@ -80,4 +80,31 @@ class UserRepository extends CrudRepository
             ->filter(fn (User $user) => Hash::check($password, $user->getAuthPassword()))
             ->values();
     }
+
+    /**
+     * Set the password of every person, who has an account with the email, as
+     * whoever controls the email may reset the password of any of them. It is
+     * set on one account of each person, and SharesPasswordAcrossAccounts sets
+     * it on their other accounts.
+     *
+     * @param string $email
+     * @param string $password
+     *
+     * @return Collection<int, User> The accounts with the email, on which it is
+     *                               set, one for each person.
+     */
+    public function resetPassword(string $email, string $password): Collection
+    {
+        $hash = Hash::make($password);
+
+        $accounts = User::query()
+            ->where('email', Str::lower($email))
+            ->get()
+            ->unique(fn (User $user) => $user->mainAccountId())
+            ->values();
+
+        $accounts->each(fn (User $user) => $user->forceFill(['password' => $hash])->save());
+
+        return $accounts;
+    }
 }

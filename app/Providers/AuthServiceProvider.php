@@ -6,11 +6,14 @@ use Core\Http\Controllers\Auth\AuthController;
 use Core\Http\Middleware\AuthenticateSession;
 use Core\Models\AccessToken;
 use Core\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Support\Uri;
 use Laravel\Sanctum\Http\Middleware\AuthenticateSession as SanctumAuthenticateSession;
 use Laravel\Sanctum\Sanctum;
 
@@ -48,5 +51,13 @@ class AuthServiceProvider extends ServiceProvider
             return Limit::perMinute(config('api-core.auth.rate_limit'))
                 ->by(Str::lower($request->string('email')->value()) . '|' . $request->ip());
         });
+
+        // The link in the password reset email leads to the SPA's page, and
+        // an application overrides it by calling this in its own provider
+        ResetPassword::createUrlUsing(
+            fn (CanResetPassword $user, string $token) => Uri::of(config('api-core.auth.password_reset_url'))
+                ->withQuery(['token' => $token, 'email' => $user->getEmailForPasswordReset()])
+                ->value()
+        );
     }
 }

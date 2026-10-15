@@ -11,6 +11,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
@@ -151,6 +152,27 @@ class AuthControllerSessionTest extends TestCase
     private function login(array $credentials): TestResponse
     {
         return $this->spa('POST', '/auth/login', ['password' => 'password123', ...$credentials]);
+    }
+
+    /**
+     * Reset the user's password with the token from the emailed link, which is opened on another device, so
+     * the request has no session.
+     *
+     * @param User $user
+     * @param string $password
+     *
+     * @return TestResponse
+     */
+    private function resetPasswordElsewhere(User $user, string $password): TestResponse
+    {
+        $this->forgetSignedInUser();
+
+        return $this->withoutHeader('Origin')->postJson('/auth/reset-password', [
+            'email' => $user->email,
+            'token' => Password::createToken($user),
+            'password' => $password,
+            'password_confirmation' => $password,
+        ]);
     }
 
     /**
@@ -306,6 +328,30 @@ class AuthControllerSessionTest extends TestCase
         $this->spa('GET', '/auth/me')->assertUnauthorized();
 
         $user->forceFill(['suspended_at' => null])->save();
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
+    }
+
+    /**
+     * Test that a password reset signs out the sessions of the person, the one, which made no request since
+     * signing in, and the one, which switched to a linked account, included.
+     *
+     * @return void
+     */
+    public function testPasswordResetSignsOutSessions(): void
+    {
+        $main = $this->createUser('user@example.com', $this->acme);
+        $linked = $this->createUser('user@example.com', $this->createOrganization('beta'), [
+            'main_account_id' => $main->id,
+        ]);
+
+        $this->login(['email' => 'user@example.com'])->assertOk();
+        $this->resetPasswordElsewhere($main, 'new-password')->assertOk();
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
+
+        $this->login(['email' => 'user@example.com', 'password' => 'new-password'])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $linked->id])->assertOk();
+        $this->spa('GET', '/auth/me')->assertOk()->assertJsonPath('data.id', $linked->id);
+        $this->resetPasswordElsewhere($main, 'newer-password')->assertOk();
         $this->spa('GET', '/auth/me')->assertUnauthorized();
     }
 
