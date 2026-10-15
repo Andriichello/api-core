@@ -10,11 +10,15 @@ use Core\Http\Requests\Crud\StoreRequest;
 use Core\Http\Requests\Crud\UpdateRequest;
 use Core\Http\Requests\CrudRequest;
 use Core\Http\Responses\ApiResponse;
+use Core\Models\BaseModel;
 use Core\Policies\CrudPolicy;
 use Core\Queries\BaseQuery;
 use Core\Repositories\CrudRepository;
 use Exception;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -27,6 +31,10 @@ use Throwable;
  * Each operation's request is made from the incoming one, authorized by the
  * policy first and validated after that, and then handled by its
  * `handle{Operation}()` method, which can be overridden.
+ *
+ * Routes may nest the models under their parents (see `$parents`), e.g.
+ * `profiles/{profile}/clients/{client}/contracts/{id}`: the operations then
+ * see only the models of the parents, and new models belong to them.
  *
  * @method ApiResponse index(Request $request)
  * @method ApiResponse show(Request $request)
@@ -53,6 +61,18 @@ abstract class CrudController extends ResourceController
         'update' => UpdateRequest::class,
         'destroy' => DestroyRequest::class,
     ];
+
+    /**
+     * Route parameters of the models' parents, from the outermost to the
+     * innermost, e.g. `['profile', 'client']` for contracts in
+     * `profiles/{profile}/clients/{client}/contracts/{id}`. Each one is the
+     * name of the model's BelongsTo relation to the parent too. A route may
+     * leave some of them out (a shallow one). A parent is found within the
+     * user's index scope and within the outer parents, it belongs to.
+     *
+     * @var array<int, string>
+     */
+    protected array $parents = [];
 
     /**
      * CrudController constructor.
@@ -105,6 +125,7 @@ abstract class CrudController extends ResourceController
         $class = $this->getOperationRequest($operation);
 
         $crudRequest = $class::createFrom($request);
+        $crudRequest->setParents($this->resolveParents($crudRequest));
 
         $this->checkPolicy($crudRequest);
 
@@ -153,7 +174,7 @@ abstract class CrudController extends ResourceController
      */
     protected function handleStore(StoreRequest $request): ApiResponse
     {
-        $model = $this->repository->create($request->validated());
+        $model = $this->repository->create($request->validated(), $request->getParents());
 
         return $this->asResourceResponse($model)
             ->setMessage('Created')
@@ -267,6 +288,58 @@ abstract class CrudController extends ResourceController
      */
     protected function builder(CrudRequest $request): BaseQuery
     {
-        return $this->repository->builder($request);
+        $query = $this->repository->builder($request);
+
+        foreach ($request->getParents() as $relation => $parent) {
+            $query->whereBelongsTo($parent, $relation);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Find the parents, which the request's route names, by their route
+     * parameters. Each one is looked up within the user's index scope, and
+     * within the outer parents, to which it belongs, so a parent, which the
+     * user can't see, or which is under another outer parent, isn't found.
+     *
+     * @param CrudRequest $request
+     *
+     * @return array<string, BaseModel>
+     * @throws ModelNotFoundException
+     */
+    protected function resolveParents(CrudRequest $request): array
+    {
+        $parents = [];
+        $model = $this->repository->model();
+        $model = is_string($model) ? new $model : $model;
+
+        foreach ($this->parents as $name) {
+            $value = $request->route($name);
+
+            if ($value === null) {
+                continue;
+            }
+
+            /** @var BelongsTo $relation */
+            $relation = $model->$name();
+
+            /** @var BaseQuery $query */
+            $query = $relation->getRelated()->newQuery();
+            $query->index($request->user(), []);
+
+            foreach ($parents as $outerName => $outer) {
+                if ($query->getModel()->isRelation($outerName)) {
+                    $query->whereBelongsTo($outer, $outerName);
+                }
+            }
+
+            /** @var BaseModel $parent */
+            $parent = $query->findOrFail($value instanceof Model ? $value->getKey() : $value);
+
+            $parents[$name] = $parent;
+        }
+
+        return $parents;
     }
 }

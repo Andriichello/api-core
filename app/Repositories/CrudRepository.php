@@ -147,15 +147,26 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
     }
 
     /**
-     * Create the model with given attributes.
+     * Create the model with given attributes, which belongs to the parents:
+     * the models, which its BelongsTo relations, named by the keys, point to.
      *
      * @param array $attributes
+     * @param array<string, BaseModel> $parents
      *
      * @return BaseModel
      */
-    public function create(array $attributes): BaseModel
+    public function create(array $attributes, array $parents = []): BaseModel
     {
-        return $this->builder()->create($attributes);
+        /** @var BaseModel $model */
+        $model = $this->builder()->newModelInstance($attributes);
+
+        foreach ($parents as $relation => $parent) {
+            $model->$relation()->associate($parent);
+        }
+
+        $model->save();
+
+        return $model;
     }
 
     /**
