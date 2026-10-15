@@ -79,12 +79,6 @@ parameters:
 			path: app/Repositories/CrudRepository.php
 
 		-
-			message: '#^Empty array passed to foreach\.$#'
-			identifier: foreach.emptyArray
-			count: 1
-			path: database/seeders/RolesAndPermissionsSeeder.php
-
-		-
 			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array will always evaluate to true\.$#'
 			identifier: method.alreadyNarrowedType
 			count: 1
