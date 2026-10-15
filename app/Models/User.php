@@ -6,6 +6,7 @@ namespace Core\Models;
 use Core\Database\Factories\UserFactory;
 use Core\Models\Traits\ChecksRolesAndPermissions;
 use Core\Models\Traits\LinksAccountsByEmail;
+use Core\Models\Traits\SharesPasswordAcrossAccounts;
 use Core\Queries\UserQuery;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Auth\MustVerifyEmail;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 use Illuminate\Notifications\DatabaseNotification;
@@ -88,6 +90,7 @@ class User extends BaseModel implements
     use HasRoles;
     use ChecksRolesAndPermissions;
     use LinksAccountsByEmail;
+    use SharesPasswordAcrossAccounts;
 
     /**
      * Key, under which a session keeps id of the user, who signed in
@@ -269,6 +272,25 @@ class User extends BaseModel implements
     public function isSamePerson(User $user): bool
     {
         return $this->mainAccountId() === $user->mainAccountId();
+    }
+
+    /**
+     * Get the password, against which the user is authenticated: the one of
+     * the main account, even when it is deleted, as it is the person's
+     * password, which all of their accounts share.
+     *
+     * @return string
+     */
+    public function getAuthPassword(): string
+    {
+        if ($this->isMainAccount()) {
+            return $this->password;
+        }
+
+        return static::query()
+            ->withoutGlobalScope(SoftDeletingScope::class)
+            ->whereKey($this->main_account_id)
+            ->value('password') ?? $this->password;
     }
 
     /**

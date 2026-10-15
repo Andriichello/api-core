@@ -54,8 +54,9 @@ class UserRepository extends CrudRepository
     }
 
     /**
-     * Find the accounts, into which the email and password sign in. With the
-     * slug of an organization, it is the account in that organization only.
+     * Find the accounts, into which the email and password sign in. The password
+     * is checked against the main account, as all accounts of a person share it.
+     * With the slug of an organization, it is the account in that organization only.
      *
      * @param string $email
      * @param string $password
@@ -76,7 +77,7 @@ class UserRepository extends CrudRepository
         }
 
         return $query->get()
-            ->filter(fn (User $user) => Hash::check($password, $user->password))
+            ->filter(fn (User $user) => Hash::check($password, $user->getAuthPassword()))
             ->values();
     }
 }

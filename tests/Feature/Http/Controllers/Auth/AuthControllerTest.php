@@ -13,6 +13,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
@@ -229,6 +230,30 @@ class AuthControllerTest extends TestCase
         $this->login(['email' => 'user@example.com'])
             ->assertOk()
             ->assertJsonPath('data.user.id', $main->id);
+    }
+
+    /**
+     * Test that the password of a linked account is checked against its main account, even when its own one
+     * differs.
+     *
+     * @return void
+     */
+    public function testChecksPasswordOfMainAccount(): void
+    {
+        $main = $this->createUser('user@example.com', $this->acme);
+        $linked = $this->createUser('user@example.com', $this->createOrganization('beta'), [
+            'main_account_id' => $main->id,
+        ]);
+
+        // Written past the model, so it isn't shared
+        User::query()->whereKey($linked->id)->toBase()->update(['password' => Hash::make('stale-password')]);
+
+        $this->login(['email' => 'user@example.com', 'organization' => 'beta'])
+            ->assertOk()
+            ->assertJsonPath('data.user.id', $linked->id);
+
+        $this->login(['email' => 'user@example.com', 'organization' => 'beta', 'password' => 'stale-password'])
+            ->assertUnprocessable();
     }
 
     /**

@@ -58,4 +58,22 @@ class UserQuery extends BaseQuery
 
         return $this;
     }
+
+    /**
+     * Limit the query to the accounts of the person, who owns the account:
+     * their main account and the accounts linked to it.
+     *
+     * @param User $user
+     *
+     * @return UserQuery
+     */
+    public function ofPerson(User $user): UserQuery
+    {
+        $this->where(function (UserQuery $query) use ($user) {
+            $query->where('users.id', $user->mainAccountId())
+                ->orWhere('users.main_account_id', $user->mainAccountId());
+        });
+
+        return $this;
+    }
 }
