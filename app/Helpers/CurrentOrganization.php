@@ -4,6 +4,7 @@ namespace Core\Helpers;
 
 use Closure;
 use Core\Models\Organization;
+use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Facades\Context;
 
 /**
@@ -84,14 +85,17 @@ class CurrentOrganization
 
     /**
      * Run the callback in the organization, and then return to the one, which
-     * was current before, even when the callback throws.
+     * was current before, even when the callback throws. A pending dispatch,
+     * which the callback returns (`fn () => Job::dispatch()`), is dispatched
+     * in the organization, rather than when the caller drops it, so it is
+     * returned as null.
      *
      * @template TResult
      *
      * @param Organization|int|null $organization
      * @param Closure(): TResult $callback
      *
-     * @return TResult
+     * @return TResult|null
      */
     public static function run(Organization|int|null $organization, Closure $callback): mixed
     {
@@ -100,7 +104,16 @@ class CurrentOrganization
         static::set($organization);
 
         try {
-            return $callback();
+            $result = $callback();
+
+            // A pending dispatch dispatches its job, when it's destroyed
+            if ($result instanceof PendingDispatch) {
+                unset($result);
+
+                return null;
+            }
+
+            return $result;
         } finally {
             static::set($previous);
         }
