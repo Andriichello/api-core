@@ -115,7 +115,7 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
             $includes = $this->getValidatedIncludes($request);
 
             if (!empty($includes)) {
-                $query->with($includes);
+                $query->with($this->scopedEagerLoads($includes, $request->user()));
             }
         }
 

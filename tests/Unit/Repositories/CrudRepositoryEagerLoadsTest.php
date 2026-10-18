@@ -3,7 +3,10 @@
 namespace Core\Tests\Unit\Repositories;
 
 use Core\Http\Resources\BaseResource;
+use Core\Http\Resources\UserCollection;
+use Core\Models\AuditLog;
 use Core\Models\BaseModel;
+use Core\Models\Organization;
 use Core\Models\User;
 use Core\Repositories\CrudRepository;
 use Core\Tests\TestCase;
@@ -20,6 +23,31 @@ use Illuminate\Validation\ValidationException;
 class CrudRepositoryEagerLoadsTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Get a repository of users, which validates includes against the given resource.
+     *
+     * @param string $resourceClass
+     *
+     * @return CrudRepository
+     */
+    private function usersRepository(string $resourceClass): CrudRepository
+    {
+        return new class($resourceClass) extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            /**
+             * Create a repository, which validates includes against the given resource.
+             *
+             * @param string $resourceClass
+             */
+            public function __construct(string $resourceClass)
+            {
+                $this->resourceClass = $resourceClass;
+            }
+        };
+    }
 
     public function testGetValidatedIncludesReturnsEmptyWhenRequestHasNoInclude(): void
     {
@@ -45,12 +73,7 @@ class CrudRepositoryEagerLoadsTest extends TestCase
 
     public function testGetValidatedIncludesReturnsEmptyWhenResourceClassIsNotBaseResource(): void
     {
-        $repo = new class extends CrudRepository
-        {
-            protected BaseModel|string $model = User::class;
-
-            protected string $resourceClass = '';
-        };
+        $repo = $this->usersRepository('');
 
         $request = Request::create('/', 'GET', ['include' => 'organization']);
         $includes = $repo->getValidatedIncludes($request);
@@ -225,6 +248,139 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         }
 
         $this->fail('The include did not answer with 422.');
+    }
+
+    /**
+     * Test that the builder refuses an include nested under an include, which has no resource, before loading it.
+     *
+     * @return void
+     */
+    public function testBuilderRefusesNestedIncludeUnderIncludeWithoutResource(): void
+    {
+        $repo = $this->usersRepository(get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        }));
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage(
+            "The 'organization.users' include is not allowed. No includes are allowed under 'organization'."
+        );
+
+        $repo->builder(Request::create('/', 'GET', ['include' => 'organization.users']));
+    }
+
+    /**
+     * Test that the builder eager-loads nested includes only as far as the user may list the related models.
+     *
+     * @return void
+     */
+    public function testBuilderScopesNestedEagerLoadsByIndexOfRelatedQueries(): void
+    {
+        $acme = Organization::factory()->create();
+        $globex = Organization::factory()->create();
+
+        $user = User::factory()->create(['organization_id' => $acme->id]);
+        $colleague = User::factory()->create(['organization_id' => $acme->id]);
+        $linked = User::factory()->create(['organization_id' => $globex->id, 'main_account_id' => $user->id]);
+
+        $resource = new class(null) extends BaseResource
+        {
+            /**
+             * The resource of the organization, which the test sets.
+             *
+             * @var string|null
+             */
+            public static ?string $organization = null;
+
+            /**
+             * Create a resource, which allows the organization as its resource.
+             *
+             * @param mixed $resource
+             */
+            public function __construct(mixed $resource)
+            {
+                parent::__construct($resource);
+                $this->allowedIncludes = ['organization' => self::$organization];
+            }
+        };
+
+        $resource::$organization = get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedIncludes = ['users' => UserCollection::class];
+        });
+
+        $repo = $this->usersRepository($resource::class);
+
+        $request = Request::create('/', 'GET', ['include' => 'organization.users']);
+        $request->setUserResolver(fn () => $user);
+
+        $users = $repo->builder($request)->get()->keyBy('id');
+
+        $this->assertEqualsCanonicalizing([$user->id, $colleague->id, $linked->id], $users->keys()->all());
+
+        // The organization of the linked account isn't listed for the user, so it isn't loaded
+        $this->assertNull($users[$linked->id]->getRelation('organization'));
+        $this->assertTrue($users[$user->id]->getRelation('organization')->is($acme));
+        $this->assertEqualsCanonicalizing(
+            [$user->id, $colleague->id],
+            $users[$user->id]->getRelation('organization')->getRelation('users')->modelKeys()
+        );
+    }
+
+    /**
+     * Test that scoped eager loads of a to-many relation load only the related models the user may list.
+     *
+     * @return void
+     */
+    public function testScopedEagerLoadsLoadOnlyRelatedModelsTheUserMayList(): void
+    {
+        $acme = Organization::factory()->create();
+        $globex = Organization::factory()->create();
+
+        $user = User::factory()->create(['organization_id' => $acme->id]);
+        $linked = User::factory()->create(['organization_id' => $globex->id, 'main_account_id' => $user->id]);
+        User::factory()->create(['organization_id' => $globex->id]);
+
+        $repo = $this->usersRepository(BaseResource::class);
+
+        $globex->load($repo->scopedEagerLoads(['users'], $user));
+        $this->assertEquals([$linked->id], $globex->users->modelKeys());
+
+        $globex->load($repo->scopedEagerLoads(['users'], null));
+        $this->assertTrue($globex->users->isEmpty());
+    }
+
+    /**
+     * Test that scoped eager loads of a morphTo relation scope the query of each type of the related models.
+     *
+     * @return void
+     */
+    public function testScopedEagerLoadsScopeEachTypeOfMorphTo(): void
+    {
+        $acme = Organization::factory()->create();
+        $globex = Organization::factory()->create();
+
+        $user = User::factory()->create(['organization_id' => $acme->id]);
+        $stranger = User::factory()->create(['organization_id' => $globex->id]);
+
+        $entries = collect([$user, $stranger, $acme, $globex])
+            ->map(fn (BaseModel $subject) => AuditLog::factory()
+                ->onSubject($subject)
+                ->create(['organization_id' => $acme->id]));
+
+        $repo = $this->usersRepository(BaseResource::class);
+
+        $loaded = AuditLog::query()
+            ->whereKey($entries->pluck('id')->all())
+            ->get()
+            ->load($repo->scopedEagerLoads(['subject'], $user))
+            ->keyBy('id');
+
+        $this->assertTrue($loaded[$entries[0]->id]->getRelation('subject')->is($user));
+        $this->assertNull($loaded[$entries[1]->id]->getRelation('subject'));
+        $this->assertTrue($loaded[$entries[2]->id]->getRelation('subject')->is($acme));
+        $this->assertNull($loaded[$entries[3]->id]->getRelation('subject'));
     }
 
     public function testIncludeParameterThatIsNotAStringAnswers422(): void

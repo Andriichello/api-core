@@ -4,6 +4,7 @@ namespace Core\Http\Resources;
 
 use Core\Helpers\Helpers;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 /**
@@ -80,6 +81,16 @@ class BaseCollection extends ResourceCollection
         $this->passedIncludes = $includes;
 
         return $this;
+    }
+
+    /**
+     * Get the resource class of the items of the collection.
+     *
+     * @return class-string<JsonResource>|null
+     */
+    public function resourceOfItems(): ?string
+    {
+        return $this->collects();
     }
 
     /**

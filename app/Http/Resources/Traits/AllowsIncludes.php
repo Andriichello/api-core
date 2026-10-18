@@ -3,6 +3,7 @@
 namespace Core\Http\Resources\Traits;
 
 use Core\Helpers\Helpers;
+use Core\Http\Resources\BaseCollection;
 use Core\Http\Resources\BaseResource;
 use Core\Http\Resources\Interfaces\AllowsIncludesInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -21,11 +22,14 @@ use Throwable;
  * allowed. Relations are only resolved when they have already been eager-loaded
  * by the repository — lazy loading is never triggered.
  *
+ * A nested include (`organization.users`) is allowed only by the resource that
+ * its relation is included as (or by the resource of the items of its collection),
+ * so nothing can be nested under a relation, which is included as it is.
+ *
  * By default, no includes will be allowed.
  *
  * @mixin BaseResource
- *
- * @implements AllowsIncludesInterface
+ * @see AllowsIncludesInterface
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Resources\Traits
@@ -150,22 +154,54 @@ trait AllowsIncludes
      */
     public function hasAllowedIncludes(string|array $includes): bool
     {
-        $includes = Arr::wrap($includes);
         $allowed = $this->listOfAllowedIncludes();
 
-        foreach ($includes as $include) {
-            if (!in_array($include, $allowed)) {
-                $relation = Str::of($include)
-                    ->before('.')
-                    ->value();
+        foreach (Arr::wrap($includes) as $include) {
+            $relation = Str::before($include, '.');
 
-                if (!in_array($relation, $allowed)) {
-                    return false;
-                }
+            if (!in_array($relation, $allowed, true)) {
+                return false;
+            }
+
+            if ($relation === $include) {
+                continue;
+            }
+
+            // A nested include is allowed only by the resource of the relation it is under
+            $resource = $this->resourceForNestedIncludes($relation);
+
+            if (!$resource?->hasAllowedIncludes(Str::after($include, '.'))) {
+                return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * Get an empty instance of the resource, which allows the includes
+     * nested under the given relation: the resource the relation is
+     * included as, or the resource of the items of its collection.
+     * Null when the relation is included as it is, so that nothing
+     * can be nested under it.
+     *
+     * @param string $relation
+     *
+     * @return BaseResource|null
+     */
+    protected function resourceForNestedIncludes(string $relation): ?BaseResource
+    {
+        $class = $this->resourceOfAllowedInclude($relation);
+
+        if (is_string($class) && is_a($class, BaseCollection::class, true)) {
+            $class = new $class([])->resourceOfItems();
+        }
+
+        if (is_string($class) && is_a($class, BaseResource::class, true)) {
+            return new $class(null);
+        }
+
+        return null;
     }
 
     /**
@@ -266,20 +302,33 @@ trait AllowsIncludes
     }
 
     /**
-     * Get a validation exception (422) for the given include,
-     * which is not allowed, naming the includes that are.
+     * Get a validation exception (422) for the given include, which is
+     * not allowed, naming the includes that are allowed where it stops
+     * being allowed: a nested include is refused by the resource of the
+     * relation it is under.
      *
      * @param string $include
+     * @param string $prefix (Path of the relation the include is under, such as `organization.`)
      *
      * @return ValidationException
      */
-    public function notAllowedInclude(string $include): ValidationException
+    public function notAllowedInclude(string $include, string $prefix = ''): ValidationException
     {
-        $allowed = $this->listOfAllowedIncludes();
+        $relation = Str::before($include, '.');
 
-        $message = "The '$include' include is not allowed. " . (empty($allowed)
-            ? 'No includes are allowed.'
-            : 'Allowed includes: ' . implode(', ', $allowed) . '.');
+        if ($relation !== $include && in_array($relation, $this->listOfAllowedIncludes(), true)) {
+            $resource = $this->resourceForNestedIncludes($relation) ?? new BaseResource(null);
+
+            return $resource->notAllowedInclude(Str::after($include, '.'), "$prefix$relation.");
+        }
+
+        $allowed = array_map(fn (string $name) => $prefix . $name, $this->listOfAllowedIncludes());
+
+        $message = "The '$prefix$include' include is not allowed. " . match (true) {
+            !empty($allowed) => 'Allowed includes: ' . implode(', ', $allowed) . '.',
+            $prefix !== '' => "No includes are allowed under '" . rtrim($prefix, '.') . "'.",
+            default => 'No includes are allowed.',
+        };
 
         return ValidationException::withMessages([
             'include' => [$message],

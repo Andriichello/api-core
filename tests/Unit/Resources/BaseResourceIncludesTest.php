@@ -2,7 +2,9 @@
 
 namespace Core\Tests\Unit\Resources;
 
+use Core\Http\Resources\BaseCollection;
 use Core\Http\Resources\BaseResource;
+use Core\Http\Resources\UserCollection;
 use Core\Models\Organization;
 use Core\Models\User;
 use Core\Tests\TestCase;
@@ -15,6 +17,7 @@ use Illuminate\Validation\ValidationException;
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Tests\Unit\Resources
+ * @SuppressWarnings("PHPMD.TooManyFields")
  */
 class BaseResourceIncludesTest extends TestCase
 {
@@ -64,14 +67,94 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertFalse($resource->hasAllowedIncludes('roles'));
     }
 
-    public function testHasAllowedIncludesReturnsTrueForNestedIncludeWhenParentIsAllowed(): void
+    /**
+     * Test that nothing can be nested under an include, which has no resource.
+     *
+     * @return void
+     */
+    public function testHasAllowedIncludesReturnsFalseForNestedIncludeUnderIncludeWithoutResource(): void
     {
         $resource = new class(null) extends BaseResource
         {
             protected array $allowedIncludes = ['organization'];
         };
 
-        $this->assertTrue($resource->hasAllowedIncludes('organization.users'));
+        $this->assertFalse($resource->hasAllowedIncludes('organization.users'));
+        $this->assertFalse($resource->hasAllowedIncludes(['organization', 'organization.users']));
+    }
+
+    /**
+     * Test that a nested include is checked against the resource of the include it is under.
+     *
+     * @return void
+     */
+    public function testHasAllowedIncludesChecksNestedIncludeAgainstResourceOfItsInclude(): void
+    {
+        $orgClass = get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedIncludes = ['users' => UserCollection::class];
+        });
+
+        $resource = new class($orgClass) extends BaseResource
+        {
+            public function __construct(string $orgClass)
+            {
+                parent::__construct(null);
+                $this->allowedIncludes = ['organization' => $orgClass];
+            }
+        };
+
+        $this->assertTrue($resource->hasAllowedIncludes(['organization', 'organization.users']));
+        $this->assertFalse($resource->hasAllowedIncludes('organization.roles'));
+        $this->assertFalse($resource->hasAllowedIncludes('organization.users.roles'));
+        $this->assertFalse($resource->hasAllowedIncludes('organization.'));
+    }
+
+    /**
+     * Test that a nested include under a collection is checked against the resource of its items.
+     *
+     * @return void
+     */
+    public function testHasAllowedIncludesChecksNestedIncludeAgainstResourceOfCollectionItems(): void
+    {
+        $userClass = get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        });
+
+        $collection = new class([]) extends BaseCollection
+        {
+            /**
+             * The resource of the items, which the test sets.
+             *
+             * @var string|null
+             */
+            public static ?string $items = null;
+
+            /**
+             * Get the resource that this resource collects.
+             *
+             * @return string|null
+             */
+            protected function collects(): ?string
+            {
+                return self::$items;
+            }
+        };
+
+        $collection::$items = $userClass;
+
+        $resource = new class($collection::class) extends BaseResource
+        {
+            public function __construct(string $collectionClass)
+            {
+                parent::__construct(null);
+                $this->allowedIncludes = ['users' => $collectionClass];
+            }
+        };
+
+        $this->assertTrue($resource->hasAllowedIncludes('users.organization'));
+        $this->assertFalse($resource->hasAllowedIncludes('users.roles'));
     }
 
     public function testHasAllowedIncludesReturnsFalseForNestedIncludeWhenParentIsNotAllowed(): void
@@ -333,5 +416,74 @@ class BaseResourceIncludesTest extends TestCase
             ["The 'roles' include is not allowed. No includes are allowed."],
             $resource->notAllowedInclude('roles')->errors()['include']
         );
+    }
+
+    /**
+     * Test that a nested include, which is not allowed, names the includes allowed where it stops being allowed.
+     *
+     * @return void
+     */
+    public function testNotAllowedIncludeNamesTheNestedIncludesThatAreAllowed(): void
+    {
+        $orgClass = get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedIncludes = ['users' => UserCollection::class];
+        });
+
+        $resource = new class($orgClass) extends BaseResource
+        {
+            public function __construct(string $orgClass)
+            {
+                parent::__construct(null);
+                $this->allowedIncludes = ['organization' => $orgClass, 'roles'];
+            }
+        };
+
+        $this->assertEquals(
+            ["The 'organization.owner' include is not allowed. Allowed includes: organization.users."],
+            $resource->notAllowedInclude('organization.owner')->errors()['include']
+        );
+
+        $this->assertEquals(
+            [
+                "The 'organization.users.roles' include is not allowed. "
+                . "No includes are allowed under 'organization.users'.",
+            ],
+            $resource->notAllowedInclude('organization.users.roles')->errors()['include']
+        );
+
+        $this->assertEquals(
+            ["The 'roles.permissions' include is not allowed. No includes are allowed under 'roles'."],
+            $resource->notAllowedInclude('roles.permissions')->errors()['include']
+        );
+
+        $this->assertEquals(
+            ["The 'teams.users' include is not allowed. Allowed includes: organization, roles."],
+            $resource->notAllowedInclude('teams.users')->errors()['include']
+        );
+    }
+
+    /**
+     * Test that rendering refuses an include nested under an include, which has no resource, even when it is loaded.
+     *
+     * @return void
+     */
+    public function testToArrayRefusesNestedIncludeUnderIncludeWithoutResource(): void
+    {
+        $organization = new Organization(['name' => 'Test Org']);
+        $organization->setRelation('users', collect([new User(['name' => 'Other'])]));
+
+        $user = new User(['name' => 'Test']);
+        $user->setRelation('organization', $organization);
+
+        $resource = new class($user) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        };
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage("The 'organization.users' include is not allowed.");
+
+        $resource->toArray(Request::create('/', 'GET', ['include' => 'organization.users']));
     }
 }

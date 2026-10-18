@@ -19,12 +19,6 @@ parameters:
 			path: app/Http/Resources/Traits/AllowsAppends.php
 
 		-
-			message: '#^PHPDoc tag @implements has invalid value \(AllowsIncludesInterface\)\: Unexpected token "\\n \*", expected ''\<'' at offset 438 on line 13$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: app/Http/Resources/Traits/AllowsIncludes.php
-
-		-
 			message: '#^Property Core\\Http\\Resources\\BaseResource\:\:\$allowedIncludes \(array\<int\|string, string\>\) on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.property
 			count: 2
@@ -95,12 +89,6 @@ parameters:
 			identifier: staticMethod.notFound
 			count: 1
 			path: tests/Unit/Queries/UserQueryTest.php
-
-		-
-			message: '#^Property Core\\Repositories\\CrudRepository@anonymous/tests/Unit/Repositories/CrudRepositoryEagerLoadsTest\.php\:48\:\:\$resourceClass \(class\-string\<Core\\Http\\Resources\\BaseResource\>\) does not accept default value of type string\.$#'
-			identifier: property.defaultValue
-			count: 1
-			path: tests/Unit/Repositories/CrudRepositoryEagerLoadsTest.php
 
 		-
 			message: '#^Call to an undefined static method Core\\Models\\User\:\:create\(\)\.$#'
