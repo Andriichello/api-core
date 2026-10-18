@@ -2,6 +2,7 @@
 
 namespace Core\Providers;
 
+use Core\Http\Middleware\AuditRequests;
 use Core\Http\Middleware\ForceJsonOnApi;
 use Core\Http\Middleware\ResolveOrganization;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -17,7 +18,8 @@ use Illuminate\Support\ServiceProvider;
  * merges api-core's config and lets the application publish the config and
  * migrations with the `api-core-config` and `api-core-migrations` tags.
  * It also makes the responses on the API paths JSON with ForceJsonOnApi, and
- * registers ResolveOrganization, which sets the request's organization.
+ * registers ResolveOrganization, which sets the request's organization, and
+ * AuditRequests, which records requests in the audit log.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Providers
@@ -60,6 +62,7 @@ class CoreServiceProvider extends ServiceProvider
         $this->publishes($this->migrationsToPublish(), static::MIGRATIONS_TAG);
 
         $this->app['router']->aliasMiddleware(ResolveOrganization::ALIAS, ResolveOrganization::class);
+        $this->app['router']->aliasMiddleware(AuditRequests::ALIAS, AuditRequests::class);
 
         $this->callAfterResolving(HttpKernel::class, function (HttpKernel $kernel) {
             if ($kernel instanceof Kernel) {

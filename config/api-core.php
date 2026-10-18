@@ -126,4 +126,60 @@ return [
          */
         'url_lifetime' => (int) env('API_CORE_FILES_URL_LIFETIME', 5),
     ],
+
+    'audit' => [
+        /*
+         * Days, for which entries of the audit log are kept, before
+         * `php artisan model:prune --model="Core\Models\AuditLog"` deletes
+         * them. Null keeps them forever.
+         */
+        'retention_days' => env('API_CORE_AUDIT_RETENTION_DAYS') === null
+            ? null : (int) env('API_CORE_AUDIT_RETENTION_DAYS'),
+
+        /*
+         * What the `audit` middleware records of a request, unless its
+         * parameters name it (`audit:http,data`): `http` (the method, URL,
+         * route parameters, status, IP address, user agent and duration),
+         * `data` (the payload with the `scrub_fields` masked) and `reads`
+         * (successful GET requests too). Errors are always recorded, with
+         * the response and the exception. It is a list, so the
+         * application's list replaces this one.
+         */
+        'scopes' => ['http'],
+
+        /*
+         * Requests, which the `audit` middleware doesn't record: by their
+         * paths (`$request->is()`) or route names (`$request->routeIs()`).
+         */
+        'except' => [
+            'paths' => [],
+            'names' => ['sanctum.csrf-cookie'],
+        ],
+
+        /*
+         * The maximum size of a payload, and of an error response, which
+         * the audit log keeps, in bytes. A larger payload is left out, and
+         * a larger response is cut.
+         */
+        'max_payload_size' => (int) env('API_CORE_AUDIT_MAX_PAYLOAD_SIZE', 2048),
+
+        /*
+         * Fields of a payload, whose values are masked at any depth,
+         * regardless of case.
+         */
+        'scrub_fields' => [
+            'password',
+            'password_confirmation',
+            'current_password',
+            'token',
+            'access_token',
+            'refresh_token',
+            'remember_token',
+            'secret',
+            'client_secret',
+            'code',
+            'card_number',
+            'cvv',
+        ],
+    ],
 ];

@@ -3,6 +3,7 @@
 namespace Core\Providers;
 
 use Core\Models\AccessToken;
+use Core\Models\AuditLog;
 use Core\Models\File;
 use Core\Models\Organization;
 use Core\Models\Setting;
@@ -30,6 +31,7 @@ class MorphServiceProvider extends ServiceProvider
      */
     protected static array $models = [
         AccessToken::class,
+        AuditLog::class,
         File::class,
         Organization::class,
         Setting::class,

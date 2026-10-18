@@ -17,6 +17,8 @@ use Illuminate\Database\Query\JoinClause;
  *
  * @method BaseQuery select($columns = ['*'])
  * @method BaseQuery whereKey($id)
+ * @method $this orderBy($column, $direction = 'asc')
+ * @method $this orderByDesc($column)
  * @method BaseModel|null find($id, $columns = ['*'])
  * @method BaseModel findOrFail($id, $columns = ['*'])
  * @method BaseModel|null first($columns = ['*'])
