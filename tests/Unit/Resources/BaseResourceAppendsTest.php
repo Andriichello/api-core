@@ -270,6 +270,29 @@ class BaseResourceAppendsTest extends TestCase
         $this->assertSame(['name'], $orgResource->getPassedAppends());
     }
 
+    /**
+     * Test that an append nested under a relation, which is included without a resource, is refused, as it allows none.
+     *
+     * @return void
+     */
+    public function testToArrayRefusesNestedAppendUnderIncludeWithoutResource(): void
+    {
+        $user = new User;
+        $user->setRelation('organization', new Organization(['name' => 'Acme Corp']));
+
+        $resource = new class($user) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        };
+
+        $request = Request::create('/', 'GET', ['include' => 'organization', 'append' => 'organization.name']);
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage("The 'name' append is not allowed. No appends are allowed.");
+
+        $resource->toArray($request)['organization']->toArray($request);
+    }
+
     public function testNotAllowedAppendAnswers422NamingTheAllowedOnes(): void
     {
         $resource = new class(new User) extends BaseResource

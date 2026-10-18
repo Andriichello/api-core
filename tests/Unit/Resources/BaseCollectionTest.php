@@ -4,6 +4,8 @@ namespace Core\Tests\Unit\Resources;
 
 use Core\Http\Resources\BaseCollection;
 use Core\Http\Resources\BaseResource;
+use Core\Http\Resources\UserCollection;
+use Core\Http\Resources\UserResource;
 use Core\Models\Organization;
 use Core\Models\User;
 use Core\Tests\TestCase;
@@ -116,5 +118,35 @@ class BaseCollectionTest extends TestCase
 
         $this->assertArrayNotHasKey('include', $request->reads);
         $this->assertArrayNotHasKey('append', $request->reads);
+    }
+
+    /**
+     * Test that the base collection collects base resources, while its subclasses collect their own.
+     *
+     * @return void
+     */
+    public function testBaseCollectionCollectsBaseResources(): void
+    {
+        $this->assertSame(BaseResource::class, new BaseCollection([])->resourceOfItems());
+        $this->assertSame(UserResource::class, new UserCollection([])->resourceOfItems());
+    }
+
+    /**
+     * Test that the items of a base collection give their attributes, without the relations they loaded.
+     *
+     * @return void
+     */
+    public function testItemsOfBaseCollectionLeaveOutLoadedRelations(): void
+    {
+        $user = new User(['name' => 'Test']);
+        $user->setRelation('organization', new Organization(['name' => 'Test Org']));
+
+        $items = new BaseCollection(new Collection([$user]))
+            ->setPassedIncludes([])
+            ->setPassedAppends([])
+            ->toArray(Request::create('/users'));
+
+        $this->assertSame('Test', $items[0]['name']);
+        $this->assertArrayNotHasKey('organization', $items[0]);
     }
 }

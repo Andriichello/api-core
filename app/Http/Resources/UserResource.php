@@ -4,7 +4,6 @@ namespace Core\Http\Resources;
 
 use Core\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 
 /**
  * Class UserResource.
@@ -29,7 +28,7 @@ class UserResource extends BaseResource
     public function toArray(Request $request): array
     {
         return array_merge(
-            Arr::except(parent::toArray($request), ['roles', 'permissions']),
+            parent::toArray($request),
             ['roles' => $this->resource->getRoleNames()->values()->all()]
         );
     }

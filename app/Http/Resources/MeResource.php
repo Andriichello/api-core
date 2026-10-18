@@ -4,7 +4,6 @@ namespace Core\Http\Resources;
 
 use Core\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Throwable;
 
 /**
@@ -36,7 +35,7 @@ class MeResource extends BaseResource
         $impersonator = $user->currentImpersonator();
 
         return array_merge(
-            Arr::except(parent::toArray($request), ['organization', 'roles', 'permissions']),
+            parent::toArray($request),
             [
                 'main_account_id' => $user->main_account_id,
                 'password_updated_at' => $user->passwordUpdatedAt(),

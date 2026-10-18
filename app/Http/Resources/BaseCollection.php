@@ -4,15 +4,21 @@ namespace Core\Http\Resources;
 
 use Core\Helpers\Helpers;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Attributes\Collects;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 /**
  * Class BaseCollection.
  *
+ * A collection of base resources. Its subclasses collect the resource named in
+ * their `$collects` (or the one named like them), since the attribute isn't
+ * inherited.
+ *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Resources
  */
+#[Collects(BaseResource::class)]
 class BaseCollection extends ResourceCollection
 {
     /**

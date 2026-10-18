@@ -8,6 +8,7 @@ use Core\Http\Resources\UserCollection;
 use Core\Models\Organization;
 use Core\Models\User;
 use Core\Tests\TestCase;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Validation\ValidationException;
@@ -207,9 +208,16 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertInstanceOf(MissingValue::class, $result);
     }
 
-    public function testGetAllowedIncludeReturnsRelationValueWhenLoadedWithNoResourceClass(): void
+    /**
+     * Test that a relation included without a resource is given as a base resource, with its attributes only.
+     *
+     * @return void
+     */
+    public function testGetAllowedIncludeWrapsRelationWithoutResourceClassInBaseResource(): void
     {
-        $org = new Organization;
+        $org = new Organization(['name' => 'Test Org']);
+        $org->setRelation('users', new Collection([new User(['name' => 'Other'])]));
+
         $user = new User;
         $user->setRelation('organization', $org);
 
@@ -220,7 +228,60 @@ class BaseResourceIncludesTest extends TestCase
 
         $result = $resource->getAllowedInclude('organization');
 
-        $this->assertSame($org, $result);
+        $this->assertInstanceOf(BaseResource::class, $result);
+        $this->assertSame($org, $result->resource);
+
+        $array = $result->toArray(Request::create('/', 'GET', ['include' => 'organization']));
+
+        $this->assertSame('Test Org', $array['name']);
+        $this->assertArrayNotHasKey('users', $array);
+    }
+
+    /**
+     * Test that a to-many relation included without a resource is given as a collection of base resources.
+     *
+     * @return void
+     */
+    public function testGetAllowedIncludeWrapsToManyRelationWithoutResourceClassInBaseCollection(): void
+    {
+        $member = new User(['name' => 'Member']);
+        $member->setRelation('roles', new Collection);
+
+        $org = new Organization;
+        $org->setRelation('users', new Collection([$member]));
+
+        $resource = new class($org) extends BaseResource
+        {
+            protected array $allowedIncludes = ['users'];
+        };
+
+        $result = $resource->getAllowedInclude('users');
+
+        $this->assertInstanceOf(BaseCollection::class, $result);
+
+        $items = $result->toArray(Request::create('/', 'GET', ['include' => 'users']));
+
+        $this->assertCount(1, $items);
+        $this->assertSame('Member', $items[0]['name']);
+        $this->assertArrayNotHasKey('roles', $items[0]);
+    }
+
+    /**
+     * Test that an included relation, which is loaded as null, is given as null.
+     *
+     * @return void
+     */
+    public function testGetAllowedIncludeReturnsNullForRelationLoadedAsNull(): void
+    {
+        $user = new User;
+        $user->setRelation('organization', null);
+
+        $resource = new class($user) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        };
+
+        $this->assertNull($resource->getAllowedInclude('organization'));
     }
 
     public function testGetAllowedIncludeWrapsRelationInResourceClassWhenProvided(): void
@@ -464,6 +525,35 @@ class BaseResourceIncludesTest extends TestCase
     }
 
     /**
+     * Test that a model gives its visible attributes only, without the relations it loaded, unless they are requested.
+     *
+     * @return void
+     */
+    public function testToArrayLeavesOutLoadedRelationsThatAreNotRequested(): void
+    {
+        $user = new User(['name' => 'Test', 'password' => 'secret']);
+        $user->setRelation('roles', new Collection);
+        $user->setRelation('organization', new Organization(['name' => 'Test Org']));
+
+        $resource = new class($user) extends BaseResource
+        {
+            protected array $allowedIncludes = ['organization'];
+        };
+
+        $array = $resource->toArray(Request::create('/'));
+
+        $this->assertSame('Test', $array['name']);
+        $this->assertArrayNotHasKey('password', $array);
+        $this->assertArrayNotHasKey('roles', $array);
+        $this->assertArrayNotHasKey('organization', $array);
+
+        $array = $resource->toArray(Request::create('/', 'GET', ['include' => 'organization']));
+
+        $this->assertArrayHasKey('organization', $array);
+        $this->assertArrayNotHasKey('roles', $array);
+    }
+
+    /**
      * Test that rendering refuses an include nested under an include, which has no resource, even when it is loaded.
      *
      * @return void
@@ -471,7 +561,7 @@ class BaseResourceIncludesTest extends TestCase
     public function testToArrayRefusesNestedIncludeUnderIncludeWithoutResource(): void
     {
         $organization = new Organization(['name' => 'Test Org']);
-        $organization->setRelation('users', collect([new User(['name' => 'Other'])]));
+        $organization->setRelation('users', new Collection([new User(['name' => 'Other'])]));
 
         $user = new User(['name' => 'Test']);
         $user->setRelation('organization', $organization);

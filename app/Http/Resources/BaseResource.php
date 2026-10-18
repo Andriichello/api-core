@@ -7,6 +7,7 @@ use Core\Http\Resources\Interfaces\AllowsAppendsInterface;
 use Core\Http\Resources\Interfaces\AllowsIncludesInterface;
 use Core\Http\Resources\Traits\AllowsAppends;
 use Core\Http\Resources\Traits\AllowsIncludes;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\MissingValue;
@@ -48,7 +49,9 @@ class BaseResource extends JsonResource implements
      *
      * Merges resolved include and append in the base attribute array,
      * omitting any entry whose value is a MissingValue (i.e., the repository
-     * did not eager-load the relationship).
+     * did not eager-load the relationship). A model gives its attributes
+     * only, so relations it loaded for itself (such as `roles` by `hasRole()`)
+     * are left out, unless they are requested includes.
      *
      * @param Request $request
      *
@@ -56,7 +59,9 @@ class BaseResource extends JsonResource implements
      */
     public function toArray(Request $request): array
     {
-        $data = parent::toArray($request);
+        $data = $this->resource instanceof Model
+            ? $this->resource->attributesToArray()
+            : parent::toArray($request);
 
         foreach ($this->getRequested($request) as $key => $value) {
             if ($value instanceof MissingValue) {

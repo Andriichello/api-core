@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -243,18 +244,20 @@ trait AllowsIncludes
             }
         }
 
-        $resource = $this->resourceOfAllowedInclude($relation);
-
-        if ($value && $resource) {
-            /** @var BaseResource $resource */
-            $resource = new $resource($value);
-            $resource->setPassedIncludes($nested);
-            $resource->setPassedAppends([]);
-
-            return $resource;
+        if (!$value) {
+            return $value;
         }
 
-        return $value;
+        // A relation included as it is gives the attributes of its models, like any resource
+        $resource = $this->resourceOfAllowedInclude($relation)
+            ?? ($value instanceof Collection ? BaseCollection::class : BaseResource::class);
+
+        /** @var BaseResource $resource */
+        $resource = new $resource($value);
+        $resource->setPassedIncludes($nested);
+        $resource->setPassedAppends([]);
+
+        return $resource;
     }
 
     /**
