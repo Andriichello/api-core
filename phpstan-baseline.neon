@@ -37,12 +37,6 @@ parameters:
 			path: app/Models/AccessToken.php
 
 		-
-			message: '#^PHPDoc tag @implements has invalid value \(ListsColumnsInterface\)\: Unexpected token "\\n \*", expected ''\<'' at offset 86 on line 5$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: app/Models/Traits/ListsColumns.php
-
-		-
 			message: '#^Closure invoked with 3 parameters, 1 required\.$#'
 			identifier: arguments.count
 			count: 1

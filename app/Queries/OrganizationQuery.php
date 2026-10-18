@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method Organization forceCreate(array $attributes)
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
- * @package Core\Queries\Api
+ * @package Core\Queries
  */
 class OrganizationQuery extends BaseQuery
 {

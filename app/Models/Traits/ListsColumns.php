@@ -9,7 +9,7 @@ use Core\Models\Interfaces\ListsColumnsInterface;
  * Trait ListsColumns.
  *
  * @mixin BaseModel
- * @implements ListsColumnsInterface
+ * @see ListsColumnsInterface
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Models\Traits
