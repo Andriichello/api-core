@@ -19,6 +19,11 @@ class CastsTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Test that the metadata of a user is read as an array and stored as JSON.
+     *
+     * @return void
+     */
     public function testMetadataOfUserIsAnArray(): void
     {
         $user = User::query()->forceCreate([
@@ -32,6 +37,11 @@ class CastsTest extends TestCase
         $this->assertSame('{"theme":"dark"}', DB::table('users')->value('metadata'));
     }
 
+    /**
+     * Test that the metadata of an organization is read as an array.
+     *
+     * @return void
+     */
     public function testMetadataOfOrganizationIsAnArray(): void
     {
         $organization = Organization::query()->forceCreate([
@@ -43,6 +53,11 @@ class CastsTest extends TestCase
         $this->assertSame(['plan' => 'pro'], $organization->fresh()->metadata);
     }
 
+    /**
+     * Test that the `suspended_at` and `last_login_at` timestamps of a user are read as Carbon instances.
+     *
+     * @return void
+     */
     public function testTimestampsOfUserAreCarbon(): void
     {
         $user = User::query()->forceCreate([

@@ -74,6 +74,11 @@ class UpdateRequestTest extends TestCase
         $this->fail('The request did not answer with 422.');
     }
 
+    /**
+     * Test that a sent field is enough to update, and that it is the only key, which the request was sent with.
+     *
+     * @return void
+     */
     public function testSentFieldIsEnough(): void
     {
         $request = $this->requestClass()::createFrom($this->jsonRequest('{"email": "jane@example.com"}'));
@@ -83,6 +88,11 @@ class UpdateRequestTest extends TestCase
         $this->assertEquals(['email' => 'jane@example.com'], $request->validated());
     }
 
+    /**
+     * Test that a sent field, which the overrides rewrite, counts as a field to update.
+     *
+     * @return void
+     */
     public function testSentFieldRewrittenByOverridesCounts(): void
     {
         $request = $this->requestClass()::createFrom($this->jsonRequest('{"name": "JOHN"}'));
@@ -91,6 +101,11 @@ class UpdateRequestTest extends TestCase
         $this->assertEquals(['name' => 'john', 'email' => 'john@example.com'], $request->validated());
     }
 
+    /**
+     * Test that a sent field, which has rules only for its nested keys, counts as a field to update.
+     *
+     * @return void
+     */
     public function testFieldWithOnlyNestedRulesCounts(): void
     {
         $class = get_class(new class extends UpdateRequest
@@ -107,6 +122,11 @@ class UpdateRequestTest extends TestCase
         $this->assertEquals(['points' => [['lat' => 1]]], $request->validated());
     }
 
+    /**
+     * Test that a body with only the `id` answers with 422, as the id is no field to update.
+     *
+     * @return void
+     */
     public function testIdIsNoField(): void
     {
         $request = $this->requestClass()::createFrom($this->jsonRequest('{"id": 5}'));
@@ -114,6 +134,11 @@ class UpdateRequestTest extends TestCase
         $this->assertEquals(['The request has no fields to update.'], $this->errorsOf($request)['fields']);
     }
 
+    /**
+     * Test that an empty body answers with 422, as it has no fields to update.
+     *
+     * @return void
+     */
     public function testEmptyBodyHasNoFields(): void
     {
         $request = $this->requestClass()::createFrom($this->jsonRequest('{}'));
@@ -121,6 +146,11 @@ class UpdateRequestTest extends TestCase
         $this->assertEquals(['The request has no fields to update.'], $this->errorsOf($request)['fields']);
     }
 
+    /**
+     * Test that a body with only fields, which have no rules, answers with 422, naming those fields.
+     *
+     * @return void
+     */
     public function testUnknownFieldsAreNoFields(): void
     {
         $request = $this->requestClass()::createFrom($this->jsonRequest('{"nickname": "Johnny", "age": 30}'));
@@ -131,6 +161,11 @@ class UpdateRequestTest extends TestCase
         );
     }
 
+    /**
+     * Test that a JSON list body answers with 422.
+     *
+     * @return void
+     */
     public function testListBodyAnswers422(): void
     {
         $request = $this->requestClass()::createFrom($this->jsonRequest('[{"name": "John"}]'));
@@ -138,6 +173,12 @@ class UpdateRequestTest extends TestCase
         $this->assertArrayHasKey('body', $this->errorsOf($request));
     }
 
+    /**
+     * Test that a request made again from another one, as a controller does, keeps the keys the first one was sent
+     * with, although the defaults were merged into its body.
+     *
+     * @return void
+     */
     public function testKeysAsSentOutliveCreateFrom(): void
     {
         // made from the data, then made again from that request, as a controller does
@@ -149,6 +190,11 @@ class UpdateRequestTest extends TestCase
         $this->assertEquals(['The request has no fields to update.'], $this->errorsOf($second)['fields']);
     }
 
+    /**
+     * Test that a request, which overrides the check of the fields to update, takes an empty body.
+     *
+     * @return void
+     */
     public function testEnsureFieldsToUpdateCanBeOverridden(): void
     {
         $class = get_class(new class extends UpdateRequest

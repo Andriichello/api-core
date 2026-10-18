@@ -18,6 +18,11 @@ class ResourcePaginatorTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Create five users, which the tests paginate.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -31,6 +36,12 @@ class ResourcePaginatorTest extends TestCase
         }
     }
 
+    /**
+     * Test that the meta of a length-aware paginator gives the range of the page, the page counts, the total and the
+     * links, which use the `page[number]` parameter.
+     *
+     * @return void
+     */
     public function testMetaOfLengthAwarePaginator(): void
     {
         $paginator = new ResourcePaginator(
@@ -51,6 +62,12 @@ class ResourcePaginatorTest extends TestCase
         $this->assertStringContainsString('page%5Bnumber%5D=3', $meta['links']['last']);
     }
 
+    /**
+     * Test that the meta of a simple paginator has no total, no last page and no link to it, and that its first page
+     * links only to the next one.
+     *
+     * @return void
+     */
     public function testMetaOfSimplePaginator(): void
     {
         $paginator = new ResourcePaginator(
@@ -67,6 +84,11 @@ class ResourcePaginatorTest extends TestCase
         $this->assertStringContainsString('page%5Bnumber%5D=2', $meta['links']['next']);
     }
 
+    /**
+     * Test that a simple paginator has no more pages and no link to the next one on its last page.
+     *
+     * @return void
+     */
     public function testSimplePaginatorHasNoMorePagesOnTheLastPage(): void
     {
         $paginator = new ResourcePaginator(
@@ -78,6 +100,11 @@ class ResourcePaginatorTest extends TestCase
         $this->assertNull($paginator->meta()['links']['next']);
     }
 
+    /**
+     * Test that the array of the paginator gives the items of the page in the collection, next to the meta.
+     *
+     * @return void
+     */
     public function testToArrayWrapsTheItemsInTheCollection(): void
     {
         $paginator = new ResourcePaginator(

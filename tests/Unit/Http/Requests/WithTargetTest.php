@@ -20,6 +20,11 @@ class WithTargetTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Create an organization with a unique slug.
+     *
+     * @return Organization
+     */
     private function createOrganization(): Organization
     {
         return Organization::create([
@@ -28,6 +33,13 @@ class WithTargetTest extends TestCase
         ]);
     }
 
+    /**
+     * Create a user in the organization, if it is given.
+     *
+     * @param Organization|null $organization
+     *
+     * @return User
+     */
     private function createUser(?Organization $organization = null): User
     {
         return User::query()->forceCreate([
@@ -38,6 +50,14 @@ class WithTargetTest extends TestCase
         ]);
     }
 
+    /**
+     * Make a show request of the user, if it is given, with the given data.
+     *
+     * @param User|null $user
+     * @param array<string, mixed> $data
+     *
+     * @return ShowRequest
+     */
     private function createRequest(?User $user, array $data = []): ShowRequest
     {
         $request = ShowRequest::create('/users', 'GET', $data);
@@ -46,6 +66,11 @@ class WithTargetTest extends TestCase
         return $request;
     }
 
+    /**
+     * Test that the target is the model with the id of the request, when it is in the scope of the user.
+     *
+     * @return void
+     */
     public function testTargetReturnsModelVisibleToTheUser(): void
     {
         $organization = $this->createOrganization();
@@ -61,6 +86,11 @@ class WithTargetTest extends TestCase
         $this->assertTrue($target->is($colleague));
     }
 
+    /**
+     * Test that the id of the target is read from the input of the request, when none is set.
+     *
+     * @return void
+     */
     public function testTargetReadsIdFromInput(): void
     {
         $user = $this->createUser();
@@ -71,6 +101,11 @@ class WithTargetTest extends TestCase
         $this->assertTrue($request->target(User::class)?->is($user));
     }
 
+    /**
+     * Test that the target is null, when its model is out of the scope of the user.
+     *
+     * @return void
+     */
     public function testTargetReturnsNullForModelOutsideOfUserScope(): void
     {
         $user = $this->createUser($this->createOrganization());
@@ -81,6 +116,11 @@ class WithTargetTest extends TestCase
         $this->assertNull($request->target(User::class));
     }
 
+    /**
+     * Test that the target is null, when the request has no user.
+     *
+     * @return void
+     */
     public function testTargetReturnsNullWithoutUser(): void
     {
         $user = $this->createUser();
@@ -90,6 +130,12 @@ class WithTargetTest extends TestCase
         $this->assertNull($request->target(User::class));
     }
 
+    /**
+     * Test that getting the target or failing throws a model not found exception, when the model is out of the scope of
+     * the user.
+     *
+     * @return void
+     */
     public function testTargetOrFailThrowsForModelOutsideOfUserScope(): void
     {
         $user = $this->createUser($this->createOrganization());
@@ -102,6 +148,12 @@ class WithTargetTest extends TestCase
         $request->targetOrFail(User::class);
     }
 
+    /**
+     * Test that getting the target or failing gives the model, when it is in the scope of the user, here the
+     * organization of the user.
+     *
+     * @return void
+     */
     public function testTargetOrFailReturnsModelVisibleToTheUser(): void
     {
         $organization = $this->createOrganization();

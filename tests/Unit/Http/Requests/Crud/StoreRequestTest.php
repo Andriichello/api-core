@@ -49,6 +49,11 @@ class StoreRequestTest extends TestCase
         });
     }
 
+    /**
+     * Test that a JSON object body is taken, with the defaults filled in.
+     *
+     * @return void
+     */
     public function testObjectBodyIsTaken(): void
     {
         $request = $this->requestClass()::createFrom($this->jsonRequest('{"name": "John"}'));
@@ -57,6 +62,12 @@ class StoreRequestTest extends TestCase
         $this->assertEquals(['name' => 'John', 'organization_id' => 1], $request->validated());
     }
 
+    /**
+     * Test that a JSON list body answers with 422, even though the defaults merged into it give it a key, which is not
+     * a number.
+     *
+     * @return void
+     */
     public function testListBodyAnswers422EvenWithDefaults(): void
     {
         // the defaults merged into it give the body a key that is not a number
@@ -73,6 +84,11 @@ class StoreRequestTest extends TestCase
         $this->fail('The request did not answer with 422.');
     }
 
+    /**
+     * Test that the shape of a form body is not checked, so a list in it is only left out of the validated data.
+     *
+     * @return void
+     */
     public function testFormBodyIsNotChecked(): void
     {
         $request = $this->requestClass()::createFrom(Request::create('/', 'POST', ['John']));
@@ -81,6 +97,11 @@ class StoreRequestTest extends TestCase
         $this->assertEquals(['organization_id' => 1], $request->validated());
     }
 
+    /**
+     * Test that a request, which overrides the check of the body, takes a JSON list body.
+     *
+     * @return void
+     */
     public function testEnsureObjectBodyCanBeOverridden(): void
     {
         $class = get_class(new class extends StoreRequest

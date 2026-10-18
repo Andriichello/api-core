@@ -20,8 +20,18 @@ class WithPaginationTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Class, which paginates queries for the tests.
+     *
+     * @var WithPaginationInterface
+     */
     private WithPaginationInterface $paginates;
 
+    /**
+     * Create an anonymous class, which uses the `WithPagination` trait, to paginate queries in the tests.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,6 +42,13 @@ class WithPaginationTest extends TestCase
         };
     }
 
+    /**
+     * Create the given number of users, which are numbered from one.
+     *
+     * @param int $count
+     *
+     * @return void
+     */
     private function createUsers(int $count): void
     {
         for ($i = 1; $i <= $count; $i++) {
@@ -43,11 +60,21 @@ class WithPaginationTest extends TestCase
         }
     }
 
+    /**
+     * Test that the page size is the default of 100, when the request does not give one.
+     *
+     * @return void
+     */
     public function testPageSizeDefaultsWhenMissing(): void
     {
         $this->assertSame(100, $this->paginates->getPageSize(Request::create('/users')));
     }
 
+    /**
+     * Test that the page size is the one, which the request gives in `page[size]`.
+     *
+     * @return void
+     */
     public function testPageSizeIsTheRequestedOne(): void
     {
         $request = Request::create('/users', 'GET', ['page' => ['size' => 25]]);
@@ -55,6 +82,11 @@ class WithPaginationTest extends TestCase
         $this->assertSame(25, $this->paginates->getPageSize($request));
     }
 
+    /**
+     * Test that a requested page size above the maximum is capped at 1000.
+     *
+     * @return void
+     */
     public function testPageSizeIsCappedAtTheMaximum(): void
     {
         $request = Request::create('/users', 'GET', ['page' => ['size' => 5000]]);
@@ -62,6 +94,11 @@ class WithPaginationTest extends TestCase
         $this->assertSame(1000, $this->paginates->getPageSize($request));
     }
 
+    /**
+     * Test that a requested page size of zero or less falls back to the default of 100.
+     *
+     * @return void
+     */
     public function testPageSizeBelowOneFallsBackToTheDefault(): void
     {
         foreach ([0, -5] as $size) {
@@ -71,6 +108,11 @@ class WithPaginationTest extends TestCase
         }
     }
 
+    /**
+     * Test that the page number is the one, which the request gives in `page[number]`.
+     *
+     * @return void
+     */
     public function testPageNumberIsTheRequestedOne(): void
     {
         $request = Request::create('/users', 'GET', ['page' => ['number' => 3]]);
@@ -78,6 +120,12 @@ class WithPaginationTest extends TestCase
         $this->assertSame(3, $this->paginates->getPageNumber($request));
     }
 
+    /**
+     * Test that the page number is one, when the request does not give it, or gives one, which is below one or not a
+     * number.
+     *
+     * @return void
+     */
     public function testPageNumberDefaultsToOne(): void
     {
         $this->assertSame(1, $this->paginates->getPageNumber(Request::create('/users')));
@@ -89,6 +137,11 @@ class WithPaginationTest extends TestCase
         }
     }
 
+    /**
+     * Test that a query is paginated into the requested page of a length-aware paginator, which counts the total.
+     *
+     * @return void
+     */
     public function testPaginateReturnsTheRequestedPage(): void
     {
         $this->createUsers(3);
@@ -103,6 +156,12 @@ class WithPaginationTest extends TestCase
         $this->assertCount(1, $paginator->items());
     }
 
+    /**
+     * Test that simple pagination, which does not count the total, is used, when the config asks for it, and still
+     * tells whether there are more pages.
+     *
+     * @return void
+     */
     public function testPaginateUsesSimplePaginationWhenConfigured(): void
     {
         config(['pagination.use_simple_pagination' => true]);
@@ -116,6 +175,11 @@ class WithPaginationTest extends TestCase
         $this->assertTrue($paginator->hasMorePages());
     }
 
+    /**
+     * Test that the link to the next page keeps the other query parameters, such as the filters and the page size.
+     *
+     * @return void
+     */
     public function testPaginatorLinksKeepTheOtherQueryParameters(): void
     {
         $this->createUsers(3);

@@ -22,6 +22,11 @@ class ComparisonFiltersTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Test that the `gt` filter asks for the column to be greater than the value.
+     *
+     * @return void
+     */
     public function testApplesGtFilter(): void
     {
         $query = User::query();
@@ -35,6 +40,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" > 5', $sql);
     }
 
+    /**
+     * Test that the `gt` filter with the `not` flag asks for the column to be less than or equal to the value.
+     *
+     * @return void
+     */
     public function testApplesNotGtFilter(): void
     {
         $query = User::query();
@@ -48,6 +58,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" <= 5', $sql);
     }
 
+    /**
+     * Test that the `gte` filter asks for the column to be greater than or equal to the value.
+     *
+     * @return void
+     */
     public function testApplesGteFilter(): void
     {
         $query = User::query();
@@ -61,6 +76,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" >= 5', $sql);
     }
 
+    /**
+     * Test that the `gte` filter with the `not` flag asks for the column to be less than the value.
+     *
+     * @return void
+     */
     public function testApplesNotGteFilter(): void
     {
         $query = User::query();
@@ -74,6 +94,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" < 5', $sql);
     }
 
+    /**
+     * Test that the `lt` filter asks for the column to be less than the value.
+     *
+     * @return void
+     */
     public function testApplesLtFilter(): void
     {
         $query = User::query();
@@ -87,6 +112,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" < 5', $sql);
     }
 
+    /**
+     * Test that the `lt` filter with the `not` flag asks for the column to be greater than or equal to the value.
+     *
+     * @return void
+     */
     public function testApplesNotLtFilter(): void
     {
         $query = User::query();
@@ -100,6 +130,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" >= 5', $sql);
     }
 
+    /**
+     * Test that the `lte` filter asks for the column to be less than or equal to the value.
+     *
+     * @return void
+     */
     public function testApplesLteFilter(): void
     {
         $query = User::query();
@@ -113,6 +148,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" <= 5', $sql);
     }
 
+    /**
+     * Test that the `lte` filter with the `not` flag asks for the column to be greater than the value.
+     *
+     * @return void
+     */
     public function testApplesNotLteFilter(): void
     {
         $query = User::query();
@@ -126,6 +166,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('"id" > 5', $sql);
     }
 
+    /**
+     * Test that the `gt` filter with the `ci` flag compares the lowercased column and value.
+     *
+     * @return void
+     */
     public function testAppliesCaseInsensitiveGtFilter(): void
     {
         $query = User::query();
@@ -139,6 +184,11 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('LOWER("name") > LOWER(\'John\')', $sql);
     }
 
+    /**
+     * Test that the `lte` filter with the `ci` flag compares the lowercased column and value.
+     *
+     * @return void
+     */
     public function testAppliesCaseInsensitiveLteFilter(): void
     {
         $query = User::query();
@@ -152,6 +202,12 @@ class ComparisonFiltersTest extends TestCase
         $this->assertStringContainsString('LOWER("name") <= LOWER(\'Zebra\')', $sql);
     }
 
+    /**
+     * Test that the comparison filters compare the values as given, whether they are a date and time, a date, which
+     * does not exist, or a date.
+     *
+     * @return void
+     */
     public function testValuesOtherThanADateAreComparedAsGiven(): void
     {
         $cases = [
@@ -169,6 +225,11 @@ class ComparisonFiltersTest extends TestCase
         }
     }
 
+    /**
+     * Test that `lte` and `gt` compare a date as given, as only the date filter treats it as the whole day.
+     *
+     * @return void
+     */
     public function testDatesAreComparedAsGiven(): void
     {
         $upTo = User::query();

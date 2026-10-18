@@ -16,6 +16,12 @@ use InvalidArgumentException;
  */
 class FilterHelperTest extends TestCase
 {
+    /**
+     * Test that a node, which is a plain value or names the `eq` operation, is parsed as an equality filter without
+     * flags.
+     *
+     * @return void
+     */
     public function testParseNodeValid(): void
     {
         $parsed = FilterHelper::parseNode('name', 'John');
@@ -35,6 +41,12 @@ class FilterHelperTest extends TestCase
         $this->assertEquals([], $data['flags']);
     }
 
+    /**
+     * Test that the `ci` and `not` flags of a node are parsed in their order, with the operation, which defaults to
+     * `eq`, when it is not named.
+     *
+     * @return void
+     */
     public function testParseNodeValidWithFlags(): void
     {
         $parsed = FilterHelper::parseNode('name', ['ci' => 'John']);
@@ -62,6 +74,11 @@ class FilterHelperTest extends TestCase
         $this->assertEquals([FilterFlag::Not, FilterFlag::CaseInsensitive], $data['flags']);
     }
 
+    /**
+     * Test that a node, which puts a flag after the operation, is refused.
+     *
+     * @return void
+     */
     public function testParseNodeInvalidByOrder(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -69,6 +86,11 @@ class FilterHelperTest extends TestCase
         FilterHelper::parseNode('name', ['eq' => ['not' => 'John']]);
     }
 
+    /**
+     * Test that a node, which nests one operation in another, is refused.
+     *
+     * @return void
+     */
     public function testParseNodeInvalidByTwoOperations(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -76,6 +98,11 @@ class FilterHelperTest extends TestCase
         FilterHelper::parseNode('name', ['eq' => ['gt' => 'John']]);
     }
 
+    /**
+     * Test that a node with a null value is refused, as a filter value must be a string or a list of strings.
+     *
+     * @return void
+     */
     public function testParseNodeInvalidByNullValue(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -84,6 +111,11 @@ class FilterHelperTest extends TestCase
         FilterHelper::parseNode('name', ['eq' => null]);
     }
 
+    /**
+     * Test that a node with an unknown key is refused with a message, which lists the valid operations and flags.
+     *
+     * @return void
+     */
     public function testParseNodeInvalidByUnknownKeyNamesTheValidOnes(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -95,6 +127,11 @@ class FilterHelperTest extends TestCase
         FilterHelper::parseNode('name', ['foo' => 'John']);
     }
 
+    /**
+     * Test that the filters of a field are parsed with their operation, value and flags.
+     *
+     * @return void
+     */
     public function testParseValid(): void
     {
         $data = FilterHelper::parse(['name' => ['like' => '%John%']]);
@@ -112,6 +149,11 @@ class FilterHelperTest extends TestCase
         $this->assertEquals([FilterFlag::CaseInsensitive], $data[0]['flags']);
     }
 
+    /**
+     * Test that a list of nodes for one field is parsed into a filter per node, in their order.
+     *
+     * @return void
+     */
     public function testParseValidMultiple(): void
     {
         $filters = [

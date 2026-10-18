@@ -26,8 +26,19 @@ class CrudRepositoryFiltersTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Repository of users, which allows filters on their queryable columns and on the time their email was verified.
+     *
+     * @var CrudRepository
+     */
     private CrudRepository $repository;
 
+    /**
+     * Create the repository of users, which allows filters on their queryable columns and on the time their email was
+     * verified.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -39,6 +50,13 @@ class CrudRepositoryFiltersTest extends TestCase
         };
     }
 
+    /**
+     * Create a request to list the users with the given parameters, which is sent by a newly created user.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return Request
+     */
     private function createRequestWithUser(array $data = []): Request
     {
         $user = User::query()->create([
@@ -52,6 +70,15 @@ class CrudRepositoryFiltersTest extends TestCase
         return $request;
     }
 
+    /**
+     * Get the validation errors, which building the query for the given request throws, by their keys, failing the test
+     * when it throws none.
+     *
+     * @param Request $request
+     * @param CrudRepository|null $repository
+     *
+     * @return array<string, array<int, string>>
+     */
     private function errorsOf(Request $request, ?CrudRepository $repository = null): array
     {
         try {
@@ -63,6 +90,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->fail('The filters did not answer with 422.');
     }
 
+    /**
+     * Test that a single filter is applied to the query as a condition on its column.
+     *
+     * @return void
+     */
     public function testAppliesSingleFilter(): void
     {
         $request = $this->createRequestWithUser([
@@ -77,6 +109,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"email" = \'test@example.com\'', $sql);
     }
 
+    /**
+     * Test that the filters on different columns are all applied to the query.
+     *
+     * @return void
+     */
     public function testAppliesMultipleFilters(): void
     {
         $request = $this->createRequestWithUser([
@@ -93,6 +130,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"name" = \'John Doe\'', $sql);
     }
 
+    /**
+     * Test that the 'in' filter limits the column to the given list of values.
+     *
+     * @return void
+     */
     public function testApplesInFilter(): void
     {
         $request = $this->createRequestWithUser([
@@ -107,6 +149,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"id" in (1, 2, 3)', $sql);
     }
 
+    /**
+     * Test that the 'null' filter limits the column to null values.
+     *
+     * @return void
+     */
     public function testApplesNullFilter(): void
     {
         $request = $this->createRequestWithUser([
@@ -121,6 +168,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"email_verified_at" is null', $sql);
     }
 
+    /**
+     * Test that the 'gt' and 'lt' filters on the same column are both applied.
+     *
+     * @return void
+     */
     public function testApplesComparisonFilters(): void
     {
         $request = $this->createRequestWithUser([
@@ -139,6 +191,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"id" < 10', $sql);
     }
 
+    /**
+     * Test that the 'not' flag negates the operation of the filter.
+     *
+     * @return void
+     */
     public function testApplesFilterWithNotFlag(): void
     {
         $request = $this->createRequestWithUser([
@@ -153,6 +210,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"email" != \'admin@example.com\'', $sql);
     }
 
+    /**
+     * Test that the 'ci' flag compares the lowercased column with the lowercased value.
+     *
+     * @return void
+     */
     public function testApplesFilterWithCaseInsensitiveFlag(): void
     {
         $request = $this->createRequestWithUser([
@@ -167,6 +229,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('LOWER("users"."email") = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 
+    /**
+     * Test that the 'ci' and 'not' flags combine into a negated comparison, which ignores the case.
+     *
+     * @return void
+     */
     public function testApplesFilterWithMultipleFlags(): void
     {
         $request = $this->createRequestWithUser([
@@ -181,6 +248,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('LOWER("users"."email") NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
     }
 
+    /**
+     * Test that a filter, which is allowed with its class, is accepted and the query is built.
+     *
+     * @return void
+     */
     public function testUsesCustomFilterClass(): void
     {
         $repository = new class extends CrudRepository
@@ -203,6 +275,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertInstanceOf(BaseQuery::class, $query);
     }
 
+    /**
+     * Test that a filter, which is allowed with a column, is applied to that column instead of its name.
+     *
+     * @return void
+     */
     public function testApplesFilterWithCustomColumn(): void
     {
         $repository = new class extends CrudRepository
@@ -226,6 +303,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"organization_id" = 5', $sql);
     }
 
+    /**
+     * Test that a filter, which is not listed, is refused, when not all filters are allowed.
+     *
+     * @return void
+     */
     public function testThrowsExceptionForDisallowedFilter(): void
     {
         $this->expectException(\Exception::class);
@@ -248,6 +330,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $repository->builder($request);
     }
 
+    /**
+     * Test that a filter on an unknown column is refused, even when all filters are allowed.
+     *
+     * @return void
+     */
     public function testThrowsExceptionForUnknownFilterWhenAllFiltersAreAllowed(): void
     {
         $this->expectException(\Exception::class);
@@ -262,6 +349,12 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->repository->builder($request);
     }
 
+    /**
+     * Test that the requested filters keep each operation on the same field as a separate entry, in the requested
+     * order.
+     *
+     * @return void
+     */
     public function testRequestedFiltersKeepEveryEntryOfTheSameField(): void
     {
         $request = Request::create('/users', 'GET', [
@@ -285,6 +378,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertSame([5, 10, 'test@example.com'], array_column($filters, 'value'));
     }
 
+    /**
+     * Test that the filters narrow down the users, which the query returns, to the matching ones.
+     *
+     * @return void
+     */
     public function testFiltersNarrowDownTheResults(): void
     {
         $organization = Organization::query()->create([
@@ -318,6 +416,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertEquals([$colleague->id], $ids);
     }
 
+    /**
+     * Test that a hidden column, such as the password, is not allowed to filter on by default.
+     *
+     * @return void
+     */
     public function testHiddenColumnsAreNotFilterableByDefault(): void
     {
         $request = $this->createRequestWithUser([
@@ -331,6 +434,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertArrayHasKey('filter.password', $errors);
     }
 
+    /**
+     * Test that a hidden column can be filtered on, when it is listed among the allowed filters.
+     *
+     * @return void
+     */
     public function testHiddenColumnCanBeAllowedExplicitly(): void
     {
         $repository = new class extends CrudRepository
@@ -350,6 +458,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"password" = \'secret\'', $sql);
     }
 
+    /**
+     * Test that the error of a filter, which is not allowed, names the allowed filters without the hidden columns.
+     *
+     * @return void
+     */
     public function testNotAllowedFilterNamesTheAllowedOnes(): void
     {
         $request = $this->createRequestWithUser([
@@ -365,6 +478,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringNotContainsString('password', $message);
     }
 
+    /**
+     * Test that a filter parameter, which is not an array, answers with 422.
+     *
+     * @return void
+     */
     public function testFilterParameterThatIsNotAnArrayAnswers422(): void
     {
         $request = $this->createRequestWithUser([
@@ -374,6 +492,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertArrayHasKey('filter', $this->errorsOf($request));
     }
 
+    /**
+     * Test that an empty filter parameter is ignored and adds no conditions of its own to the query.
+     *
+     * @return void
+     */
     public function testEmptyFilterParameterIsIgnored(): void
     {
         $request = $this->createRequestWithUser([
@@ -385,6 +508,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertCount(1, $query->getQuery()->wheres);
     }
 
+    /**
+     * Test that a filter, which has null as its value, answers with 422.
+     *
+     * @return void
+     */
     public function testNullFilterValueAnswers422(): void
     {
         $user = User::query()->create([
@@ -403,6 +531,11 @@ class CrudRepositoryFiltersTest extends TestCase
         );
     }
 
+    /**
+     * Test that a filter with an unknown operation answers with 422, naming that operation.
+     *
+     * @return void
+     */
     public function testUnknownOperationAnswers422(): void
     {
         $request = $this->createRequestWithUser([
@@ -416,6 +549,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringStartsWith("Unknown filter operation or flag 'between'.", $message);
     }
 
+    /**
+     * Test that a filter, which has its operation before a flag, answers with 422.
+     *
+     * @return void
+     */
     public function testOperationBeforeFlagAnswers422(): void
     {
         $request = $this->createRequestWithUser([
@@ -430,6 +568,11 @@ class CrudRepositoryFiltersTest extends TestCase
         );
     }
 
+    /**
+     * Test that the builder returns a base query, when it is not given a request.
+     *
+     * @return void
+     */
     public function testBuilderWithoutRequestReturnsBaseQuery(): void
     {
         $user = User::query()->create([
@@ -444,6 +587,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertInstanceOf(BaseQuery::class, $query);
     }
 
+    /**
+     * Test that a filter with an empty value is skipped, while the 'null' filter takes the empty value as true.
+     *
+     * @return void
+     */
     public function testEmptyFilterValuesAreSkipped(): void
     {
         $request = $this->createRequestWithUser([
@@ -459,6 +607,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"users"."email_verified_at" is null', $sql);
     }
 
+    /**
+     * Test that the 'like' and 'contains' filters take a list of values, matching any of them.
+     *
+     * @return void
+     */
     public function testLikeAndContainsTakeAListOfValues(): void
     {
         $request = $this->createRequestWithUser([
@@ -474,6 +627,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"users"."name" LIKE \'%Jane%\' ESCAPE \'!\'', $sql);
     }
 
+    /**
+     * Test that a list of values for a comparison, such as 'gt', answers with 422.
+     *
+     * @return void
+     */
     public function testListOfValuesForAComparisonAnswers422(): void
     {
         $request = $this->createRequestWithUser([
@@ -488,6 +646,11 @@ class CrudRepositoryFiltersTest extends TestCase
         );
     }
 
+    /**
+     * Test that the 'null' filter takes false to limit the column to values, which are not null.
+     *
+     * @return void
+     */
     public function testNullFilterTakesFalseForNotNull(): void
     {
         $request = $this->createRequestWithUser([
@@ -501,6 +664,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertStringContainsString('"users"."email_verified_at" is not null', $sql);
     }
 
+    /**
+     * Test that the 'null' filter answers with 422 for a value, which is neither true nor false, and for the 'ci' flag.
+     *
+     * @return void
+     */
     public function testInvalidValueOrFlagOfNullFilterAnswers422(): void
     {
         $maybe = $this->createRequestWithUser([
@@ -526,6 +694,12 @@ class CrudRepositoryFiltersTest extends TestCase
         );
     }
 
+    /**
+     * Test that the date filter is chosen for the timestamps and the columns cast to dates, and the default one for the
+     * others.
+     *
+     * @return void
+     */
     public function testDateFilterIsChosenForTimestampsAndDateCasts(): void
     {
         $this->assertSame(DateFilter::class, $this->repository->classOfAllowedFilter('created_at'));
@@ -536,6 +710,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertSame(DefaultFilter::class, $this->repository->classOfAllowedFilter('email'));
     }
 
+    /**
+     * Test that the class, which a filter is allowed with, is chosen over the one its column would get.
+     *
+     * @return void
+     */
     public function testFilterClassCanBeAllowedExplicitly(): void
     {
         $repository = new class extends CrudRepository
@@ -552,6 +731,11 @@ class CrudRepositoryFiltersTest extends TestCase
         $this->assertSame(DefaultFilter::class, $repository->classOfAllowedFilter('created'));
     }
 
+    /**
+     * Test that a date filter, which is given a value that is not a date, answers with 422.
+     *
+     * @return void
+     */
     public function testInvalidDateAnswers422(): void
     {
         $request = $this->createRequestWithUser([
@@ -566,6 +750,11 @@ class CrudRepositoryFiltersTest extends TestCase
         );
     }
 
+    /**
+     * Test that the dates of a date filter are read in the timezone of the user, who sent the request.
+     *
+     * @return void
+     */
     public function testDatesAreReadInTheTimezoneOfTheRequestUser(): void
     {
         $user = User::query()->forceCreate([

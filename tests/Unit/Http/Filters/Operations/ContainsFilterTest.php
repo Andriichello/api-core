@@ -18,6 +18,11 @@ class ContainsFilterTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Test that the value is wrapped in `%` wildcards, while its own `%`, `_` and `!` are escaped.
+     *
+     * @return void
+     */
     public function testWrapsTheValueAndEscapesItsWildcards(): void
     {
         $query = User::query();
@@ -30,6 +35,11 @@ class ContainsFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that the `ci` flag compares the lowercased column and value.
+     *
+     * @return void
+     */
     public function testComparesCaseInsensitively(): void
     {
         $query = User::query();
@@ -44,6 +54,11 @@ class ContainsFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that the `not` flag excludes the rows, which contain the value.
+     *
+     * @return void
+     */
     public function testNotExcludesTheValue(): void
     {
         $query = User::query();
@@ -55,6 +70,11 @@ class ContainsFilterTest extends TestCase
         $this->assertStringContainsString('"users"."name" NOT LIKE \'%John%\' ESCAPE \'!\'', $query->toRawSql());
     }
 
+    /**
+     * Test that a list of values matches the rows, which contain any of them.
+     *
+     * @return void
+     */
     public function testListOfValuesMatchesAnyOfThem(): void
     {
         $query = User::query();
@@ -67,6 +87,11 @@ class ContainsFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that the `%` and `_` of the value are matched literally, instead of as wildcards.
+     *
+     * @return void
+     */
     public function testMatchesTheValueLiterally(): void
     {
         foreach (['50% off', '500 off', 'a_b', 'axb'] as $i => $name) {

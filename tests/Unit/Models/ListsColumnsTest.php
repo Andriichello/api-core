@@ -13,6 +13,11 @@ use Core\Tests\TestCase;
  */
 class ListsColumnsTest extends TestCase
 {
+    /**
+     * Test that the list of columns includes the hidden ones, such as the password.
+     *
+     * @return void
+     */
     public function testListOfColumnsIncludesHiddenColumns(): void
     {
         $columns = (new User)->listOfColumns();
@@ -21,6 +26,12 @@ class ListsColumnsTest extends TestCase
         $this->assertContains('password', $columns);
     }
 
+    /**
+     * Test that the list of queryable columns leaves out the hidden ones, such as the password, and keeps its keys
+     * sequential.
+     *
+     * @return void
+     */
     public function testListOfQueryableColumnsExcludesHiddenColumns(): void
     {
         $columns = (new User)->listOfQueryableColumns();

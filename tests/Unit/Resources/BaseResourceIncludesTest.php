@@ -22,6 +22,11 @@ use Illuminate\Validation\ValidationException;
  */
 class BaseResourceIncludesTest extends TestCase
 {
+    /**
+     * Test that the list of allowed includes gives the names, which the resource lists without resources.
+     *
+     * @return void
+     */
     public function testListOfAllowedIncludesReturnsNamesFromIntKeyedArray(): void
     {
         $resource = new class(null) extends BaseResource
@@ -32,6 +37,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertSame(['organization', 'roles'], $resource->listOfAllowedIncludes());
     }
 
+    /**
+     * Test that the list of allowed includes gives the names, which the resource maps to their resources.
+     *
+     * @return void
+     */
     public function testListOfAllowedIncludesReturnsNamesFromStringKeyedArray(): void
     {
         $orgClass = get_class(new class(null) extends BaseResource {});
@@ -48,6 +58,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertSame(['organization'], $resource->listOfAllowedIncludes());
     }
 
+    /**
+     * Test that an include, which the resource allows, is allowed.
+     *
+     * @return void
+     */
     public function testHasAllowedIncludesReturnsTrueForAllowedInclude(): void
     {
         $resource = new class(null) extends BaseResource
@@ -58,6 +73,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertTrue($resource->hasAllowedIncludes('organization'));
     }
 
+    /**
+     * Test that an include, which the resource does not list, is not allowed.
+     *
+     * @return void
+     */
     public function testHasAllowedIncludesReturnsFalseForDisallowedInclude(): void
     {
         $resource = new class(null) extends BaseResource
@@ -158,6 +178,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertFalse($resource->hasAllowedIncludes('users.roles'));
     }
 
+    /**
+     * Test that a nested include is not allowed, when the include it is under is not allowed.
+     *
+     * @return void
+     */
     public function testHasAllowedIncludesReturnsFalseForNestedIncludeWhenParentIsNotAllowed(): void
     {
         $resource = new class(null) extends BaseResource
@@ -168,6 +193,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertFalse($resource->hasAllowedIncludes('roles.permissions'));
     }
 
+    /**
+     * Test that an include, which the resource lists without a resource, has no resource.
+     *
+     * @return void
+     */
     public function testResourceOfAllowedIncludeReturnsNullForIntKeyedInclude(): void
     {
         $resource = new class(null) extends BaseResource
@@ -178,6 +208,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertNull($resource->resourceOfAllowedInclude('organization'));
     }
 
+    /**
+     * Test that an include, which the resource maps to a resource, gives the class of that resource.
+     *
+     * @return void
+     */
     public function testResourceOfAllowedIncludeReturnsClassForStringKeyedInclude(): void
     {
         $orgClass = get_class(new class(null) extends BaseResource {});
@@ -194,6 +229,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertSame($orgClass, $resource->resourceOfAllowedInclude('organization'));
     }
 
+    /**
+     * Test that an allowed include gives a missing value, when its relation is not loaded.
+     *
+     * @return void
+     */
     public function testGetAllowedIncludeReturnsMissingValueWhenRelationNotLoaded(): void
     {
         $user = new User;
@@ -284,6 +324,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertNull($resource->getAllowedInclude('organization'));
     }
 
+    /**
+     * Test that a loaded relation is wrapped in the resource, which its include is mapped to.
+     *
+     * @return void
+     */
     public function testGetAllowedIncludeWrapsRelationInResourceClassWhenProvided(): void
     {
         $orgResourceClass = get_class(new class(null) extends BaseResource {});
@@ -306,6 +351,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertInstanceOf(BaseResource::class, $result);
     }
 
+    /**
+     * Test that the includes nested under an include are passed to the resource of its relation, without the prefix.
+     *
+     * @return void
+     */
     public function testGetAllowedIncludeSetsPassedIncludesOnWrappedResource(): void
     {
         $orgResourceClass = get_class(new class(null) extends BaseResource
@@ -333,6 +383,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertSame(['users'], $result->getPassedIncludes());
     }
 
+    /**
+     * Test that getting an include, which is not allowed, throws a validation exception.
+     *
+     * @return void
+     */
     public function testGetAllowedIncludeThrowsExceptionForDisallowedInclude(): void
     {
         $this->expectException(ValidationException::class);
@@ -346,6 +401,11 @@ class BaseResourceIncludesTest extends TestCase
         $resource->getAllowedInclude('roles');
     }
 
+    /**
+     * Test that a requested include, whose relation is not loaded, is given as a missing value.
+     *
+     * @return void
+     */
     public function testGetRequestedIncludesReturnsMapWithMissingValueWhenRelationNotLoaded(): void
     {
         $resource = new class(new User) extends BaseResource
@@ -360,6 +420,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertInstanceOf(MissingValue::class, $includes['organization']);
     }
 
+    /**
+     * Test that a requested include, whose relation is loaded, is given as the resource of the relation.
+     *
+     * @return void
+     */
     public function testGetRequestedIncludesReturnsResourceWhenRelationIsLoaded(): void
     {
         $orgResourceClass = get_class(new class(null) extends BaseResource {});
@@ -383,6 +448,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertInstanceOf(BaseResource::class, $includes['organization']);
     }
 
+    /**
+     * Test that a request for an include, which is not allowed, throws a validation exception.
+     *
+     * @return void
+     */
     public function testGetRequestedIncludesThrowsForDisallowedInclude(): void
     {
         $this->expectException(ValidationException::class);
@@ -396,6 +466,11 @@ class BaseResourceIncludesTest extends TestCase
         $resource->getRequestedIncludes(Request::create('/', 'GET', ['include' => 'roles']));
     }
 
+    /**
+     * Test that the includes passed to the resource are used instead of the ones, which the request asks for.
+     *
+     * @return void
+     */
     public function testPassedIncludesOverrideRequestIncludes(): void
     {
         $resource = new class(new User) extends BaseResource
@@ -412,6 +487,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertArrayNotHasKey('roles', $includes);
     }
 
+    /**
+     * Test that a requested include is left out of the output, when its relation is not loaded.
+     *
+     * @return void
+     */
     public function testToArrayOmitsIncludeKeyWhenRelationNotLoaded(): void
     {
         $resource = new class(new User(['name' => 'Test'])) extends BaseResource
@@ -425,6 +505,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertArrayNotHasKey('organization', $array);
     }
 
+    /**
+     * Test that a requested include is output as the resource of its relation, when the relation is loaded.
+     *
+     * @return void
+     */
     public function testToArrayIncludesRelationResourceWhenRelationIsLoaded(): void
     {
         $orgResourceClass = get_class(new class(null) extends BaseResource {});
@@ -448,6 +533,11 @@ class BaseResourceIncludesTest extends TestCase
         $this->assertInstanceOf(BaseResource::class, $array['organization']);
     }
 
+    /**
+     * Test that an include, which is not allowed, answers with 422, whose message names the allowed includes.
+     *
+     * @return void
+     */
     public function testNotAllowedIncludeAnswers422NamingTheAllowedOnes(): void
     {
         $resource = new class(new User) extends BaseResource
@@ -469,6 +559,12 @@ class BaseResourceIncludesTest extends TestCase
         $this->fail('The include did not answer with 422.');
     }
 
+    /**
+     * Test that the message of an include, which is not allowed, says that no includes are allowed, when the resource
+     * allows none.
+     *
+     * @return void
+     */
     public function testNotAllowedIncludeSaysWhenNoneAreAllowed(): void
     {
         $resource = new class(new User) extends BaseResource {};

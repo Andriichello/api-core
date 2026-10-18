@@ -32,14 +32,42 @@ class CrudControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Controller of the users, with its own store and update requests, which the tests call.
+     *
+     * @var CrudController
+     */
     private CrudController $controller;
 
+    /**
+     * Signed-in user of the organization, whose role may do everything with users, except restoring and force
+     * deleting them.
+     *
+     * @var User
+     */
     private User $user;
 
+    /**
+     * User of the same organization, who is in the scope of the signed-in user.
+     *
+     * @var User
+     */
     private User $colleague;
 
+    /**
+     * User of another organization, who is out of the scope of the signed-in user.
+     *
+     * @var User
+     */
     private User $stranger;
 
+    /**
+     * Register the routes of a controller of users, with its own store and update requests, give the user role the
+     * permission to do everything with users, and create the user, the colleague in the same organization and the
+     * stranger in another one.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -110,6 +138,15 @@ class CrudControllerTest extends TestCase
         );
     }
 
+    /**
+     * Create a user with the given email, in the organization and with the role, if they are given.
+     *
+     * @param string $email
+     * @param Organization|null $organization
+     * @param UserRole|null $role
+     *
+     * @return User
+     */
     private function createUser(string $email, ?Organization $organization = null, ?UserRole $role = null): User
     {
         $user = User::query()->forceCreate([
@@ -126,6 +163,12 @@ class CrudControllerTest extends TestCase
         return $user;
     }
 
+    /**
+     * Test that the index answers with a page of 100 of the users in the user's scope, without the stranger and without
+     * their passwords.
+     *
+     * @return void
+     */
     public function testIndexReturnsAPageOfTheModelsInScope(): void
     {
         $response = $this->actingAs($this->user)->getJson('/users');
@@ -139,6 +182,11 @@ class CrudControllerTest extends TestCase
             ->assertJsonMissingPath('data.0.password');
     }
 
+    /**
+     * Test that the index applies the filter and the page size, which the query asks for.
+     *
+     * @return void
+     */
     public function testIndexAppliesFiltersAndPagination(): void
     {
         $response = $this->actingAs($this->user)->getJson(
@@ -151,6 +199,12 @@ class CrudControllerTest extends TestCase
             ->assertJsonPath('meta.total', 1);
     }
 
+    /**
+     * Test that the index answers with 422 to a filter by a field, which cannot be filtered, and to an include, which
+     * is not allowed.
+     *
+     * @return void
+     */
     public function testIndexAnswersBadFiltersAndIncludesWith422(): void
     {
         $this->actingAs($this->user)
@@ -164,6 +218,11 @@ class CrudControllerTest extends TestCase
             ->assertJsonValidationErrors(['include']);
     }
 
+    /**
+     * Test that showing a user in the user's scope answers with that user.
+     *
+     * @return void
+     */
     public function testShowReturnsTheModelInScope(): void
     {
         $this->actingAs($this->user)
@@ -172,6 +231,11 @@ class CrudControllerTest extends TestCase
             ->assertJsonPath('data.id', $this->colleague->id);
     }
 
+    /**
+     * Test that showing a user out of the user's scope answers with 404.
+     *
+     * @return void
+     */
     public function testShowAnswersAModelOutOfScopeWith404(): void
     {
         $this->actingAs($this->user)
@@ -179,6 +243,11 @@ class CrudControllerTest extends TestCase
             ->assertNotFound();
     }
 
+    /**
+     * Test that storing valid data answers with 201 and saves the new user.
+     *
+     * @return void
+     */
     public function testStoreCreatesTheModel(): void
     {
         $response = $this->actingAs($this->user)->postJson('/users', [
@@ -194,6 +263,11 @@ class CrudControllerTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'new@example.com']);
     }
 
+    /**
+     * Test that storing data without the required fields answers with 422, naming the missing ones.
+     *
+     * @return void
+     */
     public function testStoreAnswersInvalidDataWith422(): void
     {
         $this->actingAs($this->user)
@@ -202,6 +276,12 @@ class CrudControllerTest extends TestCase
             ->assertJsonValidationErrors(['email', 'password']);
     }
 
+    /**
+     * Test that storing invalid data answers with 403, not 422, to a guest and to a user without the permission, as
+     * authorization comes before validation.
+     *
+     * @return void
+     */
     public function testStoreIsAuthorizedBeforeValidation(): void
     {
         $this->postJson('/users', ['name' => 'New User'])
@@ -214,6 +294,11 @@ class CrudControllerTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * Test that updating a user in scope answers with the changed user and saves the change.
+     *
+     * @return void
+     */
     public function testUpdateChangesTheModel(): void
     {
         $this->actingAs($this->user)
@@ -225,6 +310,11 @@ class CrudControllerTest extends TestCase
         $this->assertSame('Renamed', $this->colleague->fresh()->name);
     }
 
+    /**
+     * Test that updating with an empty body answers with 422, as it has no fields to update.
+     *
+     * @return void
+     */
     public function testUpdateAnswersNothingToUpdateWith422(): void
     {
         $this->actingAs($this->user)
@@ -233,6 +323,11 @@ class CrudControllerTest extends TestCase
             ->assertJsonValidationErrors(['fields']);
     }
 
+    /**
+     * Test that updating a user out of the user's scope answers with 404.
+     *
+     * @return void
+     */
     public function testUpdateAnswersAModelOutOfScopeWith404(): void
     {
         $this->actingAs($this->user)
@@ -240,6 +335,11 @@ class CrudControllerTest extends TestCase
             ->assertNotFound();
     }
 
+    /**
+     * Test that destroying a user soft deletes them, so they are not shown any more.
+     *
+     * @return void
+     */
     public function testDestroySoftDeletesTheModel(): void
     {
         $this->actingAs($this->user)
@@ -254,6 +354,12 @@ class CrudControllerTest extends TestCase
             ->assertNotFound();
     }
 
+    /**
+     * Test that a soft-deleted user cannot be destroyed again, but can be force destroyed by a super admin, which
+     * removes them from the database.
+     *
+     * @return void
+     */
     public function testForceDestroyRemovesASoftDeletedModel(): void
     {
         $this->colleague->delete();
@@ -271,6 +377,12 @@ class CrudControllerTest extends TestCase
         $this->assertModelMissing($this->colleague);
     }
 
+    /**
+     * Test that force destroying answers with 403 to a user, whose role may do everything else with users, while a
+     * super admin may do it.
+     *
+     * @return void
+     */
     public function testForceDestroyNeedsItsOwnPermission(): void
     {
         $this->actingAs($this->user)
@@ -288,6 +400,11 @@ class CrudControllerTest extends TestCase
         $this->assertModelMissing($this->colleague);
     }
 
+    /**
+     * Test that calling a method, which is no operation of the controller, throws a bad method call exception.
+     *
+     * @return void
+     */
     public function testMethodThatIsNoOperationThrows(): void
     {
         $this->expectException(BadMethodCallException::class);

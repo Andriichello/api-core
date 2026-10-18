@@ -245,6 +245,12 @@ class HelpersTest extends TestCase
         }
     }
 
+    /**
+     * Test that the `append`, `include` and `sort` parameters, which are given as arrays instead of strings, fail
+     * validation with an error for the parameter.
+     *
+     * @return void
+     */
     public function testRequestedListsThatAreNotStringsAnswer422(): void
     {
         $cases = [

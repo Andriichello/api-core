@@ -69,6 +69,11 @@ class DateFilterTest extends TestCase
         return $model::query();
     }
 
+    /**
+     * Test that `eq` on a date matches the whole day, from its start up to the start of the next day.
+     *
+     * @return void
+     */
     public function testEqOnADateIsTheWholeDay(): void
     {
         $this->assertStringContainsString(
@@ -77,6 +82,11 @@ class DateFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that `eq` with the `not` flag on a date matches the moments before or after the whole day.
+     *
+     * @return void
+     */
     public function testNotEqOnADateIsOutsideOfTheDay(): void
     {
         $this->assertStringContainsString(
@@ -85,6 +95,12 @@ class DateFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that the comparisons on a date treat it as the whole day, so `gt` starts after it and `lte` includes all of
+     * it, with or without the `not` flag.
+     *
+     * @return void
+     */
     public function testComparisonsOnADateCoverTheWholeDay(): void
     {
         $cases = [
@@ -105,6 +121,11 @@ class DateFilterTest extends TestCase
         }
     }
 
+    /**
+     * Test that a date and time, with or without seconds and the `T` separator, is compared as the exact moment.
+     *
+     * @return void
+     */
     public function testDateAndTimeIsComparedExactly(): void
     {
         $this->assertStringContainsString(
@@ -121,6 +142,11 @@ class DateFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that a value with an offset, `Z` included, is converted to the app's timezone.
+     *
+     * @return void
+     */
     public function testOffsetIsConvertedToTheAppTimezone(): void
     {
         $cases = [
@@ -139,6 +165,11 @@ class DateFilterTest extends TestCase
         }
     }
 
+    /**
+     * Test that the values without an offset are read in the user's timezone, while the ones with it keep their offset.
+     *
+     * @return void
+     */
     public function testValuesWithoutAnOffsetAreReadInTheUserTimezone(): void
     {
         $this->assertStringContainsString(
@@ -155,6 +186,11 @@ class DateFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that a timezone, which is not valid or is missing, falls back to UTC, while a valid one is kept.
+     *
+     * @return void
+     */
     public function testTimezoneThatIsNotValidFallsBackToUtc(): void
     {
         $this->assertSame('UTC', (new DateFilter)->setTimezone('Mars/Olympus')->getTimezone());
@@ -162,6 +198,11 @@ class DateFilterTest extends TestCase
         $this->assertSame('Europe/Kyiv', (new DateFilter)->setTimezone('Europe/Kyiv')->getTimezone());
     }
 
+    /**
+     * Test that `in` matches any of the dates and moments, which are given as a comma-separated string or a list.
+     *
+     * @return void
+     */
     public function testInMatchesAnyOfTheValues(): void
     {
         foreach (['2026-06-30,2026-07-02 08:00', ['2026-06-30', '2026-07-02 08:00']] as $value) {
@@ -172,6 +213,12 @@ class DateFilterTest extends TestCase
         }
     }
 
+    /**
+     * Test that the values, which are not a date, or a date and time, such as words, impossible dates, out of range
+     * offsets or other formats, throw.
+     *
+     * @return void
+     */
     public function testValuesThatAreNotADateThrow(): void
     {
         $values = [
@@ -195,6 +242,11 @@ class DateFilterTest extends TestCase
         }
     }
 
+    /**
+     * Test that the `like` operation and the `ci` flag, which date filters don't support, throw.
+     *
+     * @return void
+     */
     public function testUnsupportedOperationAndFlagThrow(): void
     {
         try {
@@ -210,6 +262,11 @@ class DateFilterTest extends TestCase
         $this->sql(FilterOperation::EQ, '2026-06-30', [FilterFlag::CaseInsensitive]);
     }
 
+    /**
+     * Test that the `null` operation is left to the null filter, so `false` asks for the column not to be null.
+     *
+     * @return void
+     */
     public function testNullOperationIsLeftToTheNullFilter(): void
     {
         $this->assertStringContainsString(
@@ -218,6 +275,12 @@ class DateFilterTest extends TestCase
         );
     }
 
+    /**
+     * Test that a column with a `date` cast compares the dates as given, without the whole day's range or the user's
+     * timezone.
+     *
+     * @return void
+     */
     public function testDateColumnComparesDatesAsGiven(): void
     {
         $equals = $this->sql(
@@ -241,6 +304,11 @@ class DateFilterTest extends TestCase
         $this->assertStringContainsString('"users"."email_verified_at" <= \'2026-06-30\'', $upTo);
     }
 
+    /**
+     * Test that a column with a `date` cast refuses a value, which has a time.
+     *
+     * @return void
+     */
     public function testDateColumnRefusesATime(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -251,6 +319,12 @@ class DateFilterTest extends TestCase
         $this->sql(FilterOperation::EQ, '2026-06-30 12:00', [], null, $query, 'email_verified_at');
     }
 
+    /**
+     * Test that the whole day matches the users, who were created within that day in the user's timezone, but not the
+     * ones just outside of it.
+     *
+     * @return void
+     */
     public function testWholeDayIsTheDayInTheUserTimezone(): void
     {
         $ids = [];

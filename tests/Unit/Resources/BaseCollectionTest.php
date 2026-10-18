@@ -84,6 +84,12 @@ class BaseCollectionTest extends TestCase
         };
     }
 
+    /**
+     * Test that the `include` and `append` parameters of the request are read once for the whole collection, not once
+     * per item.
+     *
+     * @return void
+     */
     public function testRequestIsReadOnceForAllItems(): void
     {
         $request = $this->countingRequest(['include' => 'organization', 'append' => 'email']);
@@ -94,6 +100,11 @@ class BaseCollectionTest extends TestCase
         $this->assertSame(1, $request->reads['append']);
     }
 
+    /**
+     * Test that each item of the collection gets the include and the append, which the request asks for.
+     *
+     * @return void
+     */
     public function testEachItemGetsWhatTheRequestAsksFor(): void
     {
         $request = Request::create('/users', 'GET', ['include' => 'organization', 'append' => 'email']);
@@ -107,6 +118,11 @@ class BaseCollectionTest extends TestCase
         $this->assertSame('user2@example.com', $items[1]['email']);
     }
 
+    /**
+     * Test that the appends and includes passed to the collection are used, without reading the request.
+     *
+     * @return void
+     */
     public function testPassedAppendsAndIncludesAreUsedInsteadOfTheRequest(): void
     {
         $request = $this->countingRequest(['include' => 'organization', 'append' => 'email']);

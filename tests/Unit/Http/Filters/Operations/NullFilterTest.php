@@ -20,6 +20,11 @@ class NullFilterTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Test that the `null` filter asks for the column to be null.
+     *
+     * @return void
+     */
     public function testApplesNullFilter(): void
     {
         $query = User::query();
@@ -33,6 +38,11 @@ class NullFilterTest extends TestCase
         $this->assertStringContainsString('"email_verified_at" is null', $sql);
     }
 
+    /**
+     * Test that the `null` filter with the `not` flag asks for the column not to be null.
+     *
+     * @return void
+     */
     public function testApplesNotNullFilter(): void
     {
         $query = User::query();
@@ -46,6 +56,11 @@ class NullFilterTest extends TestCase
         $this->assertStringContainsString('"email_verified_at" is not null', $sql);
     }
 
+    /**
+     * Test that an empty value, or one, which means true, asks for the column to be null.
+     *
+     * @return void
+     */
     public function testEmptyOrTrueValueAsksForNull(): void
     {
         foreach (['', true, 1, '1', 'true', 'yes', 'on'] as $value) {
@@ -61,6 +76,11 @@ class NullFilterTest extends TestCase
         }
     }
 
+    /**
+     * Test that a value, which means false, asks for the column not to be null.
+     *
+     * @return void
+     */
     public function testFalseValueAsksForNotNull(): void
     {
         foreach ([false, 0, '0', 'false', 'no', 'off'] as $value) {
@@ -76,6 +96,11 @@ class NullFilterTest extends TestCase
         }
     }
 
+    /**
+     * Test that the `not` flag inverts the value, so `false` asks for the column to be null.
+     *
+     * @return void
+     */
     public function testNotInvertsTheValue(): void
     {
         $query = User::query();
@@ -87,6 +112,11 @@ class NullFilterTest extends TestCase
         $this->assertStringContainsString('"users"."email_verified_at" is null', $query->toRawSql());
     }
 
+    /**
+     * Test that a value, which is not true or false, throws.
+     *
+     * @return void
+     */
     public function testValueThatIsNotABooleanThrows(): void
     {
         $this->expectException(InvalidArgumentException::class);

@@ -22,6 +22,13 @@ class CrudRepositoryTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Create a request to list the users with the given parameters, which is sent by a newly created user.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return Request
+     */
     private function createRequestWithUser(array $data = []): Request
     {
         $user = User::create([
@@ -35,6 +42,11 @@ class CrudRepositoryTest extends TestCase
         return $request;
     }
 
+    /**
+     * Test that a single 'eq' filter is applied to the query as a condition on its column.
+     *
+     * @return void
+     */
     public function testAppliesSingleEqFilter(): void
     {
         $request = $this->createRequestWithUser([
@@ -54,6 +66,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('"email" = \'test@example.com\'', $sql);
     }
 
+    /**
+     * Test that the filters on different columns are all applied to the query.
+     *
+     * @return void
+     */
     public function testApplesMultipleFilters(): void
     {
         $request = $this->createRequestWithUser([
@@ -75,6 +92,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('"name" = \'John Doe\'', $sql);
     }
 
+    /**
+     * Test that the 'in' filter limits the column to the given list of values.
+     *
+     * @return void
+     */
     public function testApplesInFilter(): void
     {
         $request = $this->createRequestWithUser([
@@ -94,6 +116,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('"id" in (1, 2, 3)', $sql);
     }
 
+    /**
+     * Test that the 'null' filter limits the column, which is allowed explicitly, to null values.
+     *
+     * @return void
+     */
     public function testApplesNullFilter(): void
     {
         $request = $this->createRequestWithUser([
@@ -115,6 +142,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('"email_verified_at" is null', $sql);
     }
 
+    /**
+     * Test that the 'gt' and 'lt' filters on the same column are both applied.
+     *
+     * @return void
+     */
     public function testApplesComparisonFilters(): void
     {
         $request = $this->createRequestWithUser([
@@ -138,6 +170,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('"id" < 10', $sql);
     }
 
+    /**
+     * Test that the 'not' flag negates the operation of the filter.
+     *
+     * @return void
+     */
     public function testApplesFilterWithNotFlag(): void
     {
         $request = $this->createRequestWithUser([
@@ -157,6 +194,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('"email" != \'admin@example.com\'', $sql);
     }
 
+    /**
+     * Test that the 'ci' flag compares the lowercased column with the lowercased value.
+     *
+     * @return void
+     */
     public function testApplesFilterWithCaseInsensitiveFlag(): void
     {
         $request = $this->createRequestWithUser([
@@ -176,6 +218,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('LOWER("users"."email") = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 
+    /**
+     * Test that the 'ci' and 'not' flags combine into a negated comparison, which ignores the case.
+     *
+     * @return void
+     */
     public function testApplesFilterWithMultipleFlags(): void
     {
         $request = $this->createRequestWithUser([
@@ -195,6 +242,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('LOWER("users"."email") NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
     }
 
+    /**
+     * Test that a filter, which is allowed with its class, is accepted and the query is built.
+     *
+     * @return void
+     */
     public function testUsesCustomFilterClass(): void
     {
         $repository = new class extends CrudRepository
@@ -217,6 +269,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertInstanceOf(BaseQuery::class, $query);
     }
 
+    /**
+     * Test that a filter, which is allowed with a column, is applied to that column instead of its name.
+     *
+     * @return void
+     */
     public function testApplesFilterWithCustomColumn(): void
     {
         $repository = new class extends CrudRepository
@@ -240,6 +297,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertStringContainsString('"organization_id" = 5', $sql);
     }
 
+    /**
+     * Test that a filter, which is not listed, is refused, when not all filters are allowed.
+     *
+     * @return void
+     */
     public function testThrowsExceptionForDisallowedFilter(): void
     {
         $this->expectException(\Exception::class);
@@ -262,6 +324,11 @@ class CrudRepositoryTest extends TestCase
         $repository->builder($request);
     }
 
+    /**
+     * Test that the builder returns a base query, when it is not given a request.
+     *
+     * @return void
+     */
     public function testBuilderWithoutRequestReturnsBaseQuery(): void
     {
         $user = User::create([
@@ -281,6 +348,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertInstanceOf(BaseQuery::class, $query);
     }
 
+    /**
+     * Test that deleting a model, which uses soft deletes, only soft deletes it.
+     *
+     * @return void
+     */
     public function testDeleteSoftDeletesSoftDeletableModel(): void
     {
         $repo = new class extends CrudRepository
@@ -295,6 +367,12 @@ class CrudRepositoryTest extends TestCase
         $this->assertSoftDeleted($organization);
     }
 
+    /**
+     * Test that force deleting a model, which uses soft deletes, deletes it first and then removes it from the
+     * database.
+     *
+     * @return void
+     */
     public function testForceDeleteDeletesFirstAndThenRemovesSoftDeletableModel(): void
     {
         $repo = new class extends CrudRepository
@@ -318,6 +396,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertModelMissing($organization);
     }
 
+    /**
+     * Test that force deleting a model, which does not use soft deletes, deletes it only once.
+     *
+     * @return void
+     */
     public function testForceDeleteDeletesModelWithoutSoftDeletesOnce(): void
     {
         $model = get_class(new class extends BaseModel
@@ -352,6 +435,11 @@ class CrudRepositoryTest extends TestCase
         $this->assertModelMissing($organization);
     }
 
+    /**
+     * Test that force deleting stops and keeps the model, when deleting it fails.
+     *
+     * @return void
+     */
     public function testForceDeleteStopsWhenDeleteFails(): void
     {
         $repo = new class extends CrudRepository

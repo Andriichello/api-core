@@ -21,8 +21,18 @@ class CrudRepositorySortsTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Repository of users, which allows sorts by their queryable columns.
+     *
+     * @var CrudRepository
+     */
     private CrudRepository $repository;
 
+    /**
+     * Create the repository of users, which allows sorts by their queryable columns.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,6 +42,13 @@ class CrudRepositorySortsTest extends TestCase
         };
     }
 
+    /**
+     * Create a request to list the users with the given parameters, which is sent by a newly created user.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return Request
+     */
     private function createRequestWithUser(array $data = []): Request
     {
         $user = User::create([
@@ -45,6 +62,11 @@ class CrudRepositorySortsTest extends TestCase
         return $request;
     }
 
+    /**
+     * Test that a sort by a column is applied in the ascending order.
+     *
+     * @return void
+     */
     public function testAppliesSingleAscendingSort(): void
     {
         $request = $this->createRequestWithUser([
@@ -59,6 +81,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('asc', $orders[0]['direction']);
     }
 
+    /**
+     * Test that a sort by a column, which starts with a minus, is applied in the descending order.
+     *
+     * @return void
+     */
     public function testAppliesSingleDescendingSort(): void
     {
         $request = $this->createRequestWithUser([
@@ -73,6 +100,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('desc', $orders[0]['direction']);
     }
 
+    /**
+     * Test that the sorts, which are separated by commas, are all applied, each in its own direction.
+     *
+     * @return void
+     */
     public function testApplesMultipleSorts(): void
     {
         $request = $this->createRequestWithUser([
@@ -89,6 +121,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('desc', $orders[1]['direction']);
     }
 
+    /**
+     * Test that the default sort by the identifier in the ascending order is applied, when no sort is requested.
+     *
+     * @return void
+     */
     public function testApplesDefaultSortWhenNoSortProvided(): void
     {
         $request = $this->createRequestWithUser([]);
@@ -102,6 +139,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('asc', $orders[0]['direction']);
     }
 
+    /**
+     * Test that the repository's own default sort is applied, when no sort is requested.
+     *
+     * @return void
+     */
     public function testApplesCustomDefaultSort(): void
     {
         $repository = new class extends CrudRepository
@@ -120,6 +162,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('desc', $orders[0]['direction']);
     }
 
+    /**
+     * Test that a sort, which is allowed with a column, is applied to that column instead of its name.
+     *
+     * @return void
+     */
     public function testAppliesSortWithCustomColumn(): void
     {
         $repository = new class extends CrudRepository
@@ -142,6 +189,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertStringContainsString('organization_id', $orders[0]['column']);
     }
 
+    /**
+     * Test that a sort, which is allowed with a column and a table, is applied to the column of that table.
+     *
+     * @return void
+     */
     public function testAppliesSortWithTablePrefix(): void
     {
         $repository = new class extends CrudRepository
@@ -164,6 +216,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertStringContainsString('organizations.name', $orders[0]['column']);
     }
 
+    /**
+     * Test that a sort, which is not listed, is refused, when not all sorts are allowed.
+     *
+     * @return void
+     */
     public function testThrowsExceptionForDisallowedSort(): void
     {
         $this->expectException(\Exception::class);
@@ -184,6 +241,11 @@ class CrudRepositorySortsTest extends TestCase
         $repository->builder($request);
     }
 
+    /**
+     * Test that a sort by an unknown column is refused, even when all sorts are allowed.
+     *
+     * @return void
+     */
     public function testThrowsExceptionForUnknownSortWhenAllSortsAreAllowed(): void
     {
         $this->expectException(\Exception::class);
@@ -196,6 +258,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->repository->builder($request);
     }
 
+    /**
+     * Test that the sorts are applied in the order, in which they are requested.
+     *
+     * @return void
+     */
     public function testKeepsRequestedSortOrder(): void
     {
         $request = $this->createRequestWithUser([
@@ -215,6 +282,11 @@ class CrudRepositorySortsTest extends TestCase
         );
     }
 
+    /**
+     * Test that a sort, which is listed, is applied, when not all sorts are allowed.
+     *
+     * @return void
+     */
     public function testAppliesSortFromExplicitAllowedList(): void
     {
         $repository = new class extends CrudRepository
@@ -236,6 +308,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('users.name', $orders[0]['column']);
     }
 
+    /**
+     * Test that the sorts and the filters of the same request are both applied.
+     *
+     * @return void
+     */
     public function testCombinesSortsAndFilters(): void
     {
         $request = $this->createRequestWithUser([
@@ -258,6 +335,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertStringContainsString('"email" LIKE \'%@example.com\'', $sql);
     }
 
+    /**
+     * Test that sorting by a hidden column, such as the password, answers with 422, naming the allowed sorts.
+     *
+     * @return void
+     */
     public function testHiddenColumnsAreNotSortableByDefault(): void
     {
         $request = $this->createRequestWithUser([
@@ -278,6 +360,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->fail('The sort did not answer with 422.');
     }
 
+    /**
+     * Test that a hidden column can be sorted by, when it is listed among the allowed sorts.
+     *
+     * @return void
+     */
     public function testHiddenColumnCanBeAllowedExplicitly(): void
     {
         $repository = new class extends CrudRepository
@@ -296,6 +383,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('desc', $orders[0]['direction']);
     }
 
+    /**
+     * Test that a sort parameter, which is not a string, answers with 422.
+     *
+     * @return void
+     */
     public function testSortParameterThatIsNotAStringAnswers422(): void
     {
         $request = $this->createRequestWithUser([
@@ -313,6 +405,11 @@ class CrudRepositorySortsTest extends TestCase
         $this->fail('The sort did not answer with 422.');
     }
 
+    /**
+     * Test that the builder applies the default sort, when it is not given a request and the current one has no sorts.
+     *
+     * @return void
+     */
     public function testBuilderWithoutRequestApplesDefaultSort(): void
     {
         $query = $this->repository->builder();

@@ -49,6 +49,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         };
     }
 
+    /**
+     * Test that the validated includes are empty, when the request has no include parameter.
+     *
+     * @return void
+     */
     public function testGetValidatedIncludesReturnsEmptyWhenRequestHasNoInclude(): void
     {
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -71,6 +76,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $this->assertEmpty($includes);
     }
 
+    /**
+     * Test that the validated includes are empty, when the repository's resource class is not a base resource.
+     *
+     * @return void
+     */
     public function testGetValidatedIncludesReturnsEmptyWhenResourceClassIsNotBaseResource(): void
     {
         $repo = $this->usersRepository('');
@@ -81,6 +91,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $this->assertEmpty($includes);
     }
 
+    /**
+     * Test that an include, which the resource allows, is among the validated includes.
+     *
+     * @return void
+     */
     public function testGetValidatedIncludesReturnsAllowedInclude(): void
     {
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -104,6 +119,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $this->assertContains('organization', $includes);
     }
 
+    /**
+     * Test that the includes, which are separated by commas and allowed by the resource, are all validated.
+     *
+     * @return void
+     */
     public function testGetValidatedIncludesReturnsMultipleAllowedIncludes(): void
     {
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -129,6 +149,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $this->assertCount(2, $includes);
     }
 
+    /**
+     * Test that validating an include, which the resource does not allow, answers with 422.
+     *
+     * @return void
+     */
     public function testGetValidatedIncludesThrowsExceptionForDisallowedInclude(): void
     {
         $this->expectException(ValidationException::class);
@@ -152,6 +177,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $repo->getValidatedIncludes(Request::create('/', 'GET', ['include' => 'roles']));
     }
 
+    /**
+     * Test that the builder eager-loads the relation of an include, which the resource allows.
+     *
+     * @return void
+     */
     public function testBuilderAppliesEagerLoadForValidInclude(): void
     {
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -174,6 +204,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $this->assertArrayHasKey('organization', $query->getEagerLoads());
     }
 
+    /**
+     * Test that the builder eager-loads no relation, when the request has no include parameter.
+     *
+     * @return void
+     */
     public function testBuilderDoesNotApplyEagerLoadWhenNoIncludeInRequest(): void
     {
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -196,6 +231,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $this->assertArrayNotHasKey('organization', $query->getEagerLoads());
     }
 
+    /**
+     * Test that the builder refuses an include, which the resource does not allow, with 422.
+     *
+     * @return void
+     */
     public function testBuilderThrowsWhenIncludeIsNotAllowedOnResource(): void
     {
         $this->expectException(ValidationException::class);
@@ -219,6 +259,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $repo->builder(Request::create('/', 'GET', ['include' => 'roles']));
     }
 
+    /**
+     * Test that an include, which is not allowed, answers with 422, naming the allowed includes.
+     *
+     * @return void
+     */
     public function testNotAllowedIncludeAnswers422NamingTheAllowedOnes(): void
     {
         $resourceClass = get_class(new class(null) extends BaseResource
@@ -383,6 +428,11 @@ class CrudRepositoryEagerLoadsTest extends TestCase
         $this->assertNull($loaded[$entries[3]->id]->getRelation('subject'));
     }
 
+    /**
+     * Test that an include parameter, which is not a string, answers with 422.
+     *
+     * @return void
+     */
     public function testIncludeParameterThatIsNotAStringAnswers422(): void
     {
         $resourceClass = get_class(new class(null) extends BaseResource
