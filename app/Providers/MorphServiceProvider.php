@@ -5,6 +5,7 @@ namespace Core\Providers;
 use Core\Models\AccessToken;
 use Core\Models\File;
 use Core\Models\Organization;
+use Core\Models\Setting;
 use Core\Models\User;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
@@ -31,6 +32,7 @@ class MorphServiceProvider extends ServiceProvider
         AccessToken::class,
         File::class,
         Organization::class,
+        Setting::class,
         User::class,
     ];
 
