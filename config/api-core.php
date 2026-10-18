@@ -65,8 +65,11 @@ return [
     /*
      * Roles of users from the highest to the lowest, with the actions, which
      * each of them has on a resource (a model class): `viewAny`, `view`,
-     * `create`, `update`, `delete`, `forceDelete`, custom ones, or `all` for
-     * the first five. The order ranks them, so a user is higher than another,
+     * `create`, `update`, `delete`, `restore`, `forceDelete`, custom ones, or
+     * `all` for the first five. `restore` and `forceDelete` aren't part of
+     * `all`, so a role, which may restore deleted records (see RestoreRequest)
+     * or delete them permanently, lists them, or else only super admins may.
+     * The order ranks them, so a user is higher than another,
      * whose roles are all lower. `super-admin` is api-core's own role above
      * all of them, which needs no permissions. It is a list, so the
      * application's list replaces this one as a whole, and
