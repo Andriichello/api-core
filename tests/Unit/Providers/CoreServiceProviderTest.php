@@ -2,8 +2,13 @@
 
 namespace Core\Tests\Unit\Providers;
 
+use Core\Enums\UserRole;
+use Core\Models\User;
 use Core\Providers\CoreServiceProvider;
 use Core\Tests\TestCase;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Routing\Exceptions\BackedEnumCaseNotFoundException;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -120,6 +125,59 @@ class CoreServiceProviderTest extends TestCase
 
         $this->assertSame(25, config('pagination.default_size'));
         $this->assertSame('page', config('pagination.pagination_parameter'));
+    }
+
+    /**
+     * Test that a missing model or enum case answers a plain 404 outside of debug mode, naming no class nor id.
+     *
+     * @return void
+     */
+    public function testHidesDetailsOfMissingModelsAndEnumCasesOutsideOfDebugMode(): void
+    {
+        config(['app.debug' => false]);
+
+        $this->registerMissingRoutes();
+
+        $this->getJson('api/users/5')
+            ->assertNotFound()
+            ->assertExactJson(['message' => 'Not found.']);
+
+        $this->getJson('api/roles/nope')
+            ->assertNotFound()
+            ->assertExactJson(['message' => 'Not found.']);
+    }
+
+    /**
+     * Test that a missing model or enum case is named in debug mode.
+     *
+     * @return void
+     */
+    public function testShowsDetailsOfMissingModelsAndEnumCasesInDebugMode(): void
+    {
+        config(['app.debug' => true]);
+
+        $this->registerMissingRoutes();
+
+        $this->assertStringContainsString(
+            'No query results for model [' . User::class . '] 5',
+            $this->getJson('api/users/5')->assertNotFound()->json('message')
+        );
+
+        $this->assertStringContainsString(
+            UserRole::class,
+            $this->getJson('api/roles/nope')->assertNotFound()->json('message')
+        );
+    }
+
+    /**
+     * Register routes, which fail to find a model and an enum case.
+     *
+     * @return void
+     */
+    private function registerMissingRoutes(): void
+    {
+        Route::get('api/users/{id}', fn () => throw new ModelNotFoundException()->setModel(User::class, [5]));
+        Route::get('api/roles/{role}', fn () => throw new BackedEnumCaseNotFoundException(UserRole::class, 'nope'));
     }
 
     /**

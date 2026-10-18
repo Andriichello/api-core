@@ -7,10 +7,16 @@ use Core\Http\Middleware\ForceJsonOnApi;
 use Core\Http\Middleware\ResolveOrganization;
 use Core\Http\Middleware\SetLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Foundation\Http\Kernel;
+use Illuminate\Routing\Exceptions\BackedEnumCaseNotFoundException;
 use Illuminate\Support\ServiceProvider;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Throwable;
 
 /**
  * Class CoreServiceProvider.
@@ -21,10 +27,12 @@ use Illuminate\Support\ServiceProvider;
  * It also makes the responses on the API paths JSON with ForceJsonOnApi, and
  * registers ResolveOrganization, which sets the request's organization,
  * AuditRequests, which records requests in the audit log, and SetLocale,
- * which sets the request's locale.
+ * which sets the request's locale. Outside of debug mode, missing models
+ * and enum cases answer a plain "Not found.", which names no class nor id.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Providers
+ * @SuppressWarnings("PHPMD.CouplingBetweenObjects")
  */
 class CoreServiceProvider extends ServiceProvider
 {
@@ -80,6 +88,29 @@ class CoreServiceProvider extends ServiceProvider
                 $kernel->addToMiddlewarePriorityAfter(ResolveOrganization::class, SetLocale::class);
             }
         });
+
+        $this->callAfterResolving(ExceptionHandler::class, function (ExceptionHandler $handler) {
+            if ($handler instanceof Handler) {
+                $handler->map(ModelNotFoundException::class, $this->hideNotFoundDetails(...));
+                $handler->map(BackedEnumCaseNotFoundException::class, $this->hideNotFoundDetails(...));
+            }
+        });
+    }
+
+    /**
+     * Turn the exception of a missing model or enum case into a plain 404, which
+     * names no class nor id, unless the application is in debug mode. Laravel
+     * shows its message ("No query results for model [Core\Models\User] 5")
+     * otherwise, even without debug.
+     *
+     * @param ModelNotFoundException|BackedEnumCaseNotFoundException $exception
+     *
+     * @return Throwable
+     */
+    protected function hideNotFoundDetails(
+        ModelNotFoundException|BackedEnumCaseNotFoundException $exception
+    ): Throwable {
+        return config('app.debug') ? $exception : new NotFoundHttpException('Not found.', $exception);
     }
 
     /**
