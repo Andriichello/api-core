@@ -273,7 +273,8 @@ class AuthControllerTest extends TestCase
     }
 
     /**
-     * Test that suspended users, and users of suspended, deactivated or deleted organizations, cannot log in.
+     * Test that suspended users, and users of suspended or deactivated organizations, cannot log in, and neither
+     * can users of deleted organizations, as they are deleted with them.
      *
      * @return void
      */
@@ -290,11 +291,15 @@ class AuthControllerTest extends TestCase
         $this->createUser('deleted-org@example.com', $deleted);
         $deleted->delete();
 
-        foreach (['suspended', 'suspended-org', 'deactivated-org', 'deleted-org'] as $name) {
+        foreach (['suspended', 'suspended-org', 'deactivated-org'] as $name) {
             $this->login(['email' => "$name@example.com"])
                 ->assertUnprocessable()
                 ->assertJsonValidationErrors(['email' => 'This account is suspended.']);
         }
+
+        $this->login(['email' => 'deleted-org@example.com'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email' => 'These credentials do not match our records.']);
     }
 
     /**

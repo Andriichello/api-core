@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Query\Builder as DatabaseBuilder;
 use Illuminate\Support\Carbon;
 
@@ -86,6 +87,34 @@ class Organization extends BaseModel
     protected $relationships = [
         'organization',
     ];
+
+    /**
+     * Bootstrap the model: its users are soft-deleted along with it (at the
+     * same time), and restored along with it, while the users, which were
+     * deleted before it, stay deleted. Both are done with one query, so no
+     * model events of the users are fired.
+     *
+     * @return void
+     */
+    protected static function booted(): void
+    {
+        static::softDeleted(function (Organization $organization) {
+            $organization->users()->update(['deleted_at' => $organization->getRawOriginal('deleted_at')]);
+        });
+
+        static::restored(function (Organization $organization) {
+            $deletedAt = $organization->getPrevious()['deleted_at'] ?? null;
+
+            if ($deletedAt === null) {
+                return;
+            }
+
+            $organization->users()
+                ->withoutGlobalScope(SoftDeletingScope::class)
+                ->where('deleted_at', $deletedAt)
+                ->update(['deleted_at' => null]);
+        });
+    }
 
     /**
      * Users associated with the model.
