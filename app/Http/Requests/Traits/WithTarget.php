@@ -2,10 +2,10 @@
 
 namespace Core\Http\Requests\Traits;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Core\Http\Requests\BaseRequest;
 use Core\Models\BaseModel;
 use Core\Queries\BaseQuery;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Trait WithTarget.
@@ -60,6 +60,9 @@ trait WithTarget
     {
         $this->id = $value;
 
+        // The target, which was loaded for another id, is loaded again
+        $this->target = null;
+
         return $this;
     }
 
@@ -86,7 +89,7 @@ trait WithTarget
      */
     public function target(BaseModel|string $model): ?BaseModel
     {
-        if (isset($this->target) && is_a($this->target, $model)) {
+        if ($this->isLoadedTarget($model)) {
             return $this->target;
         }
 
@@ -103,10 +106,24 @@ trait WithTarget
      */
     public function targetOrFail(BaseModel|string $model): BaseModel
     {
-        if (isset($this->target) && is_a($this->target, $model)) {
+        if ($this->isLoadedTarget($model)) {
             return $this->target;
         }
 
         return $this->target = $this->targetQuery($model)->firstOrFail();
+    }
+
+    /**
+     * Determine if the target is loaded already, as a model of the given
+     * class (or of the given model's class).
+     *
+     * @param BaseModel|string $model
+     *
+     * @return bool
+     */
+    protected function isLoadedTarget(BaseModel|string $model): bool
+    {
+        return isset($this->target)
+            && is_a($this->target, $model instanceof BaseModel ? $model::class : $model);
     }
 }

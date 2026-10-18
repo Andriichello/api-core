@@ -8,6 +8,7 @@ use Core\Models\User;
 use Core\Tests\TestCase;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Class WithTargetTest.
@@ -112,5 +113,34 @@ class WithTargetTest extends TestCase
         $target = $request->targetOrFail(Organization::class);
 
         $this->assertTrue($target->is($organization));
+    }
+
+    /**
+     * Test that the loaded target is reused, whether the model is given by its class or as an instance, and is
+     * loaded again for another id.
+     *
+     * @return void
+     */
+    public function testTargetIsReusedUntilTheIdChanges(): void
+    {
+        $organization = $this->createOrganization();
+
+        $user = $this->createUser($organization);
+        $colleague = $this->createUser($organization);
+
+        $request = $this->createRequest($user)->setId($colleague->id);
+        $target = $request->targetOrFail(User::class);
+
+        DB::enableQueryLog();
+
+        $this->assertSame($target, $request->target(User::class));
+        $this->assertSame($target, $request->target(new User));
+        $this->assertSame($target, $request->targetOrFail(new User));
+        $this->assertSame([], DB::getQueryLog());
+
+        $request->setId($user->id);
+
+        $this->assertTrue($user->is($request->target(new User)));
+        $this->assertNotInstanceOf(User::class, $request->target(Organization::class));
     }
 }
