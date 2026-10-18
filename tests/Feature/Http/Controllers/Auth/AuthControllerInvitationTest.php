@@ -262,6 +262,59 @@ class AuthControllerInvitationTest extends TestCase
     }
 
     /**
+     * Test that a person, who has an account elsewhere, may accept without a password, keeping the password of
+     * their other account, whose tokens stay.
+     *
+     * @return void
+     */
+    public function testPersonWithAnotherAccountKeepsItsPassword(): void
+    {
+        $existing = User::factory()->create([
+            'organization_id' => Organization::factory()->create()->id,
+            'email' => 'ann@example.com',
+            'password' => 'old-password-1',
+        ]);
+        app(AccessTokenRepository::class)->create($existing, 'Phone');
+
+        $user = $this->invite('ann@example.com');
+
+        $this->postJson('auth/accept-invitation', $this->linkOf($user))
+            ->assertOk()
+            ->assertJsonPath(
+                'message',
+                'Your invitation has been accepted, so you can sign in with the password of your other accounts.'
+            );
+
+        $user->refresh();
+
+        $this->assertTrue($user->hasVerifiedEmail());
+        $this->assertSame($existing->id, $user->main_account_id);
+        $this->assertTrue(Hash::check('old-password-1', $user->getAuthPassword()));
+        $this->assertSame(1, $existing->tokens()->count());
+    }
+
+    /**
+     * Test that a person without other accounts must choose a password, and their email stays unverified until
+     * they do.
+     *
+     * @return void
+     */
+    public function testPersonWithoutOtherAccountsMustChooseAPassword(): void
+    {
+        $user = $this->invite('ann@example.com');
+        $link = $this->linkOf($user);
+
+        $this->postJson('auth/accept-invitation', $link)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('password');
+
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+
+        $this->accept($link)->assertOk();
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
+    /**
      * Test that an invitation can be sent again, with a link, which works.
      *
      * @return void

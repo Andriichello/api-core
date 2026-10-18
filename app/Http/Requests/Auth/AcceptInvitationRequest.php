@@ -26,7 +26,9 @@ class AcceptInvitationRequest extends BaseRequest
 
     /**
      * Get the validation rules that apply to the request. The password follows
-     * the application's `Password::defaults()`.
+     * the application's `Password::defaults()`. It may be left out by a person,
+     * who has other accounts, as the invited account takes their password,
+     * when it is linked to them (see AuthController::acceptInvitation()).
      *
      * @return array<string, ValidationRule|array|string>
      */
@@ -34,7 +36,7 @@ class AcceptInvitationRequest extends BaseRequest
     {
         return [
             ...$this->linkRules(),
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            'password' => ['nullable', 'string', 'confirmed', Password::defaults()],
         ];
     }
 

@@ -327,30 +327,44 @@ class AuthController extends BaseController
     /**
      * Accept the invitation to an account with the link, which was emailed to
      * it. Its email is verified, which links it to the person's other accounts,
-     * if any (see LinksAccountsByEmail), and the password, which the person
+     * if any (see LinksAccountsByEmail). The password, which the person
      * chooses, is set on all of their accounts, as updated by them, as a reset
-     * would set it, so their tokens are deleted. The link works once, since it
-     * is bound to the account's password.
+     * would set it, so their tokens are deleted. A person, whose account is
+     * linked, may keep their password instead, by giving none, while a person
+     * without other accounts must choose one. The link works once, since it is
+     * bound to the account's password.
      *
      * @param AcceptInvitationRequest $request
      *
      * @return ApiResponse
      * @throws AuthorizationException
+     * @throws ValidationException When no password is given for an account, which isn't linked.
      */
     public function acceptInvitation(AcceptInvitationRequest $request): ApiResponse
     {
         $account = $request->account();
+        $password = $request->validated('password');
 
-        DB::transaction(function () use ($account, $request) {
+        DB::transaction(function () use ($account, $password) {
             $account->markEmailAsVerified();
 
-            $this->users->updatePassword($account, $request->string('password')->value());
-            $this->tokens->deleteOfPeople([$account]);
+            if ($password === null && $account->isMainAccount()) {
+                throw ValidationException::withMessages([
+                    'password' => [__('validation.required', ['attribute' => 'password'])],
+                ]);
+            }
+
+            if ($password !== null) {
+                $this->users->updatePassword($account, $password);
+                $this->tokens->deleteOfPeople([$account]);
+            }
         });
 
         event(new Verified($account));
 
-        return ApiResponse::ok([], 'Your invitation has been accepted, so you can sign in with your password.');
+        return ApiResponse::ok([], $password === null
+            ? 'Your invitation has been accepted, so you can sign in with the password of your other accounts.'
+            : 'Your invitation has been accepted, so you can sign in with your password.');
     }
 
     /**
