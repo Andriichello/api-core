@@ -47,7 +47,7 @@ class AuthenticateSession extends SanctumAuthenticateSession
             return $this->storePasswordHashOnSignIn($request, $next);
         }
 
-        if ($user instanceof User && (!$user->canSignIn() || !$this->impersonatorCanStaySignedIn($request))) {
+        if ($user instanceof User && (!$user->canSignIn() || !$this->impersonatorCanStaySignedIn($request, $user))) {
             $guards = $this->sessionGuards();
             $guards->each->logoutCurrentDevice();
 
@@ -66,10 +66,11 @@ class AuthenticateSession extends SanctumAuthenticateSession
      * own sessions do.
      *
      * @param Request $request
+     * @param User $user
      *
      * @return bool
      */
-    protected function impersonatorCanStaySignedIn(Request $request): bool
+    protected function impersonatorCanStaySignedIn(Request $request, User $user): bool
     {
         $session = $request->session();
         $impersonatorId = $session->get(User::IMPERSONATOR_SESSION_KEY);
@@ -78,7 +79,8 @@ class AuthenticateSession extends SanctumAuthenticateSession
             return true;
         }
 
-        $impersonator = User::query()->find($impersonatorId);
+        // Looked up through the user, so the rest of the request finds the impersonator without a query
+        $impersonator = $user->sessionImpersonator($impersonatorId);
         $passwordHash = $session->get(User::IMPERSONATOR_PASSWORD_SESSION_KEY);
         $guard = $this->sessionGuards()->first();
 

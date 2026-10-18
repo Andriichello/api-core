@@ -251,8 +251,9 @@ class AuthController extends BaseController
             $this->tokens->deleteOfPeople([$user], $token instanceof AccessToken ? $token : null);
         });
 
-        // The session stays signed in, also when the person switched it to another account
-        $impersonator = $user->isSignedInWithSession() ? $user->currentImpersonator() : null;
+        // The session stays signed in, also when the person switched it to another account (the impersonator
+        // is loaded again, as it was loaded before the password changed)
+        $impersonator = $user->isSignedInWithSession() ? $user->currentImpersonator()?->refresh() : null;
 
         if ($impersonator !== null) {
             $this->storeImpersonatorPasswordHash($request, $impersonator);

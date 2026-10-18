@@ -7,7 +7,9 @@ use Core\Models\User;
 use Core\Repositories\AccessTokenRepository;
 use Core\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
+use Laravel\Sanctum\TransientToken;
 
 /**
  * Class AccessTokenTest.
@@ -134,6 +136,31 @@ class AccessTokenTest extends TestCase
         $this->assertNull($user->currentImpersonator());
 
         Sanctum::actingAs($user);
+        $this->assertNull($user->currentImpersonator());
+    }
+
+    /**
+     * Test that the user of a switched session has the session's impersonator, who is looked up once per id.
+     *
+     * @return void
+     */
+    public function testUserOfSessionHasItsImpersonatorLookedUpOnce(): void
+    {
+        $user = User::factory()->create();
+        $impersonator = User::factory()->create();
+
+        $user->withAccessToken(new TransientToken);
+        session([User::IMPERSONATOR_SESSION_KEY => $impersonator->id]);
+
+        DB::enableQueryLog();
+
+        $this->assertTrue($impersonator->is($user->currentImpersonator()));
+        $this->assertSame($user->currentImpersonator(), $user->sessionImpersonator($impersonator->id));
+        $this->assertNull($user->sessionImpersonator(0));
+        $this->assertNull($user->sessionImpersonator(0));
+        $this->assertCount(2, DB::getQueryLog());
+
+        session()->forget(User::IMPERSONATOR_SESSION_KEY);
         $this->assertNull($user->currentImpersonator());
     }
 

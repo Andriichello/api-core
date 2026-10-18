@@ -113,6 +113,14 @@ class User extends BaseModel implements
     public const string IMPERSONATOR_PASSWORD_SESSION_KEY = 'api-core.impersonator_password_hash';
 
     /**
+     * Users, who switched sessions to this account, as they were looked up
+     * by their ids, so a request looks each of them up once.
+     *
+     * @var array<int|string, User|null>
+     */
+    protected array $sessionImpersonators = [];
+
+    /**
      * The attributes that are mass-assignable.
      *
      * @var array<int, string>
@@ -428,10 +436,30 @@ class User extends BaseModel implements
             return $token->isImpersonated() ? $token->impersonator : null;
         }
 
-        $impersonatorId = $this->isSignedInWithSession()
-            ? session(static::IMPERSONATOR_SESSION_KEY) : null;
+        return $this->isSignedInWithSession()
+            ? $this->sessionImpersonator(session(static::IMPERSONATOR_SESSION_KEY))
+            : null;
+    }
 
-        return $impersonatorId === null ? null : static::query()->find($impersonatorId);
+    /**
+     * Get the user with the given id, who switched a session to this account,
+     * looking them up only once (null for no id, or for a missing user).
+     *
+     * @param int|string|null $id
+     *
+     * @return User|null
+     */
+    public function sessionImpersonator(int|string|null $id): ?User
+    {
+        if ($id === null) {
+            return null;
+        }
+
+        if (!array_key_exists($id, $this->sessionImpersonators)) {
+            $this->sessionImpersonators[$id] = static::query()->find($id);
+        }
+
+        return $this->sessionImpersonators[$id];
     }
 
     /**
