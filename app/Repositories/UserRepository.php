@@ -6,8 +6,11 @@ use Core\Enums\UserRole;
 use Core\Models\BaseModel;
 use Core\Models\Organization;
 use Core\Models\User;
+use Core\Notifications\InvitationNotification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -52,6 +55,54 @@ class UserRepository extends CrudRepository
         );
 
         $user->assignRole($roles);
+    }
+
+    /**
+     * Invite a person to a new account with the given attributes and roles in
+     * the organization, and email them the invitation. Until they accept it
+     * (see AcceptInvitationRequest), the account's email is unverified and its
+     * password is a random one, which nobody knows, so it can't sign in. No
+     * password can be given: the person chooses it, so nobody else knows it.
+     *
+     * @param array<string, mixed> $attributes
+     * @param int|null $organizationId
+     * @param array<int, UserRole|string> $roles
+     * @param User|null $inviter
+     *
+     * @return User
+     */
+    public function invite(array $attributes, ?int $organizationId, array $roles = [], ?User $inviter = null): User
+    {
+        $user = DB::transaction(function () use ($attributes, $organizationId, $roles) {
+            $user = new User(Arr::except($attributes, ['password']));
+
+            $user->forceFill([
+                'organization_id' => $organizationId,
+                'password' => Str::password(64),
+                'email_verified_at' => null,
+            ])->save();
+
+            $this->assignRole($user, ...$roles);
+
+            return $user;
+        });
+
+        $this->sendInvitation($user, $inviter);
+
+        return $user;
+    }
+
+    /**
+     * Email the person the invitation to the account, which was made for them.
+     *
+     * @param User $user
+     * @param User|null $inviter
+     *
+     * @return void
+     */
+    public function sendInvitation(User $user, ?User $inviter = null): void
+    {
+        $user->notify(new InvitationNotification($inviter));
     }
 
     /**

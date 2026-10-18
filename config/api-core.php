@@ -44,6 +44,22 @@ return [
             'API_CORE_EMAIL_VERIFICATION_URL',
             rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/verify-email'
         ),
+
+        /*
+         * Page of the SPA, to which the link in an invitation email leads.
+         * The link adds `?id=…&hash=…&expires=…&signature=…` to it, and the
+         * page posts them, with the password, which the person chooses, to
+         * the `accept-invitation` route.
+         */
+        'invitation_url' => env(
+            'API_CORE_INVITATION_URL',
+            rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/accept-invitation'
+        ),
+
+        /*
+         * Lifetime of the link in an invitation email, in minutes.
+         */
+        'invitation_lifetime' => (int) env('API_CORE_INVITATION_LIFETIME', 10080),
     ],
 
     /*

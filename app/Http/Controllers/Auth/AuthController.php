@@ -3,6 +3,7 @@
 namespace Core\Http\Controllers\Auth;
 
 use Core\Http\Controllers\BaseController;
+use Core\Http\Requests\Auth\AcceptInvitationRequest;
 use Core\Http\Requests\Auth\ChangePasswordRequest;
 use Core\Http\Requests\Auth\ForgotPasswordRequest;
 use Core\Http\Requests\Auth\LoginRequest;
@@ -96,6 +97,7 @@ class AuthController extends BaseController
             Route::post('forgot-password', [static::class, 'forgotPassword'])->name('auth.forgot-password');
             Route::post('reset-password', [static::class, 'resetPassword'])->name('auth.reset-password');
             Route::post('verify-email', [static::class, 'verifyEmail'])->name('auth.verify-email');
+            Route::post('accept-invitation', [static::class, 'acceptInvitation'])->name('auth.accept-invitation');
         });
 
         Route::middleware('auth:sanctum')->group(function () {
@@ -310,6 +312,35 @@ class AuthController extends BaseController
         return ApiResponse::ok([], $isLinked
             ? 'Your email has been verified, and the account now signs in with the password of your other accounts.'
             : 'Your email has been verified.');
+    }
+
+    /**
+     * Accept the invitation to an account with the link, which was emailed to
+     * it. Its email is verified, which links it to the person's other accounts,
+     * if any (see LinksAccountsByEmail), and the password, which the person
+     * chooses, is set on all of their accounts, as updated by them, as a reset
+     * would set it, so their tokens are deleted. The link works once, since it
+     * is bound to the account's password.
+     *
+     * @param AcceptInvitationRequest $request
+     *
+     * @return ApiResponse
+     * @throws AuthorizationException
+     */
+    public function acceptInvitation(AcceptInvitationRequest $request): ApiResponse
+    {
+        $account = $request->account();
+
+        DB::transaction(function () use ($account, $request) {
+            $account->markEmailAsVerified();
+
+            $this->users->updatePassword($account, $request->string('password')->value());
+            $this->tokens->deleteOfPeople([$account]);
+        });
+
+        event(new Verified($account));
+
+        return ApiResponse::ok([], 'Your invitation has been accepted, so you can sign in with your password.');
     }
 
     /**
