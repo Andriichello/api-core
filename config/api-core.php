@@ -89,4 +89,41 @@ return [
          */
         'json_paths' => ['api', 'api/*'],
     ],
+
+    'files' => [
+        /*
+         * Disk, on which the files of models (see HasFiles) are stored. It
+         * should be a private one, since files are downloaded through the
+         * API, which checks access to the model, which they are attached to.
+         */
+        'disk' => env('API_CORE_FILES_DISK', 'local'),
+
+        /*
+         * Directory on the disk, under which each model's files are stored
+         * in `{morph}/{id}`, e.g. `files/models.users/1`.
+         */
+        'directory' => env('API_CORE_FILES_DIRECTORY', 'files'),
+
+        /*
+         * The maximum size of an uploaded file, in kilobytes.
+         */
+        'max_size' => (int) env('API_CORE_FILES_MAX_SIZE', 10240),
+
+        /*
+         * Extensions of the files, which may be uploaded. A file's extension
+         * and the one, which its contents are recognized as, must both be in
+         * the list. It is a list, so the application's list replaces this one.
+         */
+        'extensions' => [
+            'pdf', 'txt', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'webp',
+            'doc', 'docx', 'xls', 'xlsx', 'odt', 'ods',
+        ],
+
+        /*
+         * Lifetime of a temporary URL of a file, in minutes. Only disks,
+         * which provide temporary URLs (`s3`, or `local` with its `serve`
+         * option), give files a URL.
+         */
+        'url_lifetime' => (int) env('API_CORE_FILES_URL_LIFETIME', 5),
+    ],
 ];

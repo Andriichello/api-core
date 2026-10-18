@@ -3,6 +3,7 @@
 namespace Core\Providers;
 
 use Core\Models\AccessToken;
+use Core\Models\File;
 use Core\Models\Organization;
 use Core\Models\User;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -28,6 +29,7 @@ class MorphServiceProvider extends ServiceProvider
      */
     protected static array $models = [
         AccessToken::class,
+        File::class,
         Organization::class,
         User::class,
     ];

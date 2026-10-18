@@ -16,6 +16,7 @@ use Core\Queries\BaseQuery;
 use Core\Repositories\CrudRepository;
 use Exception;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -182,6 +183,24 @@ abstract class CrudController extends ResourceController
      */
     protected function handle(string $operation, Request $request): ApiResponse
     {
+        $method = 'handle' . ucfirst($operation);
+
+        return $this->$method($this->prepareRequest($operation, $request));
+    }
+
+    /**
+     * Make the operation's request, with the parents, which its route names,
+     * authorize it and validate it.
+     *
+     * @param string $operation
+     * @param Request $request
+     *
+     * @return CrudRequest
+     * @throws BadMethodCallException When the controller doesn't handle the operation.
+     * @throws Throwable
+     */
+    protected function prepareRequest(string $operation, Request $request): CrudRequest
+    {
         if (!in_array($operation, $this->getOperations())) {
             throw new BadMethodCallException(
                 sprintf('Method %s::%s does not exist.', static::class, $operation)
@@ -197,9 +216,7 @@ abstract class CrudController extends ResourceController
 
         $crudRequest->validateResolved();
 
-        $method = 'handle' . ucfirst($operation);
-
-        return $this->$method($crudRequest);
+        return $crudRequest;
     }
 
     /**
@@ -310,8 +327,19 @@ abstract class CrudController extends ResourceController
      */
     protected function checkPolicy(CrudRequest $request): void
     {
-        $result = $this->policy->determine($request);
+        $this->ensureAllowed($this->policy->determine($request));
+    }
 
+    /**
+     * Make sure the given result of a policy allows the request.
+     *
+     * @param Response|bool $result
+     *
+     * @return void
+     * @throws AuthorizationException
+     */
+    protected function ensureAllowed(Response|bool $result): void
+    {
         if ($result === false) {
             throw new AuthorizationException;
         }
