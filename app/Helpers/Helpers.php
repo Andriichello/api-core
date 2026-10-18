@@ -219,7 +219,8 @@ class Helpers
     }
 
     /**
-     * Returns the morph slug of the given resource.
+     * Returns the morph slug of the given resource: the alias of a class in
+     * the morph map, or a slug made of the class name.
      *
      * @param string|object $resource
      *
@@ -230,11 +231,10 @@ class Helpers
         $resource = is_object($resource) ? get_class($resource) : $resource;
 
         if (str_contains($resource, '\\') || class_exists($resource)) {
-            return data_get(
-                array_flip(Relation::$morphMap),
-                $resource,
-                MorphServiceProvider::slugWithFolderOf($resource)
-            );
+            // Looked up as a whole, since a class name may contain dots (an anonymous one's has its file path)
+            $alias = array_search($resource, Relation::$morphMap, true);
+
+            return is_string($alias) ? $alias : MorphServiceProvider::slugWithFolderOf($resource);
         }
 
         return MorphServiceProvider::slugOf($resource);

@@ -8,6 +8,7 @@ use Core\Helpers\Helpers;
 use Core\Models\BaseModel;
 use Core\Models\Traits\ListsColumns;
 use Core\Tests\TestCase;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -218,6 +219,30 @@ class HelpersTest extends TestCase
         $this->assertEquals('complex-resources', Helpers::morphOf('ComplexResource'));
         $this->assertEquals('test.complex-resources', Helpers::morphOf('Test\ComplexResource'));
         $this->assertEquals('test.complex-resources', Helpers::morphOf('Models\Test\ComplexResource'));
+    }
+
+    /**
+     * Test that `morphOf` gives the morph map's alias of a class, whose name has dots, as an anonymous class's
+     * name has its file path.
+     *
+     * @return void
+     */
+    public function testMorphOfGivesAliasOfClassWithDotsInName(): void
+    {
+        $model = new class extends BaseModel
+        {
+            //
+        };
+
+        $previous = Relation::morphMap();
+        Relation::morphMap(['tests.anonymous-models' => $model::class]);
+
+        try {
+            $this->assertStringContainsString('.', $model::class);
+            $this->assertSame('tests.anonymous-models', Helpers::morphOf($model));
+        } finally {
+            Relation::morphMap($previous, false);
+        }
     }
 
     public function testRequestedListsThatAreNotStringsAnswer422(): void
