@@ -32,7 +32,8 @@ use Throwable;
  *
  * Manages the users of the organization, in which a request acts: it lists
  * and shows them, invites people to new accounts (see
- * UserRepository::invite()), updates them, deletes them, and emails an
+ * UserRepository::invite()) or again to their deleted ones (see
+ * UserRepository::reinvite()), updates them, deletes them, and emails an
  * invitation again. A manager gives only the roles, which they may assign
  * (their own and the lower ones), and the roles, which they may not, stay as
  * they are. Nobody sets another person's email or password (see
@@ -120,7 +121,10 @@ class UserController extends CrudController
 
     /**
      * Handle the `store` operation: invite a person to a new account in the
-     * organization, in which the request acts.
+     * organization, in which the request acts, or again to their deleted one
+     * (see UserRepository::reinvite()), unless that user ranks above the
+     * manager. The deleted user keeps the roles, which the manager may not
+     * assign.
      *
      * @param StoreRequest $request
      *
@@ -129,19 +133,58 @@ class UserController extends CrudController
      */
     protected function handleStore(StoreRequest $request): ApiResponse
     {
+        $attributes = Arr::except($request->validated(), ['roles']);
         $roles = $request->validated('roles', []);
-        $this->ensureRolesCanChange($request, $roles, []);
+        $deleted = $this->users->findDeleted($attributes['email'], $request->orgId());
 
-        $user = $this->users->invite(
-            Arr::except($request->validated(), ['roles']),
-            $request->orgId(),
-            $roles,
-            $this->managerOf($request)
-        );
+        $user = $deleted === null
+            ? $this->invite($request, $attributes, $roles)
+            : $this->reinvite($request, $deleted, $attributes, $roles);
 
         return $this->asResourceResponse($user->load('roles'))
             ->setMessage('Invited')
             ->setStatus(201);
+    }
+
+    /**
+     * Invite a person to a new account with the roles, which the manager may add.
+     *
+     * @param CrudRequest $request
+     * @param array<string, mixed> $attributes
+     * @param array<int, string> $roles
+     *
+     * @return User
+     * @throws AuthorizationException
+     */
+    protected function invite(CrudRequest $request, array $attributes, array $roles): User
+    {
+        $this->ensureRolesCanChange($request, $roles, []);
+
+        return $this->users->invite($attributes, $request->orgId(), $roles, $this->managerOf($request));
+    }
+
+    /**
+     * Invite a person again to their deleted account, unless they rank above
+     * the manager, giving them the roles along with the ones, which the
+     * manager may not assign.
+     *
+     * @param CrudRequest $request
+     * @param User $user
+     * @param array<string, mixed> $attributes
+     * @param array<int, string> $roles
+     *
+     * @return User
+     * @throws AuthorizationException
+     */
+    protected function reinvite(CrudRequest $request, User $user, array $attributes, array $roles): User
+    {
+        $manager = $this->managerOf($request);
+
+        if ($user->isHigherThan($manager)) {
+            throw new AuthorizationException('You are not authorized to invite this user again.');
+        }
+
+        return $this->users->reinvite($user, $attributes, $this->rolesAfterChange($request, $user, $roles), $manager);
     }
 
     /**
@@ -162,16 +205,7 @@ class UserController extends CrudController
         $roles = null;
 
         if (array_key_exists('roles', $attributes)) {
-            $assignable = $this->managerOf($request)->availableRoles();
-            $current = $user->getRoleNames()->all();
-
-            $this->ensureRolesCanChange(
-                $request,
-                array_values(array_diff($attributes['roles'], $current)),
-                array_values(array_diff(array_intersect($current, $assignable), $attributes['roles']))
-            );
-
-            $roles = [...$attributes['roles'], ...array_diff($current, $assignable)];
+            $roles = $this->rolesAfterChange($request, $user, $attributes['roles']);
         }
 
         DB::transaction(function () use ($user, $attributes, $roles) {
@@ -222,6 +256,33 @@ class UserController extends CrudController
     protected function builder(CrudRequest $request): BaseQuery
     {
         return parent::builder($request)->with('roles');
+    }
+
+    /**
+     * Get the roles, which the user has, once the manager gives them the given
+     * ones: those, along with the user's roles, which the manager may not
+     * assign, as they stay. The manager must be allowed to add and remove the
+     * roles, which change.
+     *
+     * @param CrudRequest $request
+     * @param User $user
+     * @param array<int, string> $roles
+     *
+     * @return array<int, string>
+     * @throws AuthorizationException
+     */
+    protected function rolesAfterChange(CrudRequest $request, User $user, array $roles): array
+    {
+        $assignable = $this->managerOf($request)->availableRoles();
+        $current = $user->getRoleNames()->all();
+
+        $this->ensureRolesCanChange(
+            $request,
+            array_values(array_diff($roles, $current)),
+            array_values(array_diff(array_intersect($current, $assignable), $roles))
+        );
+
+        return [...$roles, ...array_diff($current, $assignable)];
     }
 
     /**

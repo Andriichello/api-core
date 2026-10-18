@@ -40,6 +40,20 @@ trait LinksAccountsByEmail
     }
 
     /**
+     * Unlink the account from the person's other accounts, as a change of its
+     * email does: it leaves its main account, and the accounts linked to it
+     * are handed over to the oldest of them. The account itself is saved by
+     * the caller, and it is linked again, when its email is verified.
+     *
+     * @return void
+     */
+    public function unlinkFromPerson(): void
+    {
+        $this->main_account_id = null;
+        $this->handOverRelatedAccounts();
+    }
+
+    /**
      * Link the account to the main account of the person, by its email.
      * A main account, which is given explicitly, is kept as it is.
      *

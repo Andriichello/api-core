@@ -53,9 +53,12 @@ class InviteUserRequest extends StoreRequest
                 'string',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->where(fn ($query) => $orgId === null
-                    ? $query->whereNull('organization_id')
-                    : $query->where('organization_id', $orgId)),
+                // The email of a deleted user is fine, as inviting it restores the user
+                Rule::unique('users', 'email')
+                    ->withoutTrashed()
+                    ->where(fn ($query) => $orgId === null
+                        ? $query->whereNull('organization_id')
+                        : $query->where('organization_id', $orgId)),
             ],
             'timezone' => ['sometimes', 'string', 'timezone:all'],
             'locale' => ['sometimes', 'string', 'max:5'],

@@ -30,6 +30,15 @@ class UserRepository extends CrudRepository
     protected BaseModel|string $model = User::class;
 
     /**
+     * UserRepository constructor.
+     *
+     * @param AccessTokenRepository $tokens
+     */
+    public function __construct(
+        protected AccessTokenRepository $tokens = new AccessTokenRepository
+    ) {}
+
+    /**
      * Assign roles to a given user.
      *
      * @param User $user
@@ -88,6 +97,65 @@ class UserRepository extends CrudRepository
         });
 
         $this->sendInvitation($user, $inviter);
+
+        return $user;
+    }
+
+    /**
+     * Invite a person again to their deleted account, restoring it, so its
+     * history stays attached to it. As with a new invitation, the account
+     * gets the given attributes and roles, its email is unverified and its
+     * password a random one, until they accept the invitation. It leaves the
+     * person's other accounts first (see User::unlinkFromPerson()), so their
+     * password stays, and it is linked to them again, when the invitation is
+     * accepted and the email so verified. Its tokens are deleted.
+     *
+     * @param User $user
+     * @param array<string, mixed> $attributes
+     * @param array<int, UserRole|string> $roles
+     * @param User|null $inviter
+     *
+     * @return User
+     */
+    public function reinvite(User $user, array $attributes, array $roles = [], ?User $inviter = null): User
+    {
+        DB::transaction(function () use ($user, $attributes, $roles) {
+            $user->unlinkFromPerson();
+
+            $user->fill(Arr::except($attributes, ['email', 'password']));
+            $user->forceFill([
+                'password' => Str::password(64),
+                'email_verified_at' => null,
+            ]);
+
+            $user->restore();
+            $user->syncRoles($roles);
+
+            $this->tokens->deleteOfAccounts($user);
+        });
+
+        $this->sendInvitation($user, $inviter);
+
+        return $user;
+    }
+
+    /**
+     * Find the deleted account with the email in the organization (or among
+     * the accounts without one).
+     *
+     * @param string $email
+     * @param int|null $organizationId
+     *
+     * @return User|null
+     */
+    public function findDeleted(string $email, ?int $organizationId): ?User
+    {
+        /** @var User|null $user */
+        $user = User::query()
+            ->whereTrashed()
+            ->where('email', $email)
+            ->where('organization_id', $organizationId)
+            ->first();
 
         return $user;
     }

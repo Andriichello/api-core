@@ -169,6 +169,98 @@ class UserControllerTest extends TestCase
     }
 
     /**
+     * Test that inviting the email of a deleted user restores the account for a new invitation: with the given
+     * roles (and the ones, which the admin may not assign), an unverified email, a password nobody knows, and
+     * without its old tokens.
+     *
+     * @return void
+     */
+    public function testInvitingDeletedUserRestoresTheAccount(): void
+    {
+        Role::findOrCreate('billing');
+        $this->member->assignRole('billing');
+        $this->member->createToken('old');
+        $this->member->delete();
+
+        $this->actingAs($this->admin)
+            ->postJson('users', [
+                'name' => 'Back',
+                'email' => strtoupper($this->member->email),
+                'roles' => [UserRole::Guest->value],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('message', 'Invited')
+            ->assertJsonPath('data.id', $this->member->id);
+
+        $member = $this->member->fresh();
+
+        $this->assertNotSoftDeleted($member);
+        $this->assertSame('Back', $member->name);
+        $this->assertNull($member->email_verified_at);
+        $this->assertFalse(Hash::check('password', $member->password));
+        $this->assertEqualsCanonicalizing([UserRole::Guest->value, 'billing'], $member->getRoleNames()->all());
+        $this->assertSame(0, $member->tokens()->count());
+        $this->assertSame(1, User::query()->where('email', $member->email)->count());
+
+        Notification::assertSentTo($member, InvitationNotification::class);
+    }
+
+    /**
+     * Test that a deleted main account, which is invited again, leaves the person's other accounts, handing them
+     * over, so they keep the person's password, and so does a deleted linked account.
+     *
+     * @return void
+     */
+    public function testInvitedDeletedAccountLeavesThePersonsOtherAccounts(): void
+    {
+        $beta = Organization::factory()->create();
+        $linked = User::factory()->create([
+            'organization_id' => $beta->id,
+            'email' => $this->member->email,
+            'main_account_id' => $this->member->id,
+        ]);
+
+        $this->member->delete();
+
+        $this->actingAs($this->admin)
+            ->postJson('users', ['name' => 'Back', 'email' => $this->member->email])
+            ->assertCreated();
+
+        $member = $this->member->fresh();
+        $linked = $linked->fresh();
+
+        $this->assertNull($member->main_account_id);
+        $this->assertNull($linked->main_account_id);
+        $this->assertTrue(Hash::check('password', $linked->getAuthPassword()));
+        $this->assertFalse(Hash::check('password', $member->getAuthPassword()));
+
+        $member->forceFill(['email_verified_at' => now(), 'main_account_id' => $linked->id])->save();
+        $member->delete();
+
+        $this->postJson('users', ['name' => 'Again', 'email' => $member->email])->assertCreated();
+
+        $this->assertNull($member->fresh()->main_account_id);
+        $this->assertTrue(Hash::check('password', $linked->fresh()->getAuthPassword()));
+    }
+
+    /**
+     * Test that a deleted user, who ranks above the manager, can't be invited again by them.
+     *
+     * @return void
+     */
+    public function testDeletedUserRankingAboveCannotBeInvitedAgain(): void
+    {
+        $manager = $this->createUser('manager');
+        $this->admin->delete();
+
+        $this->actingAs($manager)
+            ->postJson('users', ['name' => 'Back', 'email' => $this->admin->email])
+            ->assertForbidden();
+
+        $this->assertSoftDeleted($this->admin);
+    }
+
+    /**
      * Test that a user, whose role may only view users, can't invite anyone.
      *
      * @return void
