@@ -21,6 +21,8 @@ use Illuminate\Database\Query\JoinClause;
  * @method $this orderBy($column, $direction = 'asc')
  * @method $this orderByDesc($column)
  * @method $this lockForUpdate()
+ * @method $this limit($value)
+ * @method $this offset($value)
  * @method BaseModel|null find($id, $columns = ['*'])
  * @method BaseModel findOrFail($id, $columns = ['*'])
  * @method BaseModel|null first($columns = ['*'])
@@ -216,8 +218,10 @@ class BaseQuery extends EloquentBuilder implements IndexableInterface
     }
 
     /**
-     * Chunk the results of the query but respect the
-     * limit and offset if they are present.
+     * Chunk the results of the query but respect the limit and offset
+     * if they are present: the chunks start at the offset and stop at
+     * the limit, or at the end without one. Empty chunks aren't passed
+     * to the callback, and the callback returning false stops chunking.
      *
      * @param callable $callback
      * @param int $count
@@ -226,23 +230,25 @@ class BaseQuery extends EloquentBuilder implements IndexableInterface
      */
     public function chunkPaginated(callable $callback, int $count = 1000): void
     {
-        // makes sure that previously set limit and offset are followed
-        $originalLimit = $this->getQuery()->limit ?? 0;
-        $originalOffset = $this->getQuery()->offset ?? 0;
-
+        $limit = $this->getQuery()->limit;
+        $offset = $this->getQuery()->offset ?? 0;
         $retrieved = 0;
-        $step = min($originalLimit, $count);
 
-        while ($retrieved !== $originalLimit) {
-            $query = $this->clone()
-                ->offset($originalOffset + $retrieved)
-                ->limit($step);
+        while ($limit === null || $retrieved < $limit) {
+            $size = $limit === null ? $count : min($count, $limit - $retrieved);
 
-            $callback(($records = $query->get()));
-            $count = $records->count();
-            $retrieved += $count;
+            $records = $this->clone()
+                ->offset($offset + $retrieved)
+                ->limit($size)
+                ->get();
 
-            if ($count < $step) {
+            if ($records->isEmpty() || $callback($records) === false) {
+                break;
+            }
+
+            $retrieved += $records->count();
+
+            if ($records->count() < $size) {
                 break;
             }
         }
