@@ -293,6 +293,54 @@ class LockableTest extends TestCase
     }
 
     /**
+     * Test that a part can't be moved out of a locked record, nor into one.
+     *
+     * @return void
+     */
+    public function testPartsCannotMoveOutOfOrIntoLockedRecord(): void
+    {
+        $locked = $this->createInvoice();
+        $unlocked = $this->createInvoice(['number' => 'INV-2']);
+
+        $item = new $this->items(['invoice_id' => $locked->getKey(), 'description' => 'Hours']);
+        $item->save();
+        $locked->update(['status' => 'ready']);
+
+        $exception = $this->lockedBy(fn () => $item->update(['invoice_id' => $unlocked->getKey()]));
+        $this->assertTrue($locked->is($exception->record));
+
+        $other = new $this->items(['invoice_id' => $unlocked->getKey(), 'description' => 'Travel']);
+        $other->save();
+
+        $exception = $this->lockedBy(fn () => $other->update(['invoice_id' => $locked->getKey()]));
+        $this->assertTrue($locked->is($exception->record));
+
+        $this->assertSame(
+            [$locked->getKey(), $unlocked->getKey()],
+            $this->items::query()->orderBy('id')->pluck('invoice_id')->all()
+        );
+    }
+
+    /**
+     * Test that a part checks its record as it is stored, not the one it loaded before the record was locked.
+     *
+     * @return void
+     */
+    public function testPartsCheckTheStoredStateOfTheirRecord(): void
+    {
+        $invoice = $this->createInvoice();
+
+        $item = new $this->items(['invoice_id' => $invoice->getKey(), 'description' => 'Hours']);
+        $item->save();
+        $item->load('invoice');
+
+        $this->invoices::query()->findOrFail($invoice->getKey())->update(['status' => 'ready']);
+
+        $this->lockedBy(fn () => $item->update(['description' => 'Changed']));
+        $this->assertSame(['Hours'], $this->items::query()->pluck('description')->all());
+    }
+
+    /**
      * Test that the exception answers with 409 and its message.
      *
      * @return void

@@ -12,8 +12,10 @@ use Illuminate\Database\Eloquent\Model;
  *
  * For records, which are parts of a lockable one (see Lockable), such as the
  * items of an invoice: they can't be created, changed or deleted, while that
- * record is locked, as RecordLockedException is thrown. The model names that
- * record in `lockingParent()`.
+ * record is locked, nor moved out of it, as RecordLockedException is thrown.
+ * The model names that record in `lockingParent()`, which is asked on a copy
+ * of the model without its loaded relations, so the record is loaded as it
+ * is stored (its relation may be loaded lazily there).
  *
  * @mixin BaseModel
  *
@@ -44,17 +46,44 @@ trait LockedByParent
     abstract public function lockingParent(): (Model&LockableInterface)|null;
 
     /**
-     * Make sure the record, which the model is a part of, isn't locked.
+     * Make sure the record, which the model is a part of, isn't locked, and
+     * neither is the one, which it was a part of, so a part can't be moved
+     * out of a locked record. Both are loaded as they are stored, as a loaded
+     * one may be stale.
      *
      * @return void
      * @throws RecordLockedException
      */
     protected function ensureParentIsUnlocked(): void
     {
-        $parent = $this->lockingParent();
+        $parents = [$this->storedLockingParent($this->getAttributes())];
 
-        if ($parent !== null && $parent->isLocked()) {
-            throw RecordLockedException::changingChildOf($parent);
+        if ($this->exists) {
+            $parents[] = $this->storedLockingParent($this->getRawOriginal());
         }
+
+        foreach ($parents as $parent) {
+            if ($parent !== null && $parent->isLocked()) {
+                throw RecordLockedException::changingChildOf($parent);
+            }
+        }
+    }
+
+    /**
+     * Get the record, which locks the model with the given attributes, as it
+     * is stored: from a copy of the model without its loaded relations.
+     *
+     * @param array<string, mixed> $attributes
+     *
+     * @return (Model&LockableInterface)|null
+     */
+    protected function storedLockingParent(array $attributes): (Model&LockableInterface)|null
+    {
+        $model = clone $this;
+        $model->setRawAttributes($attributes);
+        $model->setRelations([]);
+        $model->preventsLazyLoading = false;
+
+        return $model->lockingParent();
     }
 }
