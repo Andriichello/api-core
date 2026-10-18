@@ -5,9 +5,7 @@ namespace Core\Http\Controllers\Traits;
 use Core\Http\Controllers\CrudController;
 use Core\Http\Requests\CrudRequest;
 use Core\Models\BaseModel;
-use Core\Queries\BaseQuery;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Route;
 use LogicException;
@@ -18,10 +16,13 @@ use LogicException;
  * For CRUD controllers of what belongs to a model, such as its files or its
  * settings, whose routes nest it under the model, e.g.
  * `invoices/{invoice}/files`. The model is found by its route parameter
- * within the user's index scope, and the controller's policy, which is the
- * model's one, authorizes each request as an ability on the model (see
- * `$abilities`), so a user, who can view the model, can read what belongs to
- * it, and a user, who can update it, can change that.
+ * within the user's index scope, and within the model's own parents, which
+ * the route names, e.g. `profiles/{profile}/invoices/{invoice}/files` with
+ * `$parents = ['profile']` (the invoice's BelongsTo relation). The
+ * controller's policy, which is the model's one, authorizes each request as
+ * an ability on the model (see `$abilities`), so a user, who can view the
+ * model, can read what belongs to it, and a user, who can update it, can
+ * change that.
  *
  * @mixin CrudController
  *
@@ -109,7 +110,9 @@ trait NestsUnderParent
 
     /**
      * Find the model, under which the request is nested, by its route
-     * parameter, within the user's index scope.
+     * parameter, within the user's index scope, and within its own parents,
+     * which the route names (see `$parents`, the model's BelongsTo relations),
+     * so a model under another parent isn't found.
      *
      * @param CrudRequest $request
      *
@@ -125,14 +128,12 @@ trait NestsUnderParent
             throw new LogicException(static::class . " needs the {{$this->parameter}} route parameter.");
         }
 
-        /** @var BaseQuery $query */
-        $query = ($this->parentClass())::query();
-        $query->index($request->user(), []);
+        $class = $this->parentClass();
+        $parents = $this->resolveParentsOf(new $class, $request);
 
-        /** @var BaseModel $parent */
-        $parent = $query->findOrFail($value instanceof Model ? $value->getKey() : $value);
+        $parents[$this->parameter] = $this->findParent(new $class, $value, $parents, $request);
 
-        return [$this->parameter => $parent];
+        return $parents;
     }
 
     /**

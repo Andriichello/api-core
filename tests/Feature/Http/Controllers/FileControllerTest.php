@@ -18,6 +18,7 @@ use Core\Policies\CrudPolicy;
 use Core\Repositories\FileRepository;
 use Core\Tests\TestCase;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -37,6 +38,7 @@ use Laravel\Sanctum\Sanctum;
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Tests\Feature\Http\Controllers
  * @SuppressWarnings("PHPMD.CouplingBetweenObjects")
+ * @SuppressWarnings("PHPMD.TooManyFields")
  */
 class FileControllerTest extends TestCase
 {
@@ -55,6 +57,13 @@ class FileControllerTest extends TestCase
      * @var class-string<BaseModel&HasFilesInterface>
      */
     private string $documents;
+
+    /**
+     * Class of the folders, which documents belong to, whose table is created for the tests.
+     *
+     * @var class-string<BaseModel>
+     */
+    private string $folders;
 
     /**
      * The morph map before the test, which is restored after it.
@@ -119,25 +128,46 @@ class FileControllerTest extends TestCase
         $disk = Storage::fake(config('api-core.files.disk'));
         $this->disk = $disk;
 
+        Schema::create('folders', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
+        });
+
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained();
+            $table->foreignId('folder_id')->nullable()->constrained();
             $table->string('title');
             $table->boolean('locked')->default(false);
             $table->timestamps();
         });
 
-        $this->documents = get_class(new class extends BaseModel implements HasFilesInterface
+        $this->folders = get_class(new class extends BaseModel
+        {
+            protected $table = 'folders';
+        });
+
+        $documents = new class extends BaseModel implements HasFilesInterface
         {
             use BelongsToOrganization;
             use HasFiles;
+
+            public static string $folders;
 
             protected $table = 'documents';
 
             protected $fillable = ['title', 'locked'];
 
             protected $casts = ['locked' => 'bool'];
-        });
+
+            public function folder(): BelongsTo
+            {
+                return $this->belongsTo(self::$folders, 'folder_id');
+            }
+        };
+
+        $documents::$folders = $this->folders;
+        $this->documents = $documents::class;
 
         $this->morphMap = Relation::morphMap();
         Relation::morphMap(['tests.documents' => $this->documents]);
@@ -169,7 +199,8 @@ class FileControllerTest extends TestCase
 
     /**
      * Create the controllers of the documents' files and register their routes: all operations on all files at
-     * `documents/{document}/files`, and only reading the generated ones at `documents/{document}/generated`.
+     * `documents/{document}/files` and at `folders/{folder}/documents/{document}/files`, and only reading the
+     * generated ones at `documents/{document}/generated`.
      *
      * @return void
      */
@@ -222,12 +253,31 @@ class FileControllerTest extends TestCase
             }
         };
 
+        $nested = new class($policy, new FileRepository, $this->documents) extends FileController
+        {
+            protected string $parameter = 'document';
+
+            protected array $parents = ['folder'];
+
+            public function __construct(CrudPolicy $policy, FileRepository $repository, string $fileable)
+            {
+                parent::__construct($policy, $repository);
+
+                $this->fileable = $fileable;
+            }
+        };
+
         foreach (['files' => $files, 'generated' => $generated] as $uri => $controller) {
             $this->app->instance($controller::class, $controller);
 
             Route::middleware(['auth:sanctum', ResolveOrganization::ALIAS])
                 ->group(fn () => $controller::routes("documents/{document}/$uri"));
         }
+
+        $this->app->instance($nested::class, $nested);
+
+        Route::middleware(['auth:sanctum', ResolveOrganization::ALIAS])
+            ->group(fn () => $nested::routes('folders/{folder}/documents/{document}/files'));
     }
 
     /**
@@ -259,6 +309,28 @@ class FileControllerTest extends TestCase
     private function uri(BaseModel $document, ?File $file = null, string $suffix = ''): string
     {
         return "documents/{$document->getKey()}/files" . ($file ? "/$file->id" : '') . $suffix;
+    }
+
+    /**
+     * Test that the files of a document, which belongs to a folder, are reached under that folder only.
+     *
+     * @return void
+     */
+    public function testFilesAreReachedOnlyUnderTheFolderOfTheDocument(): void
+    {
+        $folder = new $this->folders;
+        $folder->save();
+        $another = new $this->folders;
+        $another->save();
+
+        $this->document->forceFill(['folder_id' => $folder->getKey()]);
+        CurrentOrganization::run($this->document->orgId(), fn () => $this->document->save());
+
+        Sanctum::actingAs($this->user);
+
+        $this->getJson("folders/{$folder->getKey()}/documents/{$this->document->getKey()}/files")->assertOk();
+        $this->getJson("folders/{$another->getKey()}/documents/{$this->document->getKey()}/files")->assertNotFound();
+        $this->getJson("folders/0/documents/{$this->document->getKey()}/files")->assertNotFound();
     }
 
     /**

@@ -443,9 +443,24 @@ abstract class CrudController extends ResourceController
      */
     protected function resolveParents(CrudRequest $request): array
     {
-        $parents = [];
         $model = $this->repository->model();
-        $model = is_string($model) ? new $model : $model;
+
+        return $this->resolveParentsOf(is_string($model) ? new $model : $model, $request);
+    }
+
+    /**
+     * Find the parents of the given model (see `$parents`), which the request's
+     * route names, by their route parameters, from the outermost one.
+     *
+     * @param BaseModel $model
+     * @param CrudRequest $request
+     *
+     * @return array<string, BaseModel>
+     * @throws ModelNotFoundException
+     */
+    protected function resolveParentsOf(BaseModel $model, CrudRequest $request): array
+    {
+        $parents = [];
 
         foreach ($this->parents as $name) {
             $value = $request->route($name);
@@ -457,22 +472,40 @@ abstract class CrudController extends ResourceController
             /** @var BelongsTo $relation */
             $relation = $model->$name();
 
-            /** @var BaseQuery $query */
-            $query = $relation->getRelated()->newQuery();
-            $query->index($request->user(), []);
-
-            foreach ($parents as $outerName => $outer) {
-                if ($query->getModel()->isRelation($outerName)) {
-                    $query->whereBelongsTo($outer, $outerName);
-                }
-            }
-
-            /** @var BaseModel $parent */
-            $parent = $query->findOrFail($value instanceof Model ? $value->getKey() : $value);
-
-            $parents[$name] = $parent;
+            $parents[$name] = $this->findParent($relation->getRelated(), $value, $parents, $request);
         }
 
         return $parents;
+    }
+
+    /**
+     * Find a parent of the given model's class by its route parameter's value,
+     * within the user's index scope and within the outer parents, to which it
+     * belongs (the ones, which are its relations).
+     *
+     * @param Model $model
+     * @param mixed $value
+     * @param array<string, BaseModel> $outerParents
+     * @param CrudRequest $request
+     *
+     * @return BaseModel
+     * @throws ModelNotFoundException
+     */
+    protected function findParent(Model $model, mixed $value, array $outerParents, CrudRequest $request): BaseModel
+    {
+        /** @var BaseQuery $query */
+        $query = $model->newQuery();
+        $query->index($request->user(), []);
+
+        foreach ($outerParents as $outerName => $outer) {
+            if ($model->isRelation($outerName)) {
+                $query->whereBelongsTo($outer, $outerName);
+            }
+        }
+
+        /** @var BaseModel $parent */
+        $parent = $query->findOrFail($value instanceof Model ? $value->getKey() : $value);
+
+        return $parent;
     }
 }
