@@ -2,6 +2,7 @@
 
 namespace Core\Http\Controllers;
 
+use Core\Http\Controllers\Traits\NestsUnderParent;
 use Core\Http\Requests\Crud\DestroyRequest;
 use Core\Http\Requests\Crud\IndexRequest;
 use Core\Http\Requests\Crud\ShowRequest;
@@ -19,12 +20,8 @@ use Core\Policies\CrudPolicy;
 use Core\Queries\BaseQuery;
 use Core\Queries\FileQuery;
 use Core\Repositories\FileRepository;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Route;
 use LogicException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -37,10 +34,9 @@ use Throwable;
  * them, e.g. `invoices/{invoice}/files/{id}`: it lists, uploads, shows,
  * downloads, renames and deletes them. A controller is made for each model,
  * whose files have routes: it names the model's class and route parameter,
- * and takes the model's policy. The model is found within the user's index
- * scope, and the policy authorizes each request as an ability on the model
- * (see `$abilities`), so a user, who can view the model, can list and
- * download its files, and a user, who can update it, can change them.
+ * and takes the model's policy, which authorizes each request as an ability
+ * on the model (see NestsUnderParent), so a user, who can view the model, can
+ * list and download its files, and a user, who can update it, can change them.
  *
  * `routes()` registers the routes of the controller's operations.
  *
@@ -50,6 +46,8 @@ use Throwable;
  */
 abstract class FileController extends CrudController
 {
+    use NestsUnderParent;
+
     /**
      * Resource class, which wraps a single model.
      *
@@ -87,13 +85,6 @@ abstract class FileController extends CrudController
     protected string $fileable;
 
     /**
-     * Route parameter of the model, whose files the controller handles.
-     *
-     * @var string
-     */
-    protected string $parameter;
-
-    /**
      * Collection, to which the routes are limited: they list, find and add
      * only its files. When null, they see the files of every collection, and
      * add them to the default one.
@@ -101,21 +92,6 @@ abstract class FileController extends CrudController
      * @var string|null
      */
     protected ?string $collection = null;
-
-    /**
-     * Abilities on the model, which the abilities of the file requests need.
-     * A request, whose ability isn't listed, is denied.
-     *
-     * @var array<string, string>
-     */
-    protected array $abilities = [
-        'viewAny' => 'view',
-        'view' => 'view',
-        'create' => 'update',
-        'update' => 'update',
-        'delete' => 'update',
-        'forceDelete' => 'update',
-    ];
 
     /**
      * FileController constructor.
@@ -138,22 +114,14 @@ abstract class FileController extends CrudController
      */
     public static function routes(string $uri): void
     {
-        $routes = [
+        static::registerRoutes($uri, [
             'index' => ['get', ''],
             'store' => ['post', ''],
             'show' => ['get', '/{id}'],
             'download' => ['get', '/{id}/download'],
             'update' => ['patch', '/{id}'],
             'destroy' => ['delete', '/{id}'],
-        ];
-
-        $operations = get_class_vars(static::class)['operations'];
-
-        foreach ($routes as $operation => [$method, $suffix]) {
-            if (array_key_exists($operation, $operations)) {
-                Route::$method($uri . $suffix, [static::class, $operation]);
-            }
-        }
+        ]);
     }
 
     /**
@@ -206,31 +174,6 @@ abstract class FileController extends CrudController
     }
 
     /**
-     * Authorize the given request as its ability on the model, whose files it
-     * handles, with the controller's policy.
-     *
-     * @param CrudRequest $request
-     *
-     * @return void
-     * @throws AuthorizationException
-     */
-    protected function checkPolicy(CrudRequest $request): void
-    {
-        $ability = $this->abilities[$request->getAbility()] ?? null;
-
-        if ($ability === null) {
-            throw new AuthorizationException;
-        }
-
-        $user = $request->user();
-
-        $this->ensureAllowed(
-            $this->policy->before($user, $ability)
-                ?? $this->policy->$ability($user, $this->fileableOf($request))
-        );
-    }
-
-    /**
      * Get the query builder for the request: the files of the model, which
      * the route names, in the controller's collection, if it has one.
      *
@@ -253,31 +196,13 @@ abstract class FileController extends CrudController
     }
 
     /**
-     * Find the model, whose files the request handles, by its route parameter,
-     * within the user's index scope.
+     * Get class of the model, whose files the controller handles.
      *
-     * @param CrudRequest $request
-     *
-     * @return array<string, BaseModel>
-     * @throws LogicException When the route has no parameter of the model.
-     * @throws ModelNotFoundException
+     * @return class-string<BaseModel&HasFilesInterface>
      */
-    protected function resolveParents(CrudRequest $request): array
+    protected function parentClass(): string
     {
-        $value = $request->route($this->parameter);
-
-        if ($value === null) {
-            throw new LogicException(static::class . " needs the {{$this->parameter}} route parameter.");
-        }
-
-        /** @var BaseQuery $query */
-        $query = ($this->fileable)::query();
-        $query->index($request->user(), []);
-
-        /** @var BaseModel $fileable */
-        $fileable = $query->findOrFail($value instanceof Model ? $value->getKey() : $value);
-
-        return [$this->parameter => $fileable];
+        return $this->fileable;
     }
 
     /**
@@ -290,7 +215,7 @@ abstract class FileController extends CrudController
      */
     protected function fileableOf(CrudRequest $request): BaseModel&HasFilesInterface
     {
-        $fileable = $request->getParent($this->parameter);
+        $fileable = $this->parentOf($request);
 
         if (!$fileable instanceof HasFilesInterface) {
             throw new LogicException($this->fileable . ' must implement ' . HasFilesInterface::class . '.');
