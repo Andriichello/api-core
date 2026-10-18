@@ -10,6 +10,7 @@ use Core\Http\Requests\Auth\LoginRequest;
 use Core\Http\Requests\Auth\RefreshRequest;
 use Core\Http\Requests\Auth\ResetPasswordRequest;
 use Core\Http\Requests\Auth\SwitchAccountRequest;
+use Core\Http\Requests\Auth\UpdateMeRequest;
 use Core\Http\Requests\Auth\VerifyEmailRequest;
 use Core\Http\Resources\MeResource;
 use Core\Http\Responses\ApiResponse;
@@ -102,6 +103,7 @@ class AuthController extends BaseController
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('me', [static::class, 'me'])->name('auth.me');
+            Route::patch('me', [static::class, 'updateMe'])->name('auth.me.update');
             Route::post('logout', [static::class, 'logout'])->name('auth.logout');
             Route::post('switch', [static::class, 'switchAccount'])->name('auth.switch');
             Route::post('email/verification-notification', [static::class, 'sendVerificationEmail'])
@@ -363,6 +365,25 @@ class AuthController extends BaseController
         return ApiResponse::ok([
             'data' => new MeResource($request->user()),
         ]);
+    }
+
+    /**
+     * Update the signed-in user's own name, timezone or locale.
+     *
+     * @param UpdateMeRequest $request
+     *
+     * @return ApiResponse
+     */
+    public function updateMe(UpdateMeRequest $request): ApiResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $this->users->update($user, $request->validated());
+
+        return ApiResponse::ok([
+            'data' => new MeResource($user),
+        ], 'Updated');
     }
 
     /**

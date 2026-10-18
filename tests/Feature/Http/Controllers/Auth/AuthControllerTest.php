@@ -451,6 +451,54 @@ class AuthControllerTest extends TestCase
     }
 
     /**
+     * Test that the signed-in user updates their own name, timezone and locale.
+     *
+     * @return void
+     */
+    public function testUpdatesOwnProfile(): void
+    {
+        $user = $this->createUser('user@example.com', $this->acme);
+        $token = $this->login(['email' => 'user@example.com'])->json('data.access_token');
+
+        $this->asBearer($token)
+            ->patchJson('/auth/me', ['name' => 'Renamed', 'timezone' => 'Europe/Kyiv', 'locale' => 'uk'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Updated')
+            ->assertJsonPath('data.id', $user->id)
+            ->assertJsonPath('data.name', 'Renamed');
+
+        $user->refresh();
+
+        $this->assertSame('Renamed', $user->name);
+        $this->assertSame('Europe/Kyiv', $user->timezone);
+        $this->assertSame('uk', $user->locale);
+    }
+
+    /**
+     * Test that the own profile's update is validated, and changes neither the email nor the password.
+     *
+     * @return void
+     */
+    public function testOwnProfileUpdateIsValidatedAndLeavesEmailAndPassword(): void
+    {
+        $user = $this->createUser('user@example.com', $this->acme);
+        $token = $this->login(['email' => 'user@example.com'])->json('data.access_token');
+
+        $this->asBearer($token)
+            ->patchJson('/auth/me', ['timezone' => 'Mars/Olympus', 'name' => str_repeat('a', 256)])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['timezone', 'name']);
+
+        $this->asBearer($token)
+            ->patchJson('/auth/me', ['email' => 'new@example.com', 'password' => 'new-password'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('fields');
+
+        $this->assertSame('user@example.com', $user->fresh()->email);
+        $this->assertTrue(Hash::check('password123', $user->fresh()->getAuthPassword()));
+    }
+
+    /**
      * Test that the `me`, `logout` and `switch` routes require authentication.
      *
      * @return void
@@ -458,6 +506,7 @@ class AuthControllerTest extends TestCase
     public function testRequiresAuthentication(): void
     {
         $this->getJson('/auth/me')->assertUnauthorized();
+        $this->patchJson('/auth/me', ['name' => 'Renamed'])->assertUnauthorized();
         $this->postJson('/auth/logout')->assertUnauthorized();
         $this->postJson('/auth/switch', ['user_id' => 1])->assertUnauthorized();
     }
