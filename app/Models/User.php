@@ -402,7 +402,7 @@ class User extends BaseModel implements
         $token = $this->currentAccessToken();
 
         if ($token instanceof AccessToken) {
-            return $token->impersonator;
+            return $token->isImpersonated() ? $token->impersonator : null;
         }
 
         $impersonatorId = $this->isSignedInWithSession()

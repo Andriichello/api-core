@@ -7,6 +7,7 @@ use Core\Models\User;
 use Core\Repositories\AccessTokenRepository;
 use Core\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 
 /**
  * Class AccessTokenTest.
@@ -112,6 +113,28 @@ class AccessTokenTest extends TestCase
     {
         $this->assertFalse($this->createToken()->isImpersonated());
         $this->assertTrue($this->createToken(User::factory()->create())->isImpersonated());
+    }
+
+    /**
+     * Test that the user of a token has the token's impersonator, while the user of a token, which isn't switched,
+     * has none, and neither has the user of Sanctum's fake token in tests.
+     *
+     * @return void
+     */
+    public function testUserOfTokenHasItsImpersonator(): void
+    {
+        $user = User::factory()->create();
+        $impersonator = User::factory()->create();
+        $tokens = app(AccessTokenRepository::class);
+
+        $user->withAccessToken($tokens->create($user, 'Switched', $impersonator)->accessToken);
+        $this->assertTrue($impersonator->is($user->currentImpersonator()));
+
+        $user->withAccessToken($tokens->create($user, 'Plain')->accessToken);
+        $this->assertNull($user->currentImpersonator());
+
+        Sanctum::actingAs($user);
+        $this->assertNull($user->currentImpersonator());
     }
 
     /**
