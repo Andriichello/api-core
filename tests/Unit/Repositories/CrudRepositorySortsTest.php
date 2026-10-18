@@ -323,4 +323,69 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('users.id', $orders[0]['column']);
         $this->assertEquals('asc', $orders[0]['direction']);
     }
+
+    /**
+     * Test that sorts listed with their column are allowed, when not all sorts are, and only they are.
+     *
+     * @return void
+     */
+    public function testAllowsKeyedSortsWhenNotAllSortsAreAllowed(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected bool $allowAllSorts = false;
+
+            protected array $allowedSorts = [
+                'joined' => ['created_at'],
+                'name',
+            ];
+        };
+
+        $orders = $repository->builder($this->createRequestWithUser(['sort' => '-joined,name']))
+            ->getQuery()
+            ->orders;
+
+        $this->assertSame(
+            [
+                ['column' => 'users.created_at', 'direction' => 'desc'],
+                ['column' => 'users.name', 'direction' => 'asc'],
+            ],
+            $orders
+        );
+
+        try {
+            $repository->builder(Request::create('/users', 'GET', ['sort' => 'email']));
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                ["Sorting by the 'email' is not allowed. Allowed sorts: joined, name."],
+                $exception->errors()['sort']
+            );
+
+            return;
+        }
+
+        $this->fail('The sort did not answer with 422.');
+    }
+
+    /**
+     * Test that no sort is allowed, when not all sorts are and none are listed.
+     *
+     * @return void
+     */
+    public function testAllowsNoSortsWhenNoneAreListedAndNotAllSortsAreAllowed(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected bool $allowAllSorts = false;
+        };
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage("Sorting by the 'email' is not allowed. No sorts are allowed.");
+
+        $repository->builder(Request::create('/users', 'GET', ['sort' => 'email']));
+    }
 }

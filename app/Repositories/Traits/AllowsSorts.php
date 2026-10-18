@@ -31,7 +31,8 @@ trait AllowsSorts
      * Determines if all fillable columns as well as
      * timestamps and identifiers should be allowed
      * to sort by. Hidden columns are never among
-     * them, unless they are listed explicitly.
+     * them, unless they are listed explicitly. When
+     * false, only the listed sorts are allowed.
      *
      * @var bool
      */
@@ -59,13 +60,11 @@ trait AllowsSorts
      */
     public function listOfAllowedSorts(): array
     {
-        $allowed = $this->allowedSorts;
+        // Only the listed ones (none, when the list is empty), unless all are allowed
+        $all = $this->allowAllSorts
+            ? array_merge($this->allowedSorts, $this->instance()?->listOfQueryableColumns() ?? [])
+            : $this->allowedSorts;
 
-        if (!$this->allowAllSorts && count($allowed)) {
-            return $allowed;
-        }
-
-        $all = array_merge($allowed, $this->instance()?->listOfQueryableColumns() ?? []);
         $list = [];
 
         foreach ($all as $key => $value) {
@@ -141,8 +140,9 @@ trait AllowsSorts
 
             throw ValidationException::withMessages([
                 'sort' => [
-                    "Sorting by the '$name' is not allowed. Allowed sorts: "
-                    . implode(', ', $allowed) . '.',
+                    "Sorting by the '$name' is not allowed. " . (empty($allowed)
+                        ? 'No sorts are allowed.'
+                        : 'Allowed sorts: ' . implode(', ', $allowed) . '.'),
                 ],
             ]);
         }

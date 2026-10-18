@@ -37,7 +37,8 @@ trait AllowsFilters
      * Determines if all fillable columns as well as
      * timestamps and identifiers should be allowed
      * to filter on. Hidden columns are never among
-     * them, unless they are listed explicitly.
+     * them, unless they are listed explicitly. When
+     * false, only the listed filters are allowed.
      *
      * @var bool
      */
@@ -57,13 +58,11 @@ trait AllowsFilters
      */
     public function listOfAllowedFilters(): array
     {
-        $allowed = $this->allowedFilters;
+        // Only the listed ones (none, when the list is empty), unless all are allowed
+        $all = $this->allowAllFilters
+            ? array_merge($this->allowedFilters, $this->instance()?->listOfQueryableColumns() ?? [])
+            : $this->allowedFilters;
 
-        if (!$this->allowAllFilters && count($allowed)) {
-            return $allowed;
-        }
-
-        $all = array_merge($allowed, $this->instance()?->listOfQueryableColumns() ?? []);
         $list = [];
 
         foreach ($all as $key => $value) {
@@ -291,8 +290,9 @@ trait AllowsFilters
 
         return ValidationException::withMessages([
             "filter.$name" => [
-                "The '$name' filter is not allowed. Allowed filters: "
-                . implode(', ', $allowed) . '.',
+                "The '$name' filter is not allowed. " . (empty($allowed)
+                    ? 'No filters are allowed.'
+                    : 'Allowed filters: ' . implode(', ', $allowed) . '.'),
             ],
         ]);
     }

@@ -20,6 +20,7 @@ use Illuminate\Validation\ValidationException;
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Tests\Unit\Repositories
+ * @SuppressWarnings("PHPMD.TooManyFields")
  */
 class CrudRepositoryFiltersTest extends TestCase
 {
@@ -585,5 +586,64 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $this->assertStringContainsString('"users"."created_at" >= \'2026-06-29 21:00:00\'', $sql);
         $this->assertStringContainsString('"users"."created_at" < \'2026-06-30 21:00:00\'', $sql);
+    }
+
+    /**
+     * Test that filters listed with their class or column are allowed, when not all filters are, and only they are.
+     *
+     * @return void
+     */
+    public function testAllowsKeyedFiltersWhenNotAllFiltersAreAllowed(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected bool $allowAllFilters = false;
+
+            protected array $allowedFilters = [
+                'org_id' => [DefaultFilter::class, 'organization_id'],
+                'name',
+            ];
+        };
+
+        $sql = $repository->builder($this->createRequestWithUser([
+            'filter' => [
+                'org_id' => ['eq' => 5],
+                'name' => ['eq' => 'Test'],
+            ],
+        ]))->toRawSql();
+
+        $this->assertStringContainsString('"organization_id" = 5', $sql);
+        $this->assertStringContainsString('"name" = \'Test\'', $sql);
+
+        $request = Request::create('/users', 'GET', ['filter' => ['email' => ['eq' => 'test@example.com']]]);
+
+        $this->assertSame(
+            ["The 'email' filter is not allowed. Allowed filters: org_id, name."],
+            $this->errorsOf($request, $repository)['filter.email']
+        );
+    }
+
+    /**
+     * Test that no filter is allowed, when not all filters are and none are listed.
+     *
+     * @return void
+     */
+    public function testAllowsNoFiltersWhenNoneAreListedAndNotAllFiltersAreAllowed(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected bool $allowAllFilters = false;
+        };
+
+        $request = Request::create('/users', 'GET', ['filter' => ['email' => ['eq' => 'test@example.com']]]);
+
+        $this->assertSame(
+            ["The 'email' filter is not allowed. No filters are allowed."],
+            $this->errorsOf($request, $repository)['filter.email']
+        );
     }
 }
