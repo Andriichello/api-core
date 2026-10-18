@@ -202,6 +202,7 @@ class File extends BaseModel
     {
         return $this->storage()->download($this->path, $this->name, [
             'Content-Type' => $this->mime_type,
+            'Content-Disposition' => $this->contentDisposition(),
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }
@@ -217,16 +218,30 @@ class File extends BaseModel
      */
     public function temporaryUrl(DateTimeInterface $expiresAt): string
     {
-        $disposition = HeaderUtils::makeDisposition(
-            HeaderUtils::DISPOSITION_ATTACHMENT,
-            $this->name,
-            str_replace('%', '', Str::ascii($this->name)),
-        );
-
         return $this->storage()->temporaryUrl($this->path, $expiresAt, [
             'ResponseContentType' => $this->mime_type,
-            'ResponseContentDisposition' => $disposition,
+            'ResponseContentDisposition' => $this->contentDisposition(),
         ]);
+    }
+
+    /**
+     * Get the Content-Disposition, which downloads the file under its name,
+     * with the name in ASCII for clients, which don't read UTF-8 names. When
+     * nothing of the name can be transliterated (such as emoji), the ASCII
+     * name is `file` with the extension.
+     *
+     * @return string
+     */
+    public function contentDisposition(): string
+    {
+        $fallback = str_replace('%', '', Str::ascii($this->name));
+
+        if (pathinfo($fallback, PATHINFO_FILENAME) === '') {
+            $extension = pathinfo($fallback, PATHINFO_EXTENSION);
+            $fallback = 'file' . ($extension === '' ? '' : ".$extension");
+        }
+
+        return HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $this->name, $fallback);
     }
 
     /**

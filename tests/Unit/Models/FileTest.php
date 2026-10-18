@@ -106,6 +106,28 @@ class FileTest extends TestCase
     }
 
     /**
+     * Test that a name, of which nothing can be transliterated, falls back to `file` with the extension in ASCII.
+     *
+     * @return void
+     */
+    public function testDownloadsNameWithoutAsciiUnderFallbackName(): void
+    {
+        $file = File::factory()->stored('Smile.', 'text/plain')->create(['name' => '😀😀.txt']);
+
+        $this->assertSame(
+            'attachment; filename=file.txt; filename*=utf-8\'\'%F0%9F%98%80%F0%9F%98%80.txt',
+            $file->download()->headers->get('Content-Disposition')
+        );
+
+        $file->name = '😀';
+
+        $this->assertSame(
+            'attachment; filename=file; filename*=utf-8\'\'%F0%9F%98%80',
+            $file->contentDisposition()
+        );
+    }
+
+    /**
      * Test that a file has no URL on a disk, which doesn't provide temporary URLs.
      *
      * @return void
