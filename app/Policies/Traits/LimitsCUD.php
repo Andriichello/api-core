@@ -10,8 +10,8 @@ use Illuminate\Auth\Access\Response;
 /**
  * Trait LimitsCUD.
  *
- * Limits creating, updating and deleting (force deleting included)
- * to super admins, whatever permissions other users have.
+ * Limits creating, updating and deleting (force deleting and restoring
+ * included) to super admins, whatever permissions other users have.
  *
  * @mixin BasePolicy
  * @see LimitsCUDInterface
@@ -32,7 +32,7 @@ trait LimitsCUD
      */
     public function before(mixed $user, string $ability): Response|bool|null
     {
-        $isCUD = in_array($ability, ['create', 'update', 'delete', 'forceDelete']);
+        $isCUD = in_array($ability, ['create', 'update', 'delete', 'forceDelete', 'restore']);
 
         if ($isCUD && !$user?->isSuperAdmin()) {
             return false;

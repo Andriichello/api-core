@@ -5,6 +5,7 @@ namespace Core\Http\Controllers;
 use BadMethodCallException;
 use Core\Http\Requests\Crud\DestroyRequest;
 use Core\Http\Requests\Crud\IndexRequest;
+use Core\Http\Requests\Crud\RestoreRequest;
 use Core\Http\Requests\Crud\ShowRequest;
 use Core\Http\Requests\Crud\StoreRequest;
 use Core\Http\Requests\Crud\UpdateRequest;
@@ -28,10 +29,12 @@ use Throwable;
 /**
  * Class CrudController.
  *
- * Handles the `index`, `show`, `store`, `update` and `destroy` operations.
- * Each operation's request is made from the incoming one, authorized by the
- * policy first and validated after that, and then handled by its
- * `handle{Operation}()` method, which can be overridden.
+ * Handles the `index`, `show`, `store`, `update` and `destroy` operations,
+ * and `restore` of soft-deleted models, which a controller adds to its
+ * `$operations` (`'restore' => RestoreRequest::class`) for a route, such as
+ * `POST {uri}/{id}/restore`. Each operation's request is made from the
+ * incoming one, authorized by the policy first and validated after that, and
+ * then handled by its `handle{Operation}()` method, which can be overridden.
  *
  * Routes may nest the models under their parents (see `$parents`), e.g.
  * `profiles/{profile}/clients/{client}/contracts/{id}`: the operations then
@@ -149,6 +152,19 @@ abstract class CrudController extends ResourceController
     public function destroy(Request $request): ApiResponse
     {
         return $this->handle('destroy', $request);
+    }
+
+    /**
+     * Handle the `restore` operation, when the controller handles it.
+     *
+     * @param Request $request
+     *
+     * @return ApiResponse
+     * @throws Throwable
+     */
+    public function restore(Request $request): ApiResponse
+    {
+        return $this->handle('restore', $request);
     }
 
     /**
@@ -315,6 +331,29 @@ abstract class CrudController extends ResourceController
 
         return ApiResponse::ok()
             ->setMessage('Deleted');
+    }
+
+    /**
+     * Handle the `restore` operation: restore the requested soft-deleted
+     * model.
+     *
+     * @param RestoreRequest $request
+     *
+     * @return ApiResponse
+     * @throws Throwable
+     */
+    protected function handleRestore(RestoreRequest $request): ApiResponse
+    {
+        $model = $this->builder($request)
+            ->whereTrashed()
+            ->findOrFail($request->getId());
+
+        if (!$this->repository->restore($model)) {
+            throw new Exception('Failed to restore ' . $model::class, 500);
+        }
+
+        return $this->asResourceResponse($model->fresh())
+            ->setMessage('Restored');
     }
 
     /**

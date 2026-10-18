@@ -162,6 +162,20 @@ class CrudPolicy extends BasePolicy implements ChecksPermissionsInterface
     }
 
     /**
+     * Determine whether the user can restore the soft-deleted model.
+     *
+     * @param User|null $user
+     * @param BaseModel $model
+     *
+     * @return bool
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
+     */
+    public function restore(mixed $user, mixed $model): bool
+    {
+        return $this->hasAnyRole($user);
+    }
+
+    /**
      * Determine whether the user has any role but a guest's, which may change
      * models, as far as the permissions allow.
      *

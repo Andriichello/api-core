@@ -8,6 +8,7 @@ use Core\Models\User;
 use Core\Queries\Interfaces\IndexableInterface;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Query\JoinClause;
 
 /**
@@ -44,6 +45,28 @@ class BaseQuery extends EloquentBuilder implements IndexableInterface
      */
     public function index(?Model $user, array $params = []): BaseQuery
     {
+        return $this;
+    }
+
+    /**
+     * Limit the query to the soft-deleted models, or to none, when the model
+     * can't be soft-deleted.
+     *
+     * @return static
+     */
+    public function whereTrashed(): static
+    {
+        $model = $this->getModel();
+
+        if (!method_exists($model, 'getQualifiedDeletedAtColumn')) {
+            $this->whereRaw('1 = 0');
+
+            return $this;
+        }
+
+        $this->withoutGlobalScope(SoftDeletingScope::class)
+            ->whereNotNull($model->getQualifiedDeletedAtColumn());
+
         return $this;
     }
 

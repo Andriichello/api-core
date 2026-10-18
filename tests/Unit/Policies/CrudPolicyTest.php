@@ -5,6 +5,7 @@ namespace Core\Tests\Unit\Policies;
 use Core\Enums\UserRole;
 use Core\Http\Requests\Crud\DestroyRequest;
 use Core\Http\Requests\Crud\IndexRequest;
+use Core\Http\Requests\Crud\RestoreRequest;
 use Core\Http\Requests\Crud\StoreRequest;
 use Core\Http\Requests\Crud\UpdateRequest;
 use Core\Http\Requests\CrudRequest;
@@ -267,7 +268,7 @@ class CrudPolicyTest extends TestCase
     }
 
     /**
-     * Test that LimitsCUD lets only super admins create, update and delete.
+     * Test that LimitsCUD lets only super admins create, update, delete and restore.
      *
      * @return void
      */
@@ -280,13 +281,44 @@ class CrudPolicyTest extends TestCase
             protected BaseModel|string $model = User::class;
         };
 
-        $this->grant(UserRole::Admin, 'all');
+        $this->grant(UserRole::Admin, 'all', 'restore');
 
-        $admin = $this->createUser(UserRole::Admin);
+        $organization = Organization::factory()->create();
+        $admin = $this->createUser(UserRole::Admin, $organization);
         $superAdmin = $this->createUser(UserRole::SuperAdmin);
+        $trashed = $this->createUser(null, $organization);
+        $trashed->delete();
 
         $this->assertTrue($policy->determine($this->request(IndexRequest::class, $admin)));
         $this->assertFalse($policy->determine($this->request(StoreRequest::class, $admin)));
         $this->assertTrue($policy->determine($this->request(StoreRequest::class, $superAdmin)));
+        $this->assertFalse($policy->determine($this->request(RestoreRequest::class, $admin)->setId($trashed->id)));
+        $this->assertTrue($policy->determine($this->request(RestoreRequest::class, $superAdmin)->setId($trashed->id)));
+    }
+
+    /**
+     * Test that restoring needs its own permission, and finds only a soft-deleted target.
+     *
+     * @return void
+     */
+    public function testRestoreNeedsItsOwnPermissionAndATrashedTarget(): void
+    {
+        $this->grant(UserRole::User, 'all');
+        $this->grant('restorer', 'all', 'restore');
+
+        $organization = Organization::factory()->create();
+        $user = $this->createUser(UserRole::User, $organization);
+        $restorer = $this->createUser('restorer', $organization);
+        $trashed = $this->createUser(null, $organization);
+        $trashed->delete();
+
+        $restoreBy = fn (User $actor) => $this->request(RestoreRequest::class, $actor)->setId($trashed->id);
+
+        $this->assertFalse($this->policy->determine($restoreBy($user)));
+        $this->assertTrue($this->policy->determine($restoreBy($restorer)));
+
+        $this->expectException(ModelNotFoundException::class);
+
+        $this->policy->determine($this->request(RestoreRequest::class, $restorer)->setId($user->id));
     }
 }

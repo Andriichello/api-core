@@ -207,6 +207,18 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
     }
 
     /**
+     * Restore the given soft-deleted model.
+     *
+     * @param BaseModel $model
+     *
+     * @return bool
+     */
+    public function restore(BaseModel $model): bool
+    {
+        return method_exists($model, 'restore') && $model->restore();
+    }
+
+    /**
      * Force delete the given model. It is deleted with `delete()` first, so
      * any logic of deleting runs for it too, and then removed permanently.
      *
