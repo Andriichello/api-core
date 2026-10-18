@@ -2,11 +2,14 @@
 
 namespace Core\Models\Traits;
 
+use Closure;
 use Core\Helpers\Helpers;
 use Core\Models\BaseModel;
 use Core\Models\File;
 use Core\Models\Interfaces\HasFilesInterface;
 use finfo;
+use Illuminate\Database\DatabaseTransactionRecord;
+use Illuminate\Database\DatabaseTransactionsManager;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -25,10 +28,10 @@ use Throwable;
  * For models, which files are attached to, which implement HasFilesInterface
  * with it. A file is stored on the files disk under the model's directory,
  * and recorded as a File, whose type, size and hash are taken from its
- * contents. A rollback of the transaction, in which a file is attached,
- * deletes the stored file, and so does an error while recording it. Deleting
- * the model deletes its files, though a soft-deleted model keeps them, until
- * it is deleted permanently.
+ * contents. A rollback of the transaction, in which a file is attached (or
+ * of any transaction around it), deletes the stored file, and so does an
+ * error while recording it. Deleting the model deletes its files, though a
+ * soft-deleted model keeps them, until it is deleted permanently.
  *
  * @mixin BaseModel
  * @property Collection<int, File> $files
@@ -246,8 +249,29 @@ trait HasFiles
             throw $exception;
         }
 
-        $file->getConnection()->afterRollBack(fn () => $disk->delete($path));
+        $this->deleteStoredFileOnRollBack($file, fn () => $disk->delete($path));
 
         return $file->setRelation('fileable', $this);
+    }
+
+    /**
+     * Delete the stored file, when the transaction, in which it is recorded,
+     * or any transaction around it rolls back. The callback is registered on
+     * each of them, as Laravel drops the rollback callbacks of a transaction,
+     * which committed, when the one around it rolls back.
+     *
+     * @param File $file
+     * @param Closure $delete
+     *
+     * @return void
+     */
+    protected function deleteStoredFileOnRollBack(File $file, Closure $delete): void
+    {
+        /** @var DatabaseTransactionsManager $transactions */
+        $transactions = app('db.transactions');
+
+        $transactions->callbackApplicableTransactions()
+            ->where('connection', $file->getConnection()->getName())
+            ->each(fn (DatabaseTransactionRecord $transaction) => $transaction->addCallbackForRollback($delete));
     }
 }

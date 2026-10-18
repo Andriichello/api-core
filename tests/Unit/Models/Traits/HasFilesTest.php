@@ -285,6 +285,65 @@ class HasFilesTest extends TestCase
     }
 
     /**
+     * Test that a rollback of a transaction around the one, in which a file is attached, deletes the stored file,
+     * even though the inner transaction committed.
+     *
+     * @return void
+     */
+    public function testRollbackOfOuterTransactionDeletesStoredFile(): void
+    {
+        $document = $this->createDocument();
+        $path = null;
+
+        try {
+            DB::transaction(function () use ($document, &$path) {
+                $path = DB::transaction(fn () => $document->attachContents('Contents.', 'contents.txt')->path);
+
+                $this->assertTrue($this->disk->exists($path));
+
+                throw new RuntimeException('Rolled back');
+            });
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Rolled back', $exception->getMessage());
+        }
+
+        $this->assertNotNull($path);
+        $this->assertFalse($this->disk->exists($path));
+        $this->assertSame(0, File::query()->count());
+    }
+
+    /**
+     * Test that a rollback of the transaction, in which a file is attached, deletes the stored file, while the
+     * transaction around it commits, and the files attached outside of the rollback stay.
+     *
+     * @return void
+     */
+    public function testRollbackOfInnerTransactionDeletesOnlyItsStoredFile(): void
+    {
+        $document = $this->createDocument();
+        $kept = null;
+        $rolledBack = null;
+
+        DB::transaction(function () use ($document, &$kept, &$rolledBack) {
+            $kept = $document->attachContents('Kept.', 'kept.txt')->path;
+
+            try {
+                DB::transaction(function () use ($document, &$rolledBack) {
+                    $rolledBack = $document->attachContents('Rolled back.', 'rolled-back.txt')->path;
+
+                    throw new RuntimeException('Rolled back');
+                });
+            } catch (RuntimeException) {
+                // The inner transaction is rolled back, while the outer one commits
+            }
+        });
+
+        $this->assertTrue($this->disk->exists($kept));
+        $this->assertFalse($this->disk->exists($rolledBack));
+        $this->assertSame([$kept], File::query()->pluck('path')->all());
+    }
+
+    /**
      * Test that the stored file is deleted, when recording it fails.
      *
      * @return void
