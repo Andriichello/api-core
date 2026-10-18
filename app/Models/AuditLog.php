@@ -84,6 +84,13 @@ class AuditLog extends BaseModel
     public const string SOURCE_MANUAL = 'manual';
 
     /**
+     * Source of an entry of an authentication event, such as a login.
+     *
+     * @var string
+     */
+    public const string SOURCE_AUTH = 'auth';
+
+    /**
      * The name of the "updated at" column: entries are never updated.
      *
      * @var string|null
@@ -171,6 +178,42 @@ class AuditLog extends BaseModel
         $entry->save();
 
         return $entry;
+    }
+
+    /**
+     * Record an authentication event of the user, such as `login`, when
+     * `api-core.audit.auth_events` is on (and nothing otherwise). The user is
+     * the subject, and the causer too, unless one is given, such as the user,
+     * who switched to the account. The metadata keeps the request's IP address
+     * and user agent along with the given values.
+     *
+     * @param string $event
+     * @param User|null $user Null for a login, which matches no account.
+     * @param array<string, mixed> $metadata
+     * @param User|null $causer
+     *
+     * @return static|null
+     */
+    public static function recordAuthEvent(
+        string $event,
+        ?User $user,
+        array $metadata = [],
+        ?User $causer = null
+    ): ?static {
+        if (!config('api-core.audit.auth_events')) {
+            return null;
+        }
+
+        $request = request();
+
+        return static::record($event, $user, [
+            'causer' => $causer ?? $user,
+            'source' => static::SOURCE_AUTH,
+            'metadata' => array_filter(
+                ['ip' => $request->ip(), 'user_agent' => $request->userAgent(), ...$metadata],
+                fn (mixed $value) => $value !== null
+            ),
+        ]);
     }
 
     /**

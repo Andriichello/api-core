@@ -5,6 +5,7 @@ namespace Core\Http\Requests\Auth;
 use Core\Http\Requests\BaseRequest;
 use Core\Models\User;
 use Core\Repositories\UserRepository;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
@@ -42,15 +43,24 @@ class LoginRequest extends BaseRequest
      */
     public function authenticate(): User
     {
+        $email = $this->string('email')->value();
+
         $accounts = app(UserRepository::class)->findByCredentials(
-            $this->string('email')->value(),
+            $email,
             $this->string('password')->value(),
             $this->input('organization')
         );
 
+        // The email alone stands for the credentials of a failed login, so the password isn't passed on
+        if ($accounts->isEmpty()) {
+            event(new Failed('sanctum', null, ['email' => $email]));
+        }
+
         $user = $this->choose($accounts);
 
         if (!$user->canSignIn()) {
+            event(new Failed('sanctum', $user, ['email' => $email]));
+
             throw ValidationException::withMessages([
                 'email' => 'This account is suspended.',
             ]);

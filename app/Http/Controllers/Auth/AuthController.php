@@ -15,6 +15,7 @@ use Core\Http\Requests\Auth\VerifyEmailRequest;
 use Core\Http\Resources\MeResource;
 use Core\Http\Responses\ApiResponse;
 use Core\Models\AccessToken;
+use Core\Models\AuditLog;
 use Core\Models\User;
 use Core\Repositories\AccessTokenRepository;
 use Core\Repositories\UserRepository;
@@ -454,6 +455,7 @@ class AuthController extends BaseController
 
         if ($current->isSignedInWithSession()) {
             $this->switchSession($request, $account, $impersonator);
+            AuditLog::recordAuthEvent('switched', $account, ['impersonator_id' => $impersonator?->getKey()], $user);
 
             return ApiResponse::ok([
                 'data' => [
@@ -463,6 +465,7 @@ class AuthController extends BaseController
         }
 
         $token = $this->tokens->create($account, $request->userAgent(), $impersonator);
+        AuditLog::recordAuthEvent('switched', $account, ['impersonator_id' => $impersonator?->getKey()], $user);
 
         return ApiResponse::ok([
             'data' => $this->tokenData($token) + [

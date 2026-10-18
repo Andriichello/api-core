@@ -165,6 +165,14 @@ return [
             ? null : (int) env('API_CORE_AUDIT_RETENTION_DAYS'),
 
         /*
+         * Whether sign-ins (`login`), failed ones (`login_failed`, with the
+         * email), sign-outs (`logout`) and switches to other accounts
+         * (`switched`) are recorded in the audit log, with the IP address,
+         * the user agent, and the user, who switched to the account.
+         */
+        'auth_events' => (bool) env('API_CORE_AUDIT_AUTH_EVENTS', false),
+
+        /*
          * What the `audit` middleware records of a request, unless its
          * parameters name it (`audit:http,data`): `http` (the method, URL,
          * route parameters, status, IP address, user agent and duration),

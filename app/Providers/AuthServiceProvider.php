@@ -7,12 +7,17 @@ use Core\Http\Middleware\AuthenticateSession;
 use Core\Http\Middleware\RequireUpdatedPassword;
 use Core\Http\Requests\Auth\VerifyEmailRequest;
 use Core\Models\AccessToken;
+use Core\Models\AuditLog;
 use Core\Models\User;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -54,6 +59,28 @@ class AuthServiceProvider extends ServiceProvider
                 && (!$token->tokenable instanceof User || $token->tokenable->canSignIn())
                 && (!$token->isImpersonated() || $token->impersonator?->canSignIn() === true)
         );
+
+        // Sign-ins, failed ones and sign-outs are recorded in the audit log, when
+        // `api-core.audit.auth_events` is on (as are switches, by AuthController)
+        Event::listen(Login::class, function (Login $event) {
+            if ($event->user instanceof User) {
+                AuditLog::recordAuthEvent('login', $event->user);
+            }
+        });
+
+        Event::listen(Failed::class, function (Failed $event) {
+            AuditLog::recordAuthEvent('login_failed', $event->user instanceof User ? $event->user : null, [
+                'email' => $event->credentials['email'] ?? null,
+            ]);
+        });
+
+        Event::listen(Logout::class, function (Logout $event) {
+            if ($event->user instanceof User) {
+                AuditLog::recordAuthEvent('logout', $event->user, [
+                    'impersonator_id' => $event->user->currentImpersonator()?->getKey(),
+                ]);
+            }
+        });
 
         // Requests of a signed-in user, which have no email, count for the user's email
         RateLimiter::for(AuthController::RATE_LIMITER, function (Request $request) {

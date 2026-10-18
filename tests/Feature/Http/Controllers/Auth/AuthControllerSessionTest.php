@@ -6,6 +6,7 @@ use Core\Enums\UserRole;
 use Core\Http\Controllers\Auth\AuthController;
 use Core\Http\Middleware\RequireUpdatedPassword;
 use Core\Models\AccessToken;
+use Core\Models\AuditLog;
 use Core\Models\Organization;
 use Core\Models\User;
 use Core\Tests\TestCase;
@@ -530,6 +531,33 @@ class AuthControllerSessionTest extends TestCase
         $this->assertSame(0, AccessToken::query()->count());
 
         Event::assertDispatchedTimes(Login::class, 1);
+    }
+
+    /**
+     * Test that a session's login, its switch to a linked account and its logout are recorded in the audit log,
+     * when authentication events are recorded, with the main account as the one, who switched.
+     *
+     * @return void
+     */
+    public function testRecordsAuthEventsOfSession(): void
+    {
+        config(['api-core.audit.auth_events' => true]);
+
+        $main = $this->createUser('user@example.com', $this->acme);
+        $linked = $this->createUser('user@example.com', $this->createOrganization('beta'), [
+            'main_account_id' => $main->id,
+        ]);
+
+        $this->login(['email' => 'user@example.com'])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $linked->id])->assertOk();
+        $this->spa('POST', '/auth/logout')->assertOk();
+
+        $entries = AuditLog::query()->where('source', AuditLog::SOURCE_AUTH)->orderBy('id')->get();
+
+        $this->assertSame(['login', 'switched', 'logout'], $entries->pluck('event')->all());
+        $this->assertSame([$main->id, $linked->id, $linked->id], $entries->pluck('subject_id')->all());
+        $this->assertSame([$main->id, $main->id, $linked->id], $entries->pluck('causer_id')->all());
+        $this->assertSame([null, $main->id, $main->id], $entries->pluck('metadata.impersonator_id')->all());
     }
 
     /**
