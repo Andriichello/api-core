@@ -18,6 +18,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Sanctum's middleware, which signs a session out, when the user's password
  * changes, extended to sign it out, when the user can no longer sign in, so
  * a suspended user's session stops working right away, as their tokens do.
+ * A session, which a user switched to another account, ends too, when that
+ * user can't sign in or their password changes.
  * Sanctum keeps the password hash in the session only after a request, which
  * starts signed in, so it is also kept, when a request signs in, and a session
  * is signed out by a password change even before its next request.
@@ -45,7 +47,7 @@ class AuthenticateSession extends SanctumAuthenticateSession
             return $this->storePasswordHashOnSignIn($request, $next);
         }
 
-        if ($user instanceof User && !$user->canSignIn()) {
+        if ($user instanceof User && (!$user->canSignIn() || !$this->impersonatorCanStaySignedIn($request))) {
             $guards = $this->sessionGuards();
             $guards->each->logoutCurrentDevice();
 
@@ -55,6 +57,36 @@ class AuthenticateSession extends SanctumAuthenticateSession
         }
 
         return parent::handle($request, $next);
+    }
+
+    /**
+     * Determine if the user, who switched the session to another account (if it
+     * was switched), can still sign in and has the password, which they had,
+     * when they switched it. Otherwise, the switched session must end, as their
+     * own sessions do.
+     *
+     * @param Request $request
+     *
+     * @return bool
+     */
+    protected function impersonatorCanStaySignedIn(Request $request): bool
+    {
+        $session = $request->session();
+        $impersonatorId = $session->get(User::IMPERSONATOR_SESSION_KEY);
+
+        if ($impersonatorId === null) {
+            return true;
+        }
+
+        $impersonator = User::query()->find($impersonatorId);
+        $passwordHash = $session->get(User::IMPERSONATOR_PASSWORD_SESSION_KEY);
+        $guard = $this->sessionGuards()->first();
+
+        return $impersonator instanceof User
+            && $impersonator->canSignIn()
+            && is_string($passwordHash)
+            && $guard instanceof SessionGuard
+            && $this->validatePasswordHash($guard, $impersonator->getAuthPassword(), $passwordHash);
     }
 
     /**

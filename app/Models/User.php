@@ -104,6 +104,14 @@ class User extends BaseModel implements
     public const string IMPERSONATOR_SESSION_KEY = 'api-core.impersonator_id';
 
     /**
+     * Key, under which a switched session keeps the password hash of the
+     * user, who switched it, so it ends, when that user's password changes.
+     *
+     * @var string
+     */
+    public const string IMPERSONATOR_PASSWORD_SESSION_KEY = 'api-core.impersonator_password_hash';
+
+    /**
      * The attributes that are mass-assignable.
      *
      * @var array<int, string>

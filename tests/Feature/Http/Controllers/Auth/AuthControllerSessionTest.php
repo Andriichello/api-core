@@ -424,6 +424,63 @@ class AuthControllerSessionTest extends TestCase
     }
 
     /**
+     * Test that a session, which a super admin switched to another account, ends, when the super admin is
+     * suspended or deleted, as the super admin's own sessions do.
+     *
+     * @return void
+     */
+    public function testSwitchedSessionEndsWhenUserWhoSignedInCannotSignIn(): void
+    {
+        Role::findOrCreate(UserRole::SuperAdmin->value);
+
+        $superAdmin = $this->createUser('admin@example.com');
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+        $user = $this->createUser('user@example.com', $this->acme);
+
+        $this->login(['email' => 'admin@example.com'])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $user->id])->assertOk();
+        $this->spa('GET', '/auth/me')->assertOk()->assertJsonPath('data.id', $user->id);
+
+        $superAdmin->forceFill(['suspended_at' => now()])->save();
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
+
+        $superAdmin->forceFill(['suspended_at' => null])->save();
+        $this->login(['email' => 'admin@example.com'])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $user->id])->assertOk();
+
+        $superAdmin->delete();
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
+    }
+
+    /**
+     * Test that a session, which a super admin switched to another account, ends, when the super admin's password
+     * is reset, while the super admin switching back to their own account checks their password as usual.
+     *
+     * @return void
+     */
+    public function testSwitchedSessionEndsWhenPasswordOfUserWhoSignedInIsReset(): void
+    {
+        Role::findOrCreate(UserRole::SuperAdmin->value);
+
+        $superAdmin = $this->createUser('admin@example.com');
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+        $user = $this->createUser('user@example.com', $this->acme);
+
+        $this->login(['email' => 'admin@example.com'])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $user->id])->assertOk();
+        $this->resetPasswordElsewhere($superAdmin, 'new-password')->assertOk();
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
+
+        $this->login(['email' => 'admin@example.com', 'password' => 'new-password'])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $user->id])->assertOk();
+        $this->spa('POST', '/auth/switch', ['user_id' => $superAdmin->id])->assertOk();
+        $this->spa('GET', '/auth/me')->assertOk()->assertJsonPath('data.id', $superAdmin->id);
+
+        $this->resetPasswordElsewhere($superAdmin, 'newer-password')->assertOk();
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
+    }
+
+    /**
      * Test that the session of a main account switches to its linked accounts and back, keeping the main account
      * as the impersonator, without issuing tokens or firing the Login event.
      *

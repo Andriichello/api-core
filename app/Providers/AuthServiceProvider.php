@@ -47,10 +47,12 @@ class AuthServiceProvider extends ServiceProvider
 
         $this->app['router']->aliasMiddleware(RequireUpdatedPassword::ALIAS, RequireUpdatedPassword::class);
 
-        // A token of a user, who can no longer sign in, stops working right away
+        // A token of a user, who can no longer sign in, stops working right away,
+        // as does a token, which they switched to another account
         Sanctum::authenticateAccessTokensUsing(
             fn (AccessToken $token, bool $isValid) => $isValid
                 && (!$token->tokenable instanceof User || $token->tokenable->canSignIn())
+                && (!$token->isImpersonated() || $token->impersonator?->canSignIn() === true)
         );
 
         // Requests of a signed-in user, which have no email, count for the user's email

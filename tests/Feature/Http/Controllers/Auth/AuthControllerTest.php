@@ -558,6 +558,37 @@ class AuthControllerTest extends TestCase
     }
 
     /**
+     * Test that a token, which a super admin switched to another account, works only while the super admin can
+     * sign in, as the super admin's own tokens do.
+     *
+     * @return void
+     */
+    public function testStopsAcceptingSwitchedTokensOfUsersWhoCannotSignIn(): void
+    {
+        Role::findOrCreate(UserRole::SuperAdmin->value);
+
+        $superAdmin = $this->createUser('admin@example.com');
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+        $user = $this->createUser('user@example.com', $this->acme);
+
+        $token = $this->login(['email' => 'admin@example.com'])->json('data.access_token');
+        $switched = $this->asBearer($token)
+            ->postJson('/auth/switch', ['user_id' => $user->id])
+            ->json('data.access_token');
+
+        $this->asBearer($switched)->getJson('/auth/me')->assertOk()->assertJsonPath('data.id', $user->id);
+
+        $superAdmin->forceFill(['suspended_at' => now()])->save();
+        $this->asBearer($switched)->getJson('/auth/me')->assertUnauthorized();
+
+        $superAdmin->forceFill(['suspended_at' => null])->save();
+        $this->asBearer($switched)->getJson('/auth/me')->assertOk();
+
+        $superAdmin->delete();
+        $this->asBearer($switched)->getJson('/auth/me')->assertUnauthorized();
+    }
+
+    /**
      * Test that switching to the current, a missing or a suspended account is rejected.
      *
      * @return void

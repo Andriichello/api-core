@@ -251,6 +251,13 @@ class AuthController extends BaseController
             $this->tokens->deleteOfPeople([$user], $token instanceof AccessToken ? $token : null);
         });
 
+        // The session stays signed in, also when the person switched it to another account
+        $impersonator = $user->isSignedInWithSession() ? $user->currentImpersonator() : null;
+
+        if ($impersonator !== null) {
+            $this->storeImpersonatorPasswordHash($request, $impersonator);
+        }
+
         return ApiResponse::ok([], 'Your password has been changed.');
     }
 
@@ -453,7 +460,7 @@ class AuthController extends BaseController
      */
     protected function loginToSession(Request $request, User $user): void
     {
-        $request->session()->forget(User::IMPERSONATOR_SESSION_KEY);
+        $request->session()->forget([User::IMPERSONATOR_SESSION_KEY, User::IMPERSONATOR_PASSWORD_SESSION_KEY]);
 
         $this->sessionGuard()->login($user);
     }
@@ -474,9 +481,11 @@ class AuthController extends BaseController
     }
 
     /**
-     * Switch the session to the account, recording the impersonator in it, and
-     * give the session a new id. Unlike signing in, it doesn't fire the Login
-     * event, as switching with tokens doesn't either.
+     * Switch the session to the account, recording the impersonator and their
+     * password hash in it (AuthenticateSession ends the session, when they
+     * can't sign in or change the password), and give the session a new id.
+     * Unlike signing in, it doesn't fire the Login event, as switching with
+     * tokens doesn't either.
      *
      * @param Request $request
      * @param User $account
@@ -490,10 +499,35 @@ class AuthController extends BaseController
         $session = $request->session();
 
         $session->put($guard->getName(), $account->getAuthIdentifier());
-        $session->put(User::IMPERSONATOR_SESSION_KEY, $impersonator?->getAuthIdentifier());
+
+        $session->forget([User::IMPERSONATOR_SESSION_KEY, User::IMPERSONATOR_PASSWORD_SESSION_KEY]);
+
+        if ($impersonator !== null) {
+            $session->put(User::IMPERSONATOR_SESSION_KEY, $impersonator->getAuthIdentifier());
+            $this->storeImpersonatorPasswordHash($request, $impersonator);
+        }
+
         $session->migrate(true);
 
         $guard->setUser($account);
+    }
+
+    /**
+     * Keep the password hash of the user, who switched the session to another
+     * account, in the session, so AuthenticateSession ends the session, when
+     * that user's password changes elsewhere.
+     *
+     * @param Request $request
+     * @param User $impersonator
+     *
+     * @return void
+     */
+    protected function storeImpersonatorPasswordHash(Request $request, User $impersonator): void
+    {
+        $request->session()->put(
+            User::IMPERSONATOR_PASSWORD_SESSION_KEY,
+            $this->sessionGuard()->hashPasswordForCookie($impersonator->getAuthPassword())
+        );
     }
 
     /**
