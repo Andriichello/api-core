@@ -81,6 +81,15 @@ return [
         ],
     ],
 
+    /*
+     * Locales, which the `locale` middleware sets for requests: the user's
+     * one, or else the best match of `Accept-Language`, or else the app's
+     * default (`app.locale`). Their translations, such as `lang/uk/
+     * validation.php`, are the application's. It is a list, so the
+     * application's list replaces this one.
+     */
+    'locales' => ['en'],
+
     'http' => [
         /*
          * Paths, on which requests always expect JSON, as if they had

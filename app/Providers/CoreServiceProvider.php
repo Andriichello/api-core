@@ -5,6 +5,7 @@ namespace Core\Providers;
 use Core\Http\Middleware\AuditRequests;
 use Core\Http\Middleware\ForceJsonOnApi;
 use Core\Http\Middleware\ResolveOrganization;
+use Core\Http\Middleware\SetLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
@@ -18,8 +19,9 @@ use Illuminate\Support\ServiceProvider;
  * merges api-core's config and lets the application publish the config and
  * migrations with the `api-core-config` and `api-core-migrations` tags.
  * It also makes the responses on the API paths JSON with ForceJsonOnApi, and
- * registers ResolveOrganization, which sets the request's organization, and
- * AuditRequests, which records requests in the audit log.
+ * registers ResolveOrganization, which sets the request's organization,
+ * AuditRequests, which records requests in the audit log, and SetLocale,
+ * which sets the request's locale.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Providers
@@ -63,6 +65,7 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->app['router']->aliasMiddleware(ResolveOrganization::ALIAS, ResolveOrganization::class);
         $this->app['router']->aliasMiddleware(AuditRequests::ALIAS, AuditRequests::class);
+        $this->app['router']->aliasMiddleware(SetLocale::ALIAS, SetLocale::class);
 
         $this->callAfterResolving(HttpKernel::class, function (HttpKernel $kernel) {
             if ($kernel instanceof Kernel) {
@@ -72,6 +75,9 @@ class CoreServiceProvider extends ServiceProvider
                 // Runs right after authentication, so route model bindings find
                 // the models of the request's organization
                 $kernel->addToMiddlewarePriorityAfter(AuthenticatesRequests::class, ResolveOrganization::class);
+
+                // Runs after authentication too, so it knows the user's locale
+                $kernel->addToMiddlewarePriorityAfter(ResolveOrganization::class, SetLocale::class);
             }
         });
     }
