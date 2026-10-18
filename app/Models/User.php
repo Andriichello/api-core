@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Query\Builder as DatabaseBuilder;
@@ -230,6 +231,20 @@ class User extends BaseModel implements
     public function mainAccount(): BelongsTo
     {
         return $this->belongsTo(User::class, 'main_account_id');
+    }
+
+    /**
+     * The user's notifications, newest first. The ones of the same second are
+     * ordered by their ids, so pages of them don't repeat or skip any.
+     *
+     * @return MorphMany
+     */
+    public function notifications(): MorphMany
+    {
+        $notifications = $this->morphMany(DatabaseNotification::class, 'notifiable');
+        $notifications->latest()->orderByDesc('id');
+
+        return $notifications;
     }
 
     /**

@@ -8,6 +8,7 @@ use Core\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 
 /**
  * Class NotificationControllerTest.
@@ -110,6 +111,37 @@ class NotificationControllerTest extends TestCase
             ->assertJsonPath('data.0.data', ['quarter' => 2])
             ->assertJsonPath('data.0.read_at', null)
             ->assertJsonStructure(['data' => [['id', 'type', 'data', 'read_at', 'created_at']], 'meta']);
+    }
+
+    /**
+     * Test that notifications of the same second are listed by their ids, so the pages don't repeat or skip any.
+     *
+     * @return void
+     */
+    public function testListsNotificationsOfTheSameSecondInStableOrder(): void
+    {
+        $this->freezeSecond();
+
+        $ids = collect(range(1, 3))
+            ->map(fn () => $this->user->notifications()->create([
+                'id' => (string) Str::uuid(),
+                'type' => 'deadline-reminder',
+                'data' => [],
+            ])->getKey())
+            ->sortDesc()
+            ->values()
+            ->all();
+
+        $this->actingAs($this->user)
+            ->getJson('notifications')
+            ->assertOk()
+            ->assertJsonPath('data.*.id', $ids);
+
+        foreach ($ids as $index => $id) {
+            $this->getJson('notifications?page[size]=1&page[number]=' . ($index + 1))
+                ->assertOk()
+                ->assertJsonPath('data.*.id', [$id]);
+        }
     }
 
     /**
