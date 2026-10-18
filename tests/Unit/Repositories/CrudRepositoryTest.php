@@ -26,7 +26,7 @@ class CrudRepositoryTest extends TestCase
     {
         $user = User::create([
             'name' => 'Test User',
-            'email' => 'test@example.com',
+            'email' => fake()->unique()->safeEmail(),
             'password' => 'password123',
         ]);
         $request = Request::create('/users', 'GET', $data);
