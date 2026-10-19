@@ -3,8 +3,10 @@
 namespace Core\Models\Traits;
 
 use Core\Exceptions\RecordLockedException;
+use Core\Helpers\Helpers;
 use Core\Models\BaseModel;
 use Core\Models\Interfaces\LockableInterface;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Trait Lockable.
@@ -76,7 +78,7 @@ trait Lockable
     /**
      * Make sure the record's change is allowed: it was unlocked, the change
      * unlocks it, or it changes only the attributes, which may change, while
-     * it is locked.
+     * it is locked, or restores it from a soft delete.
      *
      * @return void
      * @throws RecordLockedException
@@ -89,7 +91,7 @@ trait Lockable
 
         $allowed = array_merge(
             $this->unlockedAttributes(),
-            array_filter([$this->getCreatedAtColumn(), $this->getUpdatedAtColumn()])
+            array_filter([$this->getCreatedAtColumn(), $this->getUpdatedAtColumn(), $this->restoredColumn()])
         );
 
         $locked = array_values(array_diff(array_keys($this->getDirty()), $allowed));
@@ -97,5 +99,24 @@ trait Lockable
         if (!empty($locked)) {
             throw RecordLockedException::changing($this, $locked);
         }
+    }
+
+    /**
+     * Get the column of the soft delete, when the change clears it, which
+     * restores the record as it was. Setting it would delete the record,
+     * which a locked record refuses, as `delete()` does.
+     *
+     * @return string|null
+     */
+    protected function restoredColumn(): ?string
+    {
+        if (!Helpers::usesTrait($this, SoftDeletes::class)) {
+            return null;
+        }
+
+        // As SoftDeletes::getDeletedAtColumn() names it, which not every model of the trait has
+        $column = defined(static::class . '::DELETED_AT') ? constant(static::class . '::DELETED_AT') : 'deleted_at';
+
+        return $this->isDirty($column) && $this->getAttribute($column) === null ? $column : null;
     }
 }

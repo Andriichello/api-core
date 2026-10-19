@@ -248,6 +248,34 @@ class LockableTest extends TestCase
     }
 
     /**
+     * Test that a locked record, which was deleted, can be restored, as it comes back as it was, but can't be
+     * deleted by setting the column of its soft delete.
+     *
+     * @return void
+     */
+    public function testLockedRecordCanBeRestored(): void
+    {
+        $invoice = $this->createInvoice();
+
+        if (!method_exists($invoice, 'restore')) {
+            $this->fail('The invoices must be soft-deletable.');
+        }
+
+        $invoice->delete();
+
+        // Locked after its deletion, as a trashed record may still be updated
+        $invoice->update(['status' => 'ready']);
+
+        $this->assertTrue($invoice->restore());
+        $this->assertNotSoftDeleted($invoice);
+
+        $invoice->setAttribute('deleted_at', now());
+
+        $this->lockedBy(fn () => $invoice->save());
+        $this->assertNotSoftDeleted($invoice);
+    }
+
+    /**
      * Test that a record's unsaved changes don't decide, whether it was locked.
      *
      * @return void

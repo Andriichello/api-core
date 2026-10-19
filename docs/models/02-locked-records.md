@@ -67,7 +67,8 @@ class InvoiceItem extends BaseModel
 - **Unlocked by the change**: the change is allowed as a whole. Returning an invoice to its draft may clear what it
   froze in the same save. Since this path lets everything through, guard whatever unlocks a record: limit the status
   changes with [status transitions](03-status-transitions.md) or a policy.
-- **Deleting**: a locked record can't be deleted, softly or permanently.
+- **Deleting**: a locked record can't be deleted, softly or permanently, nor by setting its `deleted_at`.
+- **Restoring**: a soft-deleted record, which is locked, can be restored, as it comes back as it was.
 
 "Before the change" is the stored state: `wasLocked()` asks `isLocked()` of a copy of the model with its original
 attributes, so unsaved changes don't decide it:
