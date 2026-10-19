@@ -135,7 +135,8 @@ class SequenceTest extends TestCase
     }
 
     /**
-     * Test that the row of a sequence is locked for the allocation, so concurrent ones wait for each other.
+     * Test that the row of a sequence is locked for the allocation, so concurrent ones wait for each other. SQLite
+     * ignores the lock, so SequenceLockTest proves the waiting on MySQL.
      *
      * @return void
      */
