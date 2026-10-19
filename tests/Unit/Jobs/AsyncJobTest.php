@@ -70,7 +70,7 @@ class AsyncJobTest extends TestCase
     }
 
     /**
-     * Test that a job is retried with an increasing wait.
+     * Test that a job is retried with an increasing wait, one for each try after the first, so none goes unused.
      *
      * @return void
      */
@@ -79,7 +79,8 @@ class AsyncJobTest extends TestCase
         $job = new RecordingJob;
 
         $this->assertSame(3, $job->tries);
-        $this->assertSame([1, 5, 10], $job->backoff());
+        $this->assertSame([1, 5], $job->backoff());
+        $this->assertCount($job->tries - 1, $job->backoff());
         $this->assertSame([], $job->middleware());
     }
 }

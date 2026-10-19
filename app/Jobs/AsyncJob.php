@@ -19,8 +19,8 @@ use LogicException;
  * as CurrentOrganization travels in the Context. `dispatchFor()` dispatches
  * it in the given organization, such as from the scheduler, which acts in
  * none. A job, which `$requiresOrganization`, fails without one, rather than
- * finding no records of its organization. It is tried 3 times, waiting 1, 5
- * and 10 seconds in between.
+ * finding no records of its organization. It is tried 3 times, waiting 1
+ * and then 5 seconds in between.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Jobs
@@ -62,13 +62,14 @@ abstract class AsyncJob implements ShouldQueue
     }
 
     /**
-     * Get the number of seconds to wait before retrying the job.
+     * Get the number of seconds to wait before each retry of the job: one
+     * wait for each try after the first.
      *
      * @return array<int, int>
      */
     public function backoff(): array
     {
-        return [1, 5, 10];
+        return [1, 5];
     }
 
     /**

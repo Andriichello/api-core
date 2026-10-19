@@ -94,11 +94,11 @@ public function middleware(): array
 
 ## Retries
 
-A job is tried 3 times (`$tries`). `backoff()` returns `[1, 5, 10]`: the first retry waits 1 second and the second one
-5 seconds; the 10 seconds apply only to a job that raises `$tries`. Override either in the job:
+A job is tried 3 times (`$tries`). `backoff()` returns `[1, 5]`: the first retry waits 1 second and the second one
+5 seconds. Override either in the job, with one wait for each try after the first:
 
 ```php
-public int $tries = 5;
+public int $tries = 4;
 
 public function backoff(): array
 {
