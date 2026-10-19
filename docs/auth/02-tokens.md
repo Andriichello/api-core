@@ -13,6 +13,7 @@ Its table, `personal_access_tokens`, has these columns on top of Sanctum's:
 |----------------------|---------------------------------------------------------------------------------|
 | `organization_id`    | The organization of the token's user, when it was issued                         |
 | `impersonator_id`    | The user who [switched](05-switching-accounts.md) to the token's user, if any   |
+| `issuer_token_id`    | The token, with which a switched token was issued, if any                       |
 | `refresh_token`      | The SHA-256 hash of the refresh token's secret; hidden from serialization        |
 | `refresh_expires_at` | When the refresh token stops working                                             |
 | `metadata`           | A JSON column, which api-core doesn't fill (cast to an array)                    |
@@ -61,6 +62,7 @@ Content-Type: application/json
 ```
 
 The response has no `user`. The old access token and its refresh token are deleted, so each refresh token works once.
+The new access token takes over the tokens, which the old one switched to (their `issuer_token_id`).
 A refresh token that is malformed, wrong, expired or used already, or whose user can't sign in, gets `401` with
 `{"message": "The refresh token is invalid or has expired."}`, and the client signs in again.
 
@@ -74,8 +76,10 @@ Why it is built so:
 
 ## Logging out
 
-`POST /api/auth/logout` with a bearer token deletes that access token along with its refresh token. The user's other
-tokens, on other devices, keep working. It fires `Illuminate\Auth\Events\Logout` with the guard `sanctum`.
+`POST /api/auth/logout` with a bearer token deletes that access token along with its refresh token, and the tokens it
+[switched](05-switching-accounts.md) to, which name it as their `issuer_token_id`. The user's other tokens, on other
+devices, keep working, and so do the tokens they switched to. It fires `Illuminate\Auth\Events\Logout` with the guard
+`sanctum`.
 
 ```json
 {
@@ -116,10 +120,10 @@ still works and sign their clients out.
 
 | Method                                        | Description                                                              |
 |-----------------------------------------------|--------------------------------------------------------------------------|
-| `create($user, $name, $impersonator = null)`  | Issue an access token (a Sanctum `NewAccessToken`) with the configured lifetime |
+| `create($user, $name, $impersonator = null, $issuer = null)` | Issue an access token (a Sanctum `NewAccessToken`) with the configured lifetime |
 | `createRefreshToken($token)`                  | Issue a refresh token for an access token, replacing the one it had       |
 | `refresh($refreshToken, $name)`               | Exchange a refresh token; `null` when it isn't valid                      |
-| `delete($token)`                              | Delete a token with its refresh token                                     |
+| `delete($token)`                              | Delete a token with its refresh token, and the tokens it switched to      |
 | `deleteOfPeople($users, $except = null)`      | Delete the tokens of every account of the people, and their switched tokens |
 | `deleteOfAccounts(...$accounts)`              | Delete the tokens of the accounts, and their switched tokens              |
 

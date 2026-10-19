@@ -421,6 +421,41 @@ class AuthControllerTest extends TestCase
     }
 
     /**
+     * Test that logging out of a token ends the tokens, which it switched to, even after it was refreshed, while
+     * those of the user's other tokens keep working.
+     *
+     * @return void
+     */
+    public function testLogoutEndsTheTokensItSwitchedTo(): void
+    {
+        $main = $this->createUser('user@example.com', $this->acme);
+        $linked = $this->createUser('user@example.com', $this->createOrganization('beta'), [
+            'main_account_id' => $main->id,
+        ]);
+
+        $first = $this->login(['email' => 'user@example.com'])->json('data');
+        $second = $this->login(['email' => 'user@example.com'])->json('data.access_token');
+
+        $switch = fn (string $token) => $this->asBearer($token)
+            ->postJson('/auth/switch', ['user_id' => $linked->id])
+            ->json('data.access_token');
+
+        $switchedByFirst = $switch($first['access_token']);
+        $switchedBySecond = $switch($second);
+
+        $refreshed = $this->postJson('/auth/refresh', ['refresh_token' => $first['refresh_token']])
+            ->json('data.access_token');
+
+        $this->asBearer($switchedByFirst)->getJson('/auth/me')->assertOk();
+
+        $this->asBearer($refreshed)->postJson('/auth/logout')->assertOk();
+
+        $this->asBearer($switchedByFirst)->getJson('/auth/me')->assertUnauthorized();
+        $this->asBearer($switchedBySecond)->getJson('/auth/me')->assertOk();
+        $this->asBearer($second)->getJson('/auth/me')->assertOk();
+    }
+
+    /**
      * Test that the signed-in user is returned with the organization, roles, permissions and main account.
      *
      * @return void

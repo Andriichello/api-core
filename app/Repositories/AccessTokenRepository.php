@@ -21,16 +21,22 @@ class AccessTokenRepository
 {
     /**
      * Create an access token for the user, which acts in the user's
-     * organization. A user, who switched to this one, is recorded on it.
+     * organization. A user, who switched to this one, is recorded on it,
+     * along with the token, with which they switched, whose logout ends it.
      *
      * @param User $user
      * @param string $name
      * @param User|null $impersonator
+     * @param AccessToken|null $issuer
      *
      * @return NewAccessToken
      */
-    public function create(User $user, string $name, ?User $impersonator = null): NewAccessToken
-    {
+    public function create(
+        User $user,
+        string $name,
+        ?User $impersonator = null,
+        ?AccessToken $issuer = null
+    ): NewAccessToken {
         $plainTextToken = $user->generateTokenString();
 
         /** @var AccessToken $token */
@@ -44,6 +50,7 @@ class AccessTokenRepository
         $token->forceFill([
             'organization_id' => $user->organization_id,
             'impersonator_id' => $impersonator?->id,
+            'issuer_token_id' => $issuer?->id,
         ])->save();
 
         return new NewAccessToken($token, $token->getKey() . '|' . $plainTextToken);
@@ -70,8 +77,9 @@ class AccessTokenRepository
 
     /**
      * Exchange a refresh token for a new access token and refresh token. The old
-     * ones stop working, so a refresh token can be used only once. It is null
-     * when the refresh token isn't valid or its user can't sign in.
+     * ones stop working, so a refresh token can be used only once, and the new
+     * access token takes over the tokens, which the old one switched to. It is
+     * null when the refresh token isn't valid or its user can't sign in.
      *
      * @param string $refreshToken
      * @param string $name
@@ -96,12 +104,17 @@ class AccessTokenRepository
 
             $newToken = $this->create($user, $name);
 
+            AccessToken::query()
+                ->where('issuer_token_id', $token->getKey())
+                ->update(['issuer_token_id' => $newToken->accessToken->getKey()]);
+
             return [$newToken, $this->createRefreshToken($newToken->accessToken)];
         });
     }
 
     /**
-     * Delete the token, along with its refresh token.
+     * Delete the token, along with its refresh token, and the tokens, which
+     * were issued with it by switching to other accounts.
      *
      * @param AccessToken $token
      *
@@ -109,6 +122,8 @@ class AccessTokenRepository
      */
     public function delete(AccessToken $token): void
     {
+        AccessToken::query()->where('issuer_token_id', $token->getKey())->delete();
+
         $token->delete();
     }
 

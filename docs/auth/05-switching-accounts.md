@@ -54,7 +54,8 @@ Content-Type: application/json
 the user who switched recorded as its `impersonator_id`. It lives `api-core.auth.access_token_lifetime` minutes and has
 no refresh token. The client keeps its own token and refresh token, sends the switched token while it acts as the
 other account, and goes back to its own token when it is done or the switched token expires. `logout` with the switched
-token deletes it; logging out of the client's own token leaves the switched token working until it expires.
+token deletes it, and so does logging out of the client's own token, which is recorded as its issuer
+(`issuer_token_id`) and passes it on, when it is refreshed.
 
 ## With sessions
 
@@ -87,6 +88,7 @@ who signed in.
 | Event                                                              | Switched token | Switched session |
 |--------------------------------------------------------------------|----------------|------------------|
 | `logout` with it                                                   | deleted        | signed out       |
+| `logout` with the token it was switched with                       | deleted        | —                |
 | The access token's lifetime passes                                 | expires        | —                |
 | The user who switched is suspended or deleted, or their organization is suspended or deactivated | refused (`401`) | signed out (`401`) |
 | The user who switched changes or resets their password             | deleted, unless the change was made with it | signed out, unless the change was made in this session |

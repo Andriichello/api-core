@@ -52,7 +52,9 @@ php artisan config:cache
 - **Re-invited users.** Inviting the email of a deleted user of the organization restores that user. `suspended_at`
   stays as it was, so a suspended user remains unable to sign in after accepting.
 - **Switched tokens.** A token issued by switching may not switch again (`403`), not even when its account may switch
-  by itself, such as a main account, which a super admin switched to.
+  by itself, such as a main account, which a super admin switched to. Logging out of a token deletes the tokens it
+  switched to; the migration `2026_10_19_215548` adds the `issuer_token_id`, which links them, so publish and run it.
+  Tokens switched before it have none, and live until they expire.
 - **File and setting controllers** need the policy of their model: one without its own constructor, which got a plain
   `CrudPolicy` and checked no permissions, or one given another model's policy, now fails every request with a
   `LogicException`.

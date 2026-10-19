@@ -435,8 +435,9 @@ class AuthController extends BaseController
      * Switch to another account. With a session, the session is switched to
      * it, and switching to the user, who signed in, switches back. Otherwise,
      * an access token is issued for it, on which the current user is recorded
-     * as the impersonator. There is no refresh token, so the client returns
-     * to its own token, when this one expires.
+     * as the impersonator, and the current token as its issuer, whose logout
+     * ends it. There is no refresh token, so the client returns to its own
+     * token, when this one expires.
      *
      * @param SwitchAccountRequest $request
      *
@@ -464,7 +465,13 @@ class AuthController extends BaseController
             ]);
         }
 
-        $token = $this->tokens->create($account, $request->userAgent(), $impersonator);
+        $issuer = $current->currentAccessToken();
+        $token = $this->tokens->create(
+            $account,
+            $request->userAgent(),
+            $impersonator,
+            $issuer instanceof AccessToken ? $issuer : null
+        );
         AuditLog::recordAuthEvent('switched', $account, ['impersonator_id' => $impersonator?->getKey()], $user);
 
         return ApiResponse::ok([

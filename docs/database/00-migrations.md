@@ -33,7 +33,7 @@ that exist already are skipped, so only the new ones are copied. Then run `php a
 | `sessions` | `0001_01_02_000000_create_sessions_table` | Laravel's `database` session driver. |
 | `cache`, `cache_locks` | `0001_01_02_000001_create_cache_table` | Laravel's database cache. |
 | `jobs`, `job_batches`, `failed_jobs` | `0001_01_02_000002_create_jobs_table` | Laravel's database queue. |
-| `personal_access_tokens` | `2026_04_05_070504_create_personal_access_tokens_table` and two `add_*` migrations | Access tokens: `organization_id`, the tokenable, `impersonator_id`, `token`, `refresh_token`, `abilities`, `metadata`, `expires_at`, `refresh_expires_at`. |
+| `personal_access_tokens` | `2026_04_05_070504_create_personal_access_tokens_table` and three `add_*` migrations | Access tokens: `organization_id`, the tokenable, `impersonator_id`, `issuer_token_id`, `token`, `refresh_token`, `abilities`, `metadata`, `expires_at`, `refresh_expires_at`. |
 | `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions` | `2026_05_06_112359_create_permission_tables` | spatie/laravel-permission's tables, named by its `permission.table_names` config. |
 | `files` | `2026_10_15_170050_create_files_table` | Files attached to models. |
 | `settings` | `2026_10_18_173631_create_settings_table` | Settings of models, unique per model and key. |
@@ -47,6 +47,8 @@ that exist already are skipped, so only the new ones are copied. Then run `php a
   and is set to `null` when the main account is deleted permanently.
 - `personal_access_tokens.impersonator_id` references `users` and cascades on delete, so the tokens of switched
   accounts go with the user who switched, when that user is deleted permanently.
+- `personal_access_tokens.issuer_token_id` is indexed, but has no foreign key: refreshing replaces the issuer and passes
+  its switched tokens on, and logging out deletes them.
 - An email is unique within an organization: `unique(organization_id, email)`. Deleted users keep counting, which is
   why inviting the email of a deleted user restores that user.
 - An email is unique among the users without an organization too: since `NULL`s are all distinct in a unique index,
