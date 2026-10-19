@@ -37,8 +37,10 @@ A request whose ability isn't in the map, such as `restore`, is denied (403).
 - **Outer parents.** The controller's `$parents` name the parent model's own `BelongsTo` relations, for routes nested
   deeper, such as `clients/{client}/invoices/{invoice}/files` with `$parents = ['client']`. The parent is then looked
   up within them, so an invoice of another client answers 404.
-- **Authorization.** `checkPolicy()` maps the request's ability through `$abilities`, and asks the policy's `before()`
-  (the permissions, super admins) and then its method of that ability with the parent model, e.g.
+- **Authorization.** `checkPolicy()` first makes sure the policy is the parent model's one (its `$model` is
+  `parentClass()` or a subclass of it), or throws a `LogicException`, so a plain `CrudPolicy`, which has no model and
+  would check no permissions, can't slip in. Then it maps the request's ability through `$abilities`, and asks the
+  policy's `before()` (the permissions, super admins) and then its method of that ability with the parent model, e.g.
   `InvoicePolicy::update($user, $invoice)`. There is no check of the target itself: show, update and destroy find it
   within the parent.
 - **Queries and creation.** The parents, including the one named by `$parameter`, are in `$request->getParents()`, so

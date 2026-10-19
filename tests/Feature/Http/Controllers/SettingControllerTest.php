@@ -162,8 +162,13 @@ class SettingControllerTest extends TestCase
     {
         // Profiles are visible to signed-in users, as their organization's scope allows, and locked ones can't
         // be updated
-        $policy = new class extends CrudPolicy
+        $policy = new class($this->profiles) extends CrudPolicy
         {
+            public function __construct(string $model)
+            {
+                $this->model = $model;
+            }
+
             public function before(mixed $user, string $ability): ?bool
             {
                 return $user ? null : false;

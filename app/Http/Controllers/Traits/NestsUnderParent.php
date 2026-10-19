@@ -22,7 +22,8 @@ use LogicException;
  * controller's policy, which is the model's one, authorizes each request as
  * an ability on the model (see `$abilities`), so a user, who can view the
  * model, can read what belongs to it, and a user, who can update it, can
- * change that.
+ * change that. A policy of another model is refused, so the permissions on
+ * the model are always checked.
  *
  * @mixin CrudController
  *
@@ -91,9 +92,12 @@ trait NestsUnderParent
      *
      * @return void
      * @throws AuthorizationException
+     * @throws LogicException When the policy isn't the model's one.
      */
     protected function checkPolicy(CrudRequest $request): void
     {
+        $this->ensurePolicyOfParent();
+
         $ability = $this->abilities[$request->getAbility()] ?? null;
 
         if ($ability === null) {
@@ -106,6 +110,27 @@ trait NestsUnderParent
             $this->policy->before($user, $ability)
                 ?? $this->policy->$ability($user, $this->parentOf($request))
         );
+    }
+
+    /**
+     * Make sure the controller's policy is the model's one, so it checks the
+     * permissions on the model. A controller, which doesn't take the model's
+     * policy in its constructor, gets a plain CrudPolicy from the container,
+     * which has no model, so it would check no permissions.
+     *
+     * @return void
+     * @throws LogicException When the policy isn't the model's one.
+     */
+    protected function ensurePolicyOfParent(): void
+    {
+        $model = $this->policy->getModel();
+
+        if ($model === null || !is_a($model, $this->parentClass(), true)) {
+            throw new LogicException(
+                static::class . ' needs the policy of ' . $this->parentClass() . ', '
+                . get_class($this->policy) . ' given.'
+            );
+        }
     }
 
     /**

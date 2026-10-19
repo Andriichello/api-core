@@ -29,8 +29,9 @@ class ClientSettingController extends SettingController
 }
 ```
 
-As with files, declare the constructor with the model's policy, or the container passes a plain `CrudPolicy`, which
-checks no permissions of the model. `$settable` must implement `HasSettingsInterface`.
+As with files, declare the constructor with the model's policy: a plain `CrudPolicy`, which the container passes
+without it, or a policy of another model fails every request with a `LogicException`, rather than run without the
+model's permissions. `$settable` must implement `HasSettingsInterface`.
 
 Register the routes in `routes/api.php`, under the app's auth middleware:
 

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use LogicException;
 
 /**
  * Class FileControllerTest.
@@ -208,8 +209,13 @@ class FileControllerTest extends TestCase
     {
         // Documents are visible to signed-in users, as their organization's scope allows, and locked ones can't
         // be updated
-        $policy = new class extends CrudPolicy
+        $policy = new class($this->documents) extends CrudPolicy
         {
+            public function __construct(string $model)
+            {
+                $this->model = $model;
+            }
+
             public function before(mixed $user, string $ability): ?bool
             {
                 return $user ? null : false;
@@ -592,6 +598,66 @@ class FileControllerTest extends TestCase
 
         $this->assertSame('locked.txt', $file->fresh()->name);
         $this->assertSame(1, File::query()->count());
+    }
+
+    /**
+     * Test that a controller refuses a policy of no model, which the container gives a controller without its own
+     * constructor, or of another model, as it would check no permissions on the document, or the wrong ones.
+     *
+     * @return void
+     */
+    public function testRefusesPolicyOfAnotherModel(): void
+    {
+        $other = new class extends CrudPolicy
+        {
+            protected BaseModel|string $model = User::class;
+        };
+
+        // Declared one by one, as an anonymous class declared in a loop would be the same class
+        $controllers = [
+            'none' => new class(app(CrudPolicy::class), new FileRepository, $this->documents) extends FileController
+            {
+                protected string $parameter = 'document';
+
+                public function __construct(CrudPolicy $policy, FileRepository $repository, string $fileable)
+                {
+                    parent::__construct($policy, $repository);
+
+                    $this->fileable = $fileable;
+                }
+            },
+            'other' => new class($other, new FileRepository, $this->documents) extends FileController
+            {
+                protected string $parameter = 'document';
+
+                public function __construct(CrudPolicy $policy, FileRepository $repository, string $fileable)
+                {
+                    parent::__construct($policy, $repository);
+
+                    $this->fileable = $fileable;
+                }
+            },
+        ];
+
+        foreach ($controllers as $uri => $controller) {
+            $this->app->instance($controller::class, $controller);
+
+            Route::middleware(['auth:sanctum', ResolveOrganization::ALIAS])
+                ->group(fn () => $controller::routes("documents/{document}/$uri"));
+        }
+
+        Sanctum::actingAs($this->user);
+        $this->withoutExceptionHandling();
+
+        foreach (array_keys($controllers) as $uri) {
+            try {
+                $this->getJson("documents/{$this->document->getKey()}/$uri");
+
+                $this->fail("The files were listed with the policy of $uri model.");
+            } catch (LogicException $exception) {
+                $this->assertStringContainsString('needs the policy of', $exception->getMessage());
+            }
+        }
     }
 
     /**

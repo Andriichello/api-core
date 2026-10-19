@@ -30,9 +30,10 @@ class InvoiceFileController extends FileController
 ```
 
 Declare the constructor with the model's policy (a `CrudPolicy` subclass, whose `$model` is the fileable): without it,
-the container would pass a plain `CrudPolicy`, which checks no permissions of the model. `$fileable` must implement
-`HasFilesInterface`, and `$parameter` must be the name of the route parameter, or the request fails with a
-`LogicException`.
+the container passes a plain `CrudPolicy`, which has no model, and every request fails with a `LogicException`
+(`… needs the policy of App\Models\Invoice, Core\Policies\CrudPolicy given.`), rather than run without the model's
+permissions. A policy of another model fails the same way. `$fileable` must implement `HasFilesInterface`, and
+`$parameter` must be the name of the route parameter, or the request fails with a `LogicException` too.
 
 Register the routes in `routes/api.php`, under the app's auth middleware:
 
