@@ -93,8 +93,10 @@ Each step is one `UPDATE` query, so no model events of the users are fired, and 
 don't see these changes. Since the users are deleted, their login fails as unknown credentials
 (`These credentials do not match our records.`), not as suspended, and their tokens stop working.
 
-Force-deleting an organization deletes its users through the `users.organization_id` foreign key
-(`on delete cascade`), in the database, so no model events of the users run either.
+Force-deleting an organization force-deletes its users first, deleted ones included, one by one through their
+models, so their model events run: each hands the accounts linked to it in other organizations over to the oldest of
+them, as when the user alone is force-deleted (see [Linked accounts](../auth/06-linked-accounts.md)), and the
+person's other accounts stay linked. The `users.organization_id` foreign key (`on delete cascade`) only backs it up.
 
 ## Related
 

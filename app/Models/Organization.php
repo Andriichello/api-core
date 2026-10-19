@@ -7,6 +7,7 @@ use Core\Queries\OrganizationQuery;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -92,7 +93,10 @@ class Organization extends BaseModel
      * Bootstrap the model: its users are soft-deleted along with it (at the
      * same time), and restored along with it, while the users, which were
      * deleted before it, stay deleted. Both are done with one query, so no
-     * model events of the users are fired.
+     * model events of the users are fired. Deleting it permanently deletes
+     * its users permanently one by one, rather than by the database's
+     * cascade, so they hand their linked accounts over (see
+     * LinksAccountsByEmail), and the person's other accounts stay linked.
      *
      * @return void
      */
@@ -100,6 +104,13 @@ class Organization extends BaseModel
     {
         static::softDeleted(function (Organization $organization) {
             $organization->users()->update(['deleted_at' => $organization->getRawOriginal('deleted_at')]);
+        });
+
+        static::forceDeleting(function (Organization $organization) {
+            $organization->users()
+                ->withoutGlobalScope(SoftDeletingScope::class)
+                ->lazyById()
+                ->each(fn (Model $user) => $user->forceDelete());
         });
 
         static::restored(function (Organization $organization) {

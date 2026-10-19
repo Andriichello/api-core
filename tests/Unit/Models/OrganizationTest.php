@@ -68,4 +68,33 @@ class OrganizationTest extends TestCase
         $this->assertNotSoftDeleted($user);
         $this->assertSoftDeleted($earlier);
     }
+
+    /**
+     * Test that deleting an organization permanently deletes its users, deleted ones included, through their
+     * models, so the accounts linked to one of them in other organizations stay linked to each other.
+     *
+     * @return void
+     */
+    public function testForceDeletingHandsLinkedAccountsOver(): void
+    {
+        $acme = Organization::factory()->create();
+        $main = User::factory()->create(['organization_id' => $acme->id, 'email' => 'ann@example.com']);
+        $deleted = User::factory()->create(['organization_id' => $acme->id]);
+        $deleted->delete();
+
+        $linked = fn () => User::factory()->create([
+            'organization_id' => Organization::factory()->create()->id,
+            'email' => 'ann@example.com',
+            'main_account_id' => $main->id,
+        ]);
+        $beta = $linked();
+        $gamma = $linked();
+
+        $acme->forceDelete();
+
+        $this->assertModelMissing($main);
+        $this->assertModelMissing($deleted);
+        $this->assertNull($beta->fresh()?->main_account_id);
+        $this->assertSame($beta->id, $gamma->fresh()?->main_account_id);
+    }
 }
