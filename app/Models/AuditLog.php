@@ -154,6 +154,7 @@ class AuditLog extends BaseModel
      * @param array<string, mixed> $attributes
      *
      * @return static
+     * @throws LogicException When the event is longer than 32 characters.
      */
     public static function record(string $event, ?Model $subject = null, array $attributes = []): static
     {
@@ -262,6 +263,27 @@ class AuditLog extends BaseModel
     public function subject(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Event of the entry, which may be no longer than its column, since it
+     * identifies what happened, so it isn't cut like the name.
+     *
+     * @return Attribute
+     */
+    protected function event(): Attribute
+    {
+        return Attribute::make(
+            set: function (string $value) {
+                if (mb_strlen($value) > 32) {
+                    throw new LogicException(
+                        "The event of an audit log entry is at most 32 characters, '$value' given."
+                    );
+                }
+
+                return $value;
+            },
+        );
     }
 
     /**

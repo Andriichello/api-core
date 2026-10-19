@@ -102,10 +102,31 @@ class AuditLogTest extends TestCase
      */
     public function testCutsNameAndDescription(): void
     {
-        $entry = AuditLog::record(str_repeat('n', 300), null, ['description' => str_repeat('d', 300)]);
+        $entry = AuditLog::record('imported', null, [
+            'name' => str_repeat('n', 300),
+            'description' => str_repeat('d', 300),
+        ]);
 
         $this->assertSame(191, mb_strlen($entry->name));
         $this->assertSame(255, mb_strlen((string) $entry->description));
+    }
+
+    /**
+     * Test that an event longer than its column is refused rather than cut, on any database, and nothing is recorded.
+     *
+     * @return void
+     */
+    public function testRefusesEventLongerThanItsColumn(): void
+    {
+        $this->assertSame(str_repeat('e', 32), AuditLog::record(str_repeat('e', 32))->fresh()?->event);
+
+        try {
+            AuditLog::record(str_repeat('e', 33));
+
+            $this->fail('An event longer than 32 characters was recorded.');
+        } catch (LogicException) {
+            $this->assertSame(1, AuditLog::query()->count());
+        }
     }
 
     /**
