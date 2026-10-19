@@ -121,6 +121,13 @@ class FileControllerTest extends TestCase
     private BaseModel&HasFilesInterface $foreign;
 
     /**
+     * Class of the controller of all files of the documents.
+     *
+     * @var class-string<FileController>
+     */
+    private string $filesController;
+
+    /**
      * Fake the files disk, create the documents, their controllers and routes, and the documents of two
      * organizations.
      *
@@ -277,6 +284,8 @@ class FileControllerTest extends TestCase
                 $this->fileable = $fileable;
             }
         };
+
+        $this->filesController = $files::class;
 
         foreach (['files' => $files, 'generated' => $generated] as $uri => $controller) {
             $this->app->instance($controller::class, $controller);
@@ -750,6 +759,29 @@ class FileControllerTest extends TestCase
         $this->getJson("folders/{$folder->getKey()}/documents")
             ->assertOk()
             ->assertJsonPath('data.*.id', [$this->document->getKey()]);
+    }
+
+    /**
+     * Test that the routes are named after their URI without the parameters, or after the given name, and the
+     * operation.
+     *
+     * @return void
+     */
+    public function testNamesRoutesAfterTheirUriOrTheGivenName(): void
+    {
+        $this->filesController::routes('archive/{document}/files', 'archived.files');
+
+        $routes = app('router')->getRoutes();
+        $routes->refreshNameLookups();
+
+        foreach (['index', 'store', 'show', 'download', 'update', 'destroy'] as $operation) {
+            $this->assertTrue($routes->hasNamedRoute("documents.files.$operation"), "documents.files.$operation");
+            $this->assertTrue($routes->hasNamedRoute("archived.files.$operation"), "archived.files.$operation");
+        }
+
+        $this->assertTrue($routes->hasNamedRoute('folders.documents.files.index'));
+        $this->assertTrue($routes->hasNamedRoute('documents.generated.download'));
+        $this->assertFalse($routes->hasNamedRoute('documents.generated.store'));
     }
 
     /**

@@ -76,18 +76,20 @@ abstract class SettingController extends CrudController
 
     /**
      * Register the routes of the controller's operations under the given URI,
-     * which has the model's route parameter, e.g. `profiles/{profile}/settings`.
+     * which has the model's route parameter, e.g. `profiles/{profile}/settings`. They are
+     * named after the URI, unless the name is given (see `registerRoutes()`).
      *
      * @param string $uri
+     * @param string|null $name
      *
      * @return void
      */
-    public static function routes(string $uri): void
+    public static function routes(string $uri, ?string $name = null): void
     {
         static::registerRoutes($uri, [
             'index' => ['get', ''],
             'update' => ['patch', ''],
-        ]);
+        ], $name);
     }
 
     /**

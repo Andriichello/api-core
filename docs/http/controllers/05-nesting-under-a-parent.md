@@ -111,7 +111,8 @@ subclasses set.
 
 `registerRoutes()` registers a route for each operation, which is keyed by the operation and gives the HTTP method and
 the URI's suffix, when the class's `$operations` lists it. It reads the property's declared value, so an operation
-added in the constructor gets no route. Register the routes in a group with the middleware:
+added in the constructor gets no route. Each route is named `{name}.{operation}`, where the name is its third argument,
+or else the URI without its parameters (`invoices.notes.index`). Register the routes in a group with the middleware:
 
 ```php
 Route::middleware(['auth:sanctum', 'organization'])->group(function () {

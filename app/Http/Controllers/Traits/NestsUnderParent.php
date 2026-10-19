@@ -8,6 +8,7 @@ use Core\Models\BaseModel;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use LogicException;
 
 /**
@@ -70,20 +71,28 @@ trait NestsUnderParent
     /**
      * Register the given routes under the URI for the operations, which the
      * controller handles. They are keyed by the operations, and have the HTTP
-     * method and the suffix of the URI.
+     * method and the suffix of the URI. Each one is named `{name}.{operation}`,
+     * where the name is the URI's without the parameters, unless it is given,
+     * e.g. `invoices.files.index` for `invoices/{invoice}/files`.
      *
      * @param string $uri
      * @param array<string, array{0: string, 1: string}> $routes
+     * @param string|null $name
      *
      * @return void
      */
-    protected static function registerRoutes(string $uri, array $routes): void
+    protected static function registerRoutes(string $uri, array $routes, ?string $name = null): void
     {
         $operations = get_class_vars(static::class)['operations'];
+        $name ??= Str::of($uri)
+            ->replaceMatches('/\{[^}]*\}/', '')
+            ->explode('/')
+            ->filter()
+            ->implode('.');
 
         foreach ($routes as $operation => [$method, $suffix]) {
             if (array_key_exists($operation, $operations)) {
-                Route::$method($uri . $suffix, [static::class, $operation]);
+                Route::$method($uri . $suffix, [static::class, $operation])->name("$name.$operation");
             }
         }
     }

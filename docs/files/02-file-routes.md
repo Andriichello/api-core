@@ -45,17 +45,19 @@ Route::middleware(['auth:sanctum', 'organization'])->group(function () {
 
 ## Routes
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/invoices/{invoice}/files` | A page of the invoice's files. |
-| `POST` | `/api/invoices/{invoice}/files` | Upload a file (`file`, and an optional `name`). |
-| `GET` | `/api/invoices/{invoice}/files/{id}` | One file. |
-| `GET` | `/api/invoices/{invoice}/files/{id}/download` | The file's contents (see [Downloads](04-downloads-and-urls.md)). |
-| `PATCH` | `/api/invoices/{invoice}/files/{id}` | Rename the file (`name`). |
-| `DELETE` | `/api/invoices/{invoice}/files/{id}` | Delete the file and its stored contents. |
+| Method | Path | Name | Description |
+|---|---|---|---|
+| `GET` | `/api/invoices/{invoice}/files` | `invoices.files.index` | A page of the invoice's files. |
+| `POST` | `/api/invoices/{invoice}/files` | `invoices.files.store` | Upload a file (`file`, and an optional `name`). |
+| `GET` | `/api/invoices/{invoice}/files/{id}` | `invoices.files.show` | One file. |
+| `GET` | `/api/invoices/{invoice}/files/{id}/download` | `invoices.files.download` | The file's contents (see [Downloads](04-downloads-and-urls.md)). |
+| `PATCH` | `/api/invoices/{invoice}/files/{id}` | `invoices.files.update` | Rename the file (`name`). |
+| `DELETE` | `/api/invoices/{invoice}/files/{id}` | `invoices.files.destroy` | Delete the file and its stored contents. |
 
 `routes()` registers only the routes of the operations in `$operations`, so a read-only controller, which leaves out
-`store`, `update` and `destroy` (as in [Collections](#collections)), has no `POST`, `PATCH` or `DELETE` route.
+`store`, `update` and `destroy` (as in [Collections](#collections)), has no `POST`, `PATCH` or `DELETE` route. The
+routes are named after the URI without its parameters and the operation; `routes($uri, 'invoice-files')` names them
+`invoice-files.index` and so on instead.
 
 ## Access
 

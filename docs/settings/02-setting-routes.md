@@ -46,10 +46,13 @@ When the model is nested deeper, such as `profiles/{profile}/clients/{client}/se
 
 ## Routes
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/clients/{client}/settings` | All settings of the client, nested by their keys, defaults included. |
-| `PATCH` | `/api/clients/{client}/settings` | Update the settings, which the body gives, and answer all of them. |
+| Method | Path | Name | Description |
+|---|---|---|---|
+| `GET` | `/api/clients/{client}/settings` | `clients.settings.index` | All settings of the client, nested by their keys, defaults included. |
+| `PATCH` | `/api/clients/{client}/settings` | `clients.settings.update` | Update the settings, which the body gives, and answer all of them. |
+
+The routes are named after the URI without its parameters and the operation, unless `routes()` is given a name as its
+second argument.
 
 ## Access
 
