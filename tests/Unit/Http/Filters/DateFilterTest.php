@@ -49,7 +49,7 @@ class DateFilterTest extends TestCase
             ->setTimezone($timezone)
             ->apply($query, $column, $value);
 
-        return $query->toRawSql();
+        return $this->rawSql($query);
     }
 
     /**

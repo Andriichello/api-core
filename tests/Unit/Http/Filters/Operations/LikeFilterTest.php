@@ -33,7 +33,7 @@ class LikeFilterTest extends TestCase
 
         $filter->apply($query, 'email', '%@example.com');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" LIKE \'%@example.com\'', $sql);
     }
 
@@ -51,7 +51,7 @@ class LikeFilterTest extends TestCase
 
         $filter->apply($query, 'email', '%@example.com');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" NOT LIKE \'%@example.com\'', $sql);
     }
 
@@ -69,7 +69,7 @@ class LikeFilterTest extends TestCase
 
         $filter->apply($query, 'email', '%@EXAMPLE.COM');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("email") LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
     }
 
@@ -88,7 +88,7 @@ class LikeFilterTest extends TestCase
 
         $filter->apply($query, 'email', '%@EXAMPLE.COM');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("email") NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
     }
 
@@ -103,7 +103,7 @@ class LikeFilterTest extends TestCase
 
         (new LikeFilter('users'))->apply($query, 'email', '%@example.com');
 
-        $this->assertStringContainsString('"users"."email" LIKE \'%@example.com\'', $query->toRawSql());
+        $this->assertStringContainsString('"users"."email" LIKE \'%@example.com\'', $this->rawSql($query));
     }
 
     /**
@@ -117,7 +117,7 @@ class LikeFilterTest extends TestCase
 
         (new LikeFilter('users'))->apply($query, 'organizations.name', 'Acme%');
 
-        $this->assertStringContainsString('"organizations"."name" LIKE \'Acme%\'', $query->toRawSql());
+        $this->assertStringContainsString('"organizations"."name" LIKE \'Acme%\'', $this->rawSql($query));
     }
 
     /**
@@ -133,7 +133,7 @@ class LikeFilterTest extends TestCase
 
         $this->assertStringContainsString(
             '("users"."email" LIKE \'a%\' or "users"."email" LIKE \'b%\')',
-            $query->toRawSql()
+            $this->rawSql($query)
         );
     }
 
@@ -150,7 +150,7 @@ class LikeFilterTest extends TestCase
 
         $this->assertStringContainsString(
             '("users"."email" NOT LIKE \'a%\' and "users"."email" NOT LIKE \'b%\')',
-            $query->toRawSql()
+            $this->rawSql($query)
         );
     }
 }

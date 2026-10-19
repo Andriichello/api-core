@@ -34,7 +34,7 @@ class NullFilterTest extends TestCase
 
         $filter->apply($query, 'email_verified_at', null);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email_verified_at" is null', $sql);
     }
 
@@ -52,7 +52,7 @@ class NullFilterTest extends TestCase
 
         $filter->apply($query, 'email_verified_at', null);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email_verified_at" is not null', $sql);
     }
 
@@ -70,7 +70,7 @@ class NullFilterTest extends TestCase
 
             $this->assertStringContainsString(
                 '"users"."email_verified_at" is null',
-                $query->toRawSql(),
+                $this->rawSql($query),
                 'value: ' . var_export($value, true)
             );
         }
@@ -90,7 +90,7 @@ class NullFilterTest extends TestCase
 
             $this->assertStringContainsString(
                 '"users"."email_verified_at" is not null',
-                $query->toRawSql(),
+                $this->rawSql($query),
                 'value: ' . var_export($value, true)
             );
         }
@@ -109,7 +109,7 @@ class NullFilterTest extends TestCase
             ->setFlags([FilterFlag::Not])
             ->apply($query, 'email_verified_at', 'false');
 
-        $this->assertStringContainsString('"users"."email_verified_at" is null', $query->toRawSql());
+        $this->assertStringContainsString('"users"."email_verified_at" is null', $this->rawSql($query));
     }
 
     /**

@@ -57,7 +57,8 @@ class AuditedTest extends TestCase
 
     /**
      * Create the table of invoices and their models, which the morph map names, and which hide `secret` and
-     * leave `notes` out of the audit log.
+     * leave `notes` out of the audit log. The table is temporary, so that MySQL doesn't commit the test's
+     * transaction, as it does on creating a table.
      *
      * @return void
      */
@@ -66,6 +67,7 @@ class AuditedTest extends TestCase
         parent::setUp();
 
         Schema::create('invoices', function (Blueprint $table) {
+            $table->temporary();
             $table->id();
             $table->unsignedBigInteger('organization_id')->nullable();
             $table->string('number');
@@ -190,7 +192,7 @@ class AuditedTest extends TestCase
         $this->assertSame($this->organization->id, $entry->organization_id);
         $this->assertTrue($user->is($entry->causer));
         $this->assertTrue($invoice->is($entry->subject));
-        $this->assertSame(
+        $this->assertSameIgnoringKeyOrder(
             ['new' => [
                 'organization_id' => $this->organization->id,
                 'number' => 'INV-1',
@@ -212,7 +214,7 @@ class AuditedTest extends TestCase
 
         $invoice->update(['total' => 150, 'secret' => 'other', 'notes' => 'Final']);
 
-        $this->assertSame(
+        $this->assertSameIgnoringKeyOrder(
             ['old' => ['total' => 100, 'secret' => '[hidden]'], 'new' => ['total' => 150, 'secret' => '[hidden]']],
             $this->latestOf($invoice)->changes
         );
@@ -258,7 +260,7 @@ class AuditedTest extends TestCase
         $invoice->forceDelete();
 
         $this->assertSame(['created', 'deleted', 'restored', 'force_deleted'], $this->eventsOf($invoice));
-        $this->assertSame(['number' => 'INV-1', 'total' => 100], array_intersect_key(
+        $this->assertSameIgnoringKeyOrder(['number' => 'INV-1', 'total' => 100], array_intersect_key(
             $deleted->changes['old'] ?? [],
             ['number' => true, 'total' => true]
         ));

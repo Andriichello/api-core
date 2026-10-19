@@ -33,7 +33,7 @@ class EqFilterTest extends TestCase
 
         $filter->apply($query, 'email', 'test@example.com');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" = \'test@example.com\'', $sql);
     }
 
@@ -51,7 +51,7 @@ class EqFilterTest extends TestCase
 
         $filter->apply($query, 'email', 'test@example.com');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" != \'test@example.com\'', $sql);
     }
 
@@ -69,7 +69,7 @@ class EqFilterTest extends TestCase
 
         $filter->apply($query, 'email', 'TEST@EXAMPLE.COM');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("email") = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 
@@ -87,7 +87,7 @@ class EqFilterTest extends TestCase
 
         $filter->apply($query, 'email', 'TEST@EXAMPLE.COM');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("email") != LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 }

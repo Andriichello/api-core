@@ -36,7 +36,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" > 5', $sql);
     }
 
@@ -54,7 +54,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" <= 5', $sql);
     }
 
@@ -72,7 +72,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" >= 5', $sql);
     }
 
@@ -90,7 +90,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" < 5', $sql);
     }
 
@@ -108,7 +108,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" < 5', $sql);
     }
 
@@ -126,7 +126,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" >= 5', $sql);
     }
 
@@ -144,7 +144,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" <= 5', $sql);
     }
 
@@ -162,7 +162,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'id', 5);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" > 5', $sql);
     }
 
@@ -180,7 +180,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'name', 'John');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("name") > LOWER(\'John\')', $sql);
     }
 
@@ -198,7 +198,7 @@ class ComparisonFiltersTest extends TestCase
 
         $filter->apply($query, 'name', 'Zebra');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("name") <= LOWER(\'Zebra\')', $sql);
     }
 
@@ -221,7 +221,7 @@ class ComparisonFiltersTest extends TestCase
             $query = User::query();
             $filter->apply($query, 'created_at', $value);
 
-            $this->assertStringContainsString('"users"."created_at" ' . $expected, $query->toRawSql());
+            $this->assertStringContainsString('"users"."created_at" ' . $expected, $this->rawSql($query));
         }
     }
 
@@ -238,7 +238,7 @@ class ComparisonFiltersTest extends TestCase
         $after = User::query();
         (new GtFilter('users'))->apply($after, 'created_at', '2026-06-30');
 
-        $this->assertStringContainsString('"users"."created_at" <= \'2026-06-30\'', $upTo->toRawSql());
-        $this->assertStringContainsString('"users"."created_at" > \'2026-06-30\'', $after->toRawSql());
+        $this->assertStringContainsString('"users"."created_at" <= \'2026-06-30\'', $this->rawSql($upTo));
+        $this->assertStringContainsString('"users"."created_at" > \'2026-06-30\'', $this->rawSql($after));
     }
 }

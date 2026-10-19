@@ -66,7 +66,8 @@ class HasFilesTest extends TestCase
     private Filesystem $disk;
 
     /**
-     * Fake the files disk, and create the table of documents and their models, which the morph map names.
+     * Fake the files disk, and create the table of documents and their models, which the morph map names. The
+     * table is temporary, so that MySQL doesn't commit the test's transaction, as it does on creating a table.
      *
      * @return void
      */
@@ -77,6 +78,7 @@ class HasFilesTest extends TestCase
         $this->disk = Storage::fake(config('api-core.files.disk'));
 
         Schema::create('documents', function (Blueprint $table) {
+            $table->temporary();
             $table->id();
             $table->string('title');
             $table->timestamps();

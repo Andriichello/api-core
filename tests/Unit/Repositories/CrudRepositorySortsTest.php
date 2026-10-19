@@ -331,7 +331,7 @@ class CrudRepositorySortsTest extends TestCase
         $this->assertEquals('desc', $orders[0]['direction']);
 
         // Check filter is applied
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" LIKE \'%@example.com\'', $sql);
     }
 

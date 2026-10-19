@@ -31,7 +31,7 @@ class ContainsFilterTest extends TestCase
 
         $this->assertStringContainsString(
             '"users"."name" LIKE \'%50!%!_off!!%\' ESCAPE \'!\'',
-            $query->toRawSql()
+            $this->rawSql($query)
         );
     }
 
@@ -50,7 +50,7 @@ class ContainsFilterTest extends TestCase
 
         $this->assertStringContainsString(
             'LOWER("users"."name") LIKE LOWER(\'%John%\') ESCAPE \'!\'',
-            $query->toRawSql()
+            $this->rawSql($query)
         );
     }
 
@@ -67,7 +67,7 @@ class ContainsFilterTest extends TestCase
             ->setFlags([FilterFlag::Not])
             ->apply($query, 'name', 'John');
 
-        $this->assertStringContainsString('"users"."name" NOT LIKE \'%John%\' ESCAPE \'!\'', $query->toRawSql());
+        $this->assertStringContainsString('"users"."name" NOT LIKE \'%John%\' ESCAPE \'!\'', $this->rawSql($query));
     }
 
     /**
@@ -83,7 +83,7 @@ class ContainsFilterTest extends TestCase
 
         $this->assertStringContainsString(
             '("users"."name" LIKE \'%John%\' ESCAPE \'!\' or "users"."name" LIKE \'%Jane%\' ESCAPE \'!\')',
-            $query->toRawSql()
+            $this->rawSql($query)
         );
     }
 

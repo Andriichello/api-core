@@ -150,7 +150,7 @@ class AuditRequestsTest extends TestCase
             'scan' => UploadedFile::fake()->createWithContent('scan.pdf', 'PDF'),
         ])->assertOk();
 
-        $this->assertSame(
+        $this->assertSameIgnoringKeyOrder(
             [
                 'title' => 'Note',
                 'Password' => AuditRequests::MASK,

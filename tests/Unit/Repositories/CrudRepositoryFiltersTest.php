@@ -105,7 +105,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" = \'test@example.com\'', $sql);
     }
 
@@ -125,7 +125,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" LIKE \'%@example.com\'', $sql);
         $this->assertStringContainsString('"name" = \'John Doe\'', $sql);
     }
@@ -145,7 +145,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" in (1, 2, 3)', $sql);
     }
 
@@ -164,7 +164,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email_verified_at" is null', $sql);
     }
 
@@ -186,7 +186,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" > 5', $sql);
         $this->assertStringContainsString('"id" < 10', $sql);
     }
@@ -206,7 +206,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"email" != \'admin@example.com\'', $sql);
     }
 
@@ -225,7 +225,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("users"."email") = LOWER(\'TEST@EXAMPLE.COM\')', $sql);
     }
 
@@ -244,7 +244,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $this->repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("users"."email") NOT LIKE LOWER(\'%@EXAMPLE.COM\')', $sql);
     }
 
@@ -298,7 +298,7 @@ class CrudRepositoryFiltersTest extends TestCase
 
         $query = $repository->builder($request);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         // Should use organization_id column instead of org_id
         $this->assertStringContainsString('"organization_id" = 5', $sql);
     }
@@ -453,7 +453,7 @@ class CrudRepositoryFiltersTest extends TestCase
             ],
         ]);
 
-        $sql = $repository->builder($request)->toRawSql();
+        $sql = $this->rawSql($repository->builder($request));
 
         $this->assertStringContainsString('"password" = \'secret\'', $sql);
     }
@@ -601,7 +601,7 @@ class CrudRepositoryFiltersTest extends TestCase
             ],
         ]);
 
-        $sql = $this->repository->builder($request)->toRawSql();
+        $sql = $this->rawSql($this->repository->builder($request));
 
         $this->assertStringNotContainsString('"email" =', $sql);
         $this->assertStringContainsString('"users"."email_verified_at" is null', $sql);
@@ -621,7 +621,7 @@ class CrudRepositoryFiltersTest extends TestCase
             ],
         ]);
 
-        $sql = $this->repository->builder($request)->toRawSql();
+        $sql = $this->rawSql($this->repository->builder($request));
 
         $this->assertStringContainsString('("users"."email" LIKE \'a%\' or "users"."email" LIKE \'b%\')', $sql);
         $this->assertStringContainsString('"users"."name" LIKE \'%Jane%\' ESCAPE \'!\'', $sql);
@@ -659,7 +659,7 @@ class CrudRepositoryFiltersTest extends TestCase
             ],
         ]);
 
-        $sql = $this->repository->builder($request)->toRawSql();
+        $sql = $this->rawSql($this->repository->builder($request));
 
         $this->assertStringContainsString('"users"."email_verified_at" is not null', $sql);
     }
@@ -771,7 +771,7 @@ class CrudRepositoryFiltersTest extends TestCase
         ]);
         $request->setUserResolver(fn () => $user);
 
-        $sql = $this->repository->builder($request)->toRawSql();
+        $sql = $this->rawSql($this->repository->builder($request));
 
         $this->assertStringContainsString('"users"."created_at" >= \'2026-06-29 21:00:00\'', $sql);
         $this->assertStringContainsString('"users"."created_at" < \'2026-06-30 21:00:00\'', $sql);
@@ -796,12 +796,12 @@ class CrudRepositoryFiltersTest extends TestCase
             ];
         };
 
-        $sql = $repository->builder($this->createRequestWithUser([
+        $sql = $this->rawSql($repository->builder($this->createRequestWithUser([
             'filter' => [
                 'org_id' => ['eq' => 5],
                 'name' => ['eq' => 'Test'],
             ],
-        ]))->toRawSql();
+        ])));
 
         $this->assertStringContainsString('"organization_id" = 5', $sql);
         $this->assertStringContainsString('"name" = \'Test\'', $sql);

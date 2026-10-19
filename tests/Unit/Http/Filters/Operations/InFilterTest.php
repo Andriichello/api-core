@@ -33,7 +33,7 @@ class InFilterTest extends TestCase
 
         $filter->apply($query, 'id', [1, 2, 3]);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" in (1, 2, 3)', $sql);
     }
 
@@ -51,7 +51,7 @@ class InFilterTest extends TestCase
 
         $filter->apply($query, 'id', '1,2,3');
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" in (\'1\', \'2\', \'3\')', $sql);
     }
 
@@ -69,7 +69,7 @@ class InFilterTest extends TestCase
 
         $filter->apply($query, 'id', [1, 2, 3]);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('"id" not in (1, 2, 3)', $sql);
     }
 
@@ -87,7 +87,7 @@ class InFilterTest extends TestCase
 
         $filter->apply($query, 'email', ['TEST@EXAMPLE.COM', 'ADMIN@EXAMPLE.COM']);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString(
             'LOWER("email") IN (LOWER(\'TEST@EXAMPLE.COM\'), LOWER(\'ADMIN@EXAMPLE.COM\'))',
             $sql
@@ -109,7 +109,7 @@ class InFilterTest extends TestCase
 
         $filter->apply($query, 'email', ['TEST@EXAMPLE.COM']);
 
-        $sql = $query->toRawSql();
+        $sql = $this->rawSql($query);
         $this->assertStringContainsString('LOWER("email") NOT IN (LOWER(\'TEST@EXAMPLE.COM\'))', $sql);
     }
 }

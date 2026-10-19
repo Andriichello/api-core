@@ -34,7 +34,7 @@ class CastsTest extends TestCase
         ]);
 
         $this->assertSame(['theme' => 'dark'], $user->fresh()->metadata);
-        $this->assertSame('{"theme":"dark"}', DB::table('users')->value('metadata'));
+        $this->assertSame(['theme' => 'dark'], json_decode((string) DB::table('users')->value('metadata'), true));
     }
 
     /**
