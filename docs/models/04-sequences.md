@@ -94,8 +94,8 @@ on MySQL that a second allocation waits at the `SELECT … FOR UPDATE` and then 
 
 ## Edge cases
 
-- `next()` and `setNext()` throw a `LogicException` for an owner that isn't saved:
-  `App\Models\Client must be saved, before it allocates numbers.`
+- `next()`, `setNext()` and `peek()` throw a `LogicException` for an owner that isn't saved:
+  `App\Models\Client must be saved, before it has sequences.`
 - `setNext()` throws an `InvalidArgumentException` for a number below 1:
   `The next number of a sequence must be at least 1, 0 given.`
 - `setNext()` may set a number lower than one already allocated, and the sequence then allocates numbers again. Keep a

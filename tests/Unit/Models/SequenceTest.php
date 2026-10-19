@@ -154,14 +154,28 @@ class SequenceTest extends TestCase
     }
 
     /**
-     * Test that an unsaved owner can't allocate numbers.
+     * Test that an unsaved owner can't allocate numbers, set them, or peek at them, as it has no sequences.
      *
      * @return void
      */
     public function testUnsavedOwnerCannotAllocate(): void
     {
-        $this->expectException(LogicException::class);
+        $owner = Organization::factory()->make();
 
-        Sequence::next(Organization::factory()->make(), 'invoices');
+        $calls = [
+            'next' => fn () => Sequence::next($owner, 'invoices'),
+            'setNext' => fn () => Sequence::setNext($owner, 'invoices', 5),
+            'peek' => fn () => Sequence::peek($owner, 'invoices'),
+        ];
+
+        foreach ($calls as $name => $call) {
+            try {
+                $call();
+
+                $this->fail("$name accepted an unsaved owner.");
+            } catch (LogicException $exception) {
+                $this->assertStringContainsString('must be saved', $exception->getMessage());
+            }
+        }
     }
 }

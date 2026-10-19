@@ -135,9 +135,12 @@ class Sequence extends BaseModel
      * @param string $key
      *
      * @return int
+     * @throws LogicException When the owner isn't saved.
      */
     public static function peek(Model $owner, string $key): int
     {
+        static::ensureSaved($owner);
+
         $number = static::query()
             ->whereOwnerAndKey($owner, $key)
             ->value('next_number');
@@ -159,9 +162,7 @@ class Sequence extends BaseModel
      */
     protected static function withLockedRow(Model $owner, string $key, Closure $callback): mixed
     {
-        if (!$owner->exists) {
-            throw new LogicException($owner::class . ' must be saved, before it allocates numbers.');
-        }
+        static::ensureSaved($owner);
 
         $connection = static::query()->getModel()->getConnection();
 
@@ -185,6 +186,22 @@ class Sequence extends BaseModel
 
             return $callback($sequence);
         }, static::ATTEMPTS);
+    }
+
+    /**
+     * Make sure the owner is saved, as an unsaved one has no key, by which its
+     * sequences are found.
+     *
+     * @param Model $owner
+     *
+     * @return void
+     * @throws LogicException When the owner isn't saved.
+     */
+    protected static function ensureSaved(Model $owner): void
+    {
+        if (!$owner->exists) {
+            throw new LogicException($owner::class . ' must be saved, before it has sequences.');
+        }
     }
 
     /**
