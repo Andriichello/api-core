@@ -10,6 +10,7 @@ without signing in to it. A token client gets a token for that account; a SPA's 
 - A linked account may switch to neither its main account nor the other accounts of its person, and only a super
   admin may switch to an account of another person.
 - The account switched to must be able to sign in (`User::canSignIn()`).
+- A token issued by switching may not switch at all (`403`), whatever its account may do.
 
 `User::canImpersonateUser()` holds the rule. It is checked for the user on whose behalf the switch is made
 (`SwitchAccountRequest::originalUser()`): with a token, the token's own user; with a session, the user who signed in to
@@ -64,14 +65,12 @@ clears the impersonator.
 
 ## Why a switched token can't switch again or back
 
-A switch is checked for the token's own user, never for its impersonator, so a token issued by switching carries only
-the rights of the account it was issued for. A token switched to a linked account belongs to an account that may
-switch nowhere: it can't go back to the main account, nor on to the person's other accounts (`403`). A token a super
-admin switched to someone's account can't go back to the super admin either.
+A token issued by switching (one with an `impersonator_id`) is refused by `switch` with `403`
+(`A switched account may not switch again.`): it can't go back to its impersonator, nor on to other accounts, even when
+its own account may switch, as a main account with linked accounts or another super admin may.
 
-The rule is the account's own, so a token switched to an account that may switch by itself, a main account with linked
-accounts or another super admin, may switch as that account would. The new token then names that account, not the
-original impersonator, as its `impersonator_id`.
+Switching on would also let access outlive its source: the next token would name the account switched to, not the
+user who switched first, as its impersonator, so suspending that user wouldn't end it.
 
 This limits what a leaked token can do. A switched token opens the account it was issued for, for at most the access
 token's lifetime; it can't be refreshed, and the impersonator's rights don't come with it, so it can't reach the
@@ -117,6 +116,7 @@ switched to, caused by the user who switched, with `metadata.impersonator_id` (`
 | Status | Field     | Message                                       |
 |--------|-----------|-----------------------------------------------|
 | `403`  |           | You may not switch to this account.           |
+| `403`  |           | A switched account may not switch again.      |
 | `422`  | `user_id` | You are already signed in to this account.    |
 | `422`  | `user_id` | This account is suspended.                    |
 | `422`  | `user_id` | The selected user id is invalid.              |

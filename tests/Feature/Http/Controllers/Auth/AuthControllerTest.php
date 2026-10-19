@@ -612,6 +612,37 @@ class AuthControllerTest extends TestCase
     }
 
     /**
+     * Test that a token, which a super admin switched to a main account, can't switch on to the linked account,
+     * although the main account may: the next token would name the main account as its impersonator, so it would
+     * outlive the super admin's access.
+     *
+     * @return void
+     */
+    public function testSwitchedTokenCannotSwitchOnAsItsAccount(): void
+    {
+        Role::findOrCreate(UserRole::SuperAdmin->value);
+
+        $superAdmin = $this->createUser('admin@example.com');
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+        $main = $this->createUser('user@example.com', $this->acme);
+        $linked = $this->createUser('user@example.com', $this->createOrganization('beta'), [
+            'main_account_id' => $main->id,
+        ]);
+
+        $token = $this->login(['email' => 'admin@example.com'])->json('data.access_token');
+        $switched = $this->asBearer($token)
+            ->postJson('/auth/switch', ['user_id' => $main->id])
+            ->json('data.access_token');
+
+        $this->asBearer($switched)
+            ->postJson('/auth/switch', ['user_id' => $linked->id])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'A switched account may not switch again.');
+
+        $this->assertSame(0, $linked->tokens()->count());
+    }
+
+    /**
      * Test that a token, which a super admin switched to another account, works only while the super admin can
      * sign in, as the super admin's own tokens do.
      *

@@ -3,6 +3,7 @@
 namespace Core\Http\Requests\Auth;
 
 use Core\Http\Requests\BaseRequest;
+use Core\Models\AccessToken;
 use Core\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -50,7 +51,8 @@ class SwitchAccountRequest extends BaseRequest
      * Get the account to switch to, when the user may switch to it: a main
      * account may switch to its linked accounts, and a super admin to any.
      * With a session, it is checked for the user, who signed in, who may
-     * also switch back to their own account.
+     * also switch back to their own account. A token, which was issued by
+     * switching, may not switch at all.
      *
      * @return User
      * @throws AuthorizationException
@@ -58,6 +60,10 @@ class SwitchAccountRequest extends BaseRequest
      */
     public function account(): User
     {
+        if ($this->isMadeWithSwitchedToken()) {
+            throw new AuthorizationException('A switched account may not switch again.');
+        }
+
         $user = $this->originalUser();
         $account = User::query()->findOrFail($this->integer('user_id'));
 
@@ -72,6 +78,24 @@ class SwitchAccountRequest extends BaseRequest
         }
 
         return $account;
+    }
+
+    /**
+     * Determine if the request is made with a token, which was issued by
+     * switching. It carries only the rights of its own account, so it switches
+     * neither back nor on: the client keeps its own token for that. Switching
+     * on would record the account switched to as the next token's impersonator,
+     * so the next token would outlive the access of the user, who switched.
+     *
+     * @return bool
+     */
+    protected function isMadeWithSwitchedToken(): bool
+    {
+        /** @var User $user */
+        $user = $this->user();
+        $token = $user->currentAccessToken();
+
+        return $token instanceof AccessToken && $token->isImpersonated();
     }
 
     /**
