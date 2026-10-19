@@ -14,17 +14,18 @@ use InvalidArgumentException;
 abstract class OperationFilter extends BaseFilter
 {
     /**
-     * Set filter operation to be applied.
+     * Set filter operation to be applied, which can only be the filter's own.
      *
      * @param FilterOperation $operation
      *
      * @return static
+     * @throws InvalidArgumentException When the operation isn't the filter's own.
      */
     public function setOperation(FilterOperation $operation): static
     {
         if ($operation !== $this->operation) {
             throw new InvalidArgumentException(
-                'The ' . static::class . '\'s operation cannot be changed'
+                "The '{$operation->value}' operation is not allowed. Allowed operations: {$this->operation?->value}."
             );
         }
 

@@ -98,16 +98,17 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
                 $table = $this->tableOfAllowedFilter($field);
                 $column = $this->columnOfAllowedFilter($field);
 
-                $logic = new $class($table ?? $query->getModel()->getTable())
-                    ->setOperation($filter['operation'])
-                    ->setFlags($filter['flags'] ?? []);
-
-                // Dates without an offset are read in the user's timezone
-                if ($logic instanceof DateFilter) {
-                    $logic->setTimezone(data_get($request->user(), 'timezone'));
-                }
-
                 try {
+                    // A filter of one operation refuses the others
+                    $logic = new $class($table ?? $query->getModel()->getTable())
+                        ->setOperation($filter['operation'])
+                        ->setFlags($filter['flags'] ?? []);
+
+                    // Dates without an offset are read in the user's timezone
+                    if ($logic instanceof DateFilter) {
+                        $logic->setTimezone(data_get($request->user(), 'timezone'));
+                    }
+
                     $logic->apply($query, $column ?? $field, $value);
                 } catch (InvalidArgumentException $exception) {
                     throw ValidationException::withMessages([

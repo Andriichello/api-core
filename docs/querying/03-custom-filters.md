@@ -104,8 +104,9 @@ Allowed as `'overdue' => OverdueFilter::class`, `filter[overdue]=1` lists the ov
 `filter[overdue][gt]=1` answers `422` with that message.
 
 `OperationFilter` is the base of the operation classes, which `DefaultFilter` picks: their `setOperation()` throws an
-`InvalidArgumentException` for any other operation than their own. A filter allowed on requests checks the operation
-in `apply()`, as above, so a wrong one answers `422`.
+`InvalidArgumentException` for any other operation than their own. Allowed on requests directly, such as
+`'email' => EqFilter::class`, the filter takes only its operation: `filter[email][like]=ann%` answers `422` on
+`filter.email` with `The 'like' operation is not allowed. Allowed operations: eq.`
 
 ## Using the operation classes in code
 

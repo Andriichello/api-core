@@ -3,6 +3,7 @@
 namespace Core\Tests\Unit\Repositories;
 
 use Core\Http\Filters\DefaultFilter;
+use Core\Http\Filters\Operations\EqFilter;
 use Core\Models\BaseModel;
 use Core\Models\Organization;
 use Core\Models\User;
@@ -11,6 +12,7 @@ use Core\Repositories\CrudRepository;
 use Core\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Class CrudRepositoryTest.
@@ -267,6 +269,39 @@ class CrudRepositoryTest extends TestCase
 
         // The custom filter should be applied
         $this->assertInstanceOf(BaseQuery::class, $query);
+    }
+
+    /**
+     * Test that a filter of one operation, which is allowed with its class, refuses another operation with 422.
+     *
+     * @return void
+     */
+    public function testFilterOfOneOperationRefusesOthersWith422(): void
+    {
+        $repository = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+
+            protected array $allowedFilters = [
+                'email' => EqFilter::class,
+            ];
+        };
+        $request = $this->createRequestWithUser([
+            'filter' => [
+                'email' => ['like' => 'ann%'],
+            ],
+        ]);
+
+        try {
+            $repository->builder($request);
+
+            $this->fail('The like operation was applied with the eq filter.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                ["The 'like' operation is not allowed. Allowed operations: eq."],
+                $exception->errors()['filter.email']
+            );
+        }
     }
 
     /**
