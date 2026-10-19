@@ -63,9 +63,10 @@ Route::middleware(['auth:sanctum', 'organization'])->group(function () {
 });
 ```
 
-Attributes chained before such a route (`Route::middleware(...)->post(...)`) may not apply to it: some Laravel releases
-don't see `__call()` as the operation's method and silently drop them. On any release, they apply to a route in a
-group, to one with a `Controller@operation` action, or to an operation with a method of its own:
+Attributes chained before such a route (`Route::middleware(...)->post(...)`) apply to it on Laravel 13.37, but earlier
+13.x releases, which `^13.0` allows, don't see `__call()` as the operation's method and silently drop them. On any
+release, they apply to a route in a group, to one with a `Controller@operation` action, or to an operation with a
+method of its own:
 
 ```php
 Route::middleware('auth:sanctum')->post('invoices/{id}/send', InvoiceController::class . '@send');

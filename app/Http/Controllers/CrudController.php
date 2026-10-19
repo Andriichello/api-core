@@ -44,9 +44,10 @@ use Throwable;
  *
  * The operations are methods, so the attributes, which are chained before a
  * route (`Route::middleware(...)->get(...)`), apply to it. Extra operations,
- * which a controller adds to `$operations`, are handled through `__call()`,
- * which Laravel doesn't see as their method, so their routes get attributes
- * only from a group, or with a `Controller@operation` action.
+ * which a controller adds to `$operations`, are handled through `__call()`.
+ * Laravel 13.37 applies chained attributes to their routes too, but earlier
+ * releases didn't see `__call()` as their method and dropped them, so a group
+ * or a `Controller@operation` action is the safe way to give them attributes.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Http\Controllers
