@@ -57,8 +57,9 @@ On a route without authentication, such as `login`, there is usually no user yet
 ## The user's locale
 
 Each account has a `locale` column (up to 5 characters, `en` by default), which the user changes with `PATCH auth/me`
-and a manager with the user routes. It isn't checked against `api-core.locales`: a locale the app doesn't support is
-kept, but skipped by the middleware, which then goes by the header.
+and a manager with the user routes, to one of `api-core.locales` only. A locale, which the app stops supporting, is
+kept, but skipped by the middleware, which then goes by the header, and by the emails (see
+[Translations](01-translations.md#the-locale-of-emails)).
 
 ## Configuration
 

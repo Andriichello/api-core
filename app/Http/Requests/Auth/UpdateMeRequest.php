@@ -4,6 +4,7 @@ namespace Core\Http\Requests\Auth;
 
 use Core\Http\Requests\Crud\UpdateRequest;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Validation\Rule;
 
 /**
  * Class UpdateMeRequest.
@@ -29,7 +30,7 @@ class UpdateMeRequest extends UpdateRequest
             ...parent::rules(),
             'name' => ['sometimes', 'string', 'max:255'],
             'timezone' => ['sometimes', 'string', 'timezone:all'],
-            'locale' => ['sometimes', 'string', 'max:5'],
+            'locale' => ['sometimes', 'string', Rule::in(config('api-core.locales', []))],
         ];
     }
 }

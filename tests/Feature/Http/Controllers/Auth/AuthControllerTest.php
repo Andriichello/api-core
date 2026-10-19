@@ -457,6 +457,8 @@ class AuthControllerTest extends TestCase
      */
     public function testUpdatesOwnProfile(): void
     {
+        config(['api-core.locales' => ['en', 'uk']]);
+
         $user = $this->createUser('user@example.com', $this->acme);
         $token = $this->login(['email' => 'user@example.com'])->json('data.access_token');
 
@@ -475,7 +477,8 @@ class AuthControllerTest extends TestCase
     }
 
     /**
-     * Test that the own profile's update is validated, and changes neither the email nor the password.
+     * Test that the own profile's update is validated, the locale against the supported ones, and changes neither
+     * the email nor the password.
      *
      * @return void
      */
@@ -485,9 +488,9 @@ class AuthControllerTest extends TestCase
         $token = $this->login(['email' => 'user@example.com'])->json('data.access_token');
 
         $this->asBearer($token)
-            ->patchJson('/auth/me', ['timezone' => 'Mars/Olympus', 'name' => str_repeat('a', 256)])
+            ->patchJson('/auth/me', ['timezone' => 'Mars/Olympus', 'name' => str_repeat('a', 256), 'locale' => 'uk'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['timezone', 'name']);
+            ->assertJsonValidationErrors(['timezone', 'name', 'locale']);
 
         $this->asBearer($token)
             ->patchJson('/auth/me', ['email' => 'new@example.com', 'password' => 'new-password'])

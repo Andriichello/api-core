@@ -97,7 +97,7 @@ Content-Type: application/json
 | `name`     | Required string, up to 255 characters.                                                         |
 | `email`    | Required email, up to 255 characters, lowercased; not used by another user of the organization. |
 | `timezone` | Optional, a valid timezone.                                                                    |
-| `locale`   | Optional string, up to 5 characters.                                                           |
+| `locale`   | Optional, one of `api-core.locales`; the invitation is emailed in it.                          |
 | `roles`    | Optional list of distinct role names, which the manager may give (see below).                  |
 
 A `password` is ignored: the person chooses it when accepting the invitation, so nobody else knows it. The account is

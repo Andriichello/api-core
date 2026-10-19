@@ -56,9 +56,10 @@ Validation messages name the field, such as `invoice.numbering.strategy` for a s
 
 ## The locale of emails
 
-An email is rendered in the locale of the request, which sends it: the invitation in the locale of the manager, who
-invites, and the password reset email in the one of the `forgot-password` request (its `Accept-Language`). `User`
-doesn't implement Laravel's `HasLocalePreference`, so the recipient's own `locale` isn't used for their emails.
+An email to a user is rendered in the user's own `locale`, when it is one of `api-core.locales`: `User` implements
+Laravel's `HasLocalePreference` (`preferredLocale()`), so the invitation is in the locale given to the invited person,
+not in the manager's, and the password reset email in the person's, not in the one of the `forgot-password` request.
+A locale, which isn't supported, gives `null`, and the email is rendered in the locale of the request, which sends it.
 
 ## Strings that stay in English
 

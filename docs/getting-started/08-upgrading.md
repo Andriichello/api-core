@@ -56,6 +56,8 @@ php artisan config:cache
 - **File and setting controllers** need the policy of their model: one without its own constructor, which got a plain
   `CrudPolicy` and checked no permissions, or one given another model's policy, now fails every request with a
   `LogicException`.
+- **Locales.** `locale` of `PATCH auth/me` and of the user routes must be one of `api-core.locales` (422 otherwise),
+  and emails to a user are in the user's own locale, when it is supported, rather than in the sender's.
 - **Own accounts in other organizations.** `UserController` lists and shows the person's own accounts in other
   organizations, but changing, deleting or inviting them again answers `403`, unless the user acts in all
   organizations.

@@ -15,6 +15,7 @@ use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
@@ -75,6 +76,7 @@ class User extends BaseModel implements
     AuthenticatableContract,
     AuthorizableContract,
     CanResetPasswordContract,
+    HasLocalePreference,
     MustVerifyEmailContract
 {
     use Authenticatable;
@@ -397,6 +399,18 @@ class User extends BaseModel implements
             ->find($this->main_account_id);
 
         return $main === null ? $this->password_updated_at : $main->password_updated_at;
+    }
+
+    /**
+     * Get the locale, in which the user is notified and emailed: their own,
+     * when the application supports it (`api-core.locales`), or else none,
+     * so the current one is used.
+     *
+     * @return string|null
+     */
+    public function preferredLocale(): ?string
+    {
+        return in_array($this->locale, config('api-core.locales', []), true) ? $this->locale : null;
     }
 
     /**

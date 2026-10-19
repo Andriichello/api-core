@@ -5,6 +5,7 @@ namespace Core\Http\Requests\Users;
 use Core\Http\Requests\Crud\UpdateRequest;
 use Core\Http\Requests\Traits\WithAssignableRoles;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Validation\Rule;
 
 /**
  * Class UpdateUserRequest.
@@ -32,7 +33,7 @@ class UpdateUserRequest extends UpdateRequest
             ...parent::rules(),
             'name' => ['sometimes', 'string', 'max:255'],
             'timezone' => ['sometimes', 'string', 'timezone:all'],
-            'locale' => ['sometimes', 'string', 'max:5'],
+            'locale' => ['sometimes', 'string', Rule::in(config('api-core.locales', []))],
             ...$this->rolesRules(),
         ];
     }

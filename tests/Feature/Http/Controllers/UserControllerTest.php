@@ -335,6 +335,39 @@ class UserControllerTest extends TestCase
     }
 
     /**
+     * Test that an invitation is emailed in the invitee's locale, rather than the manager's, and that only
+     * a supported locale may be given.
+     *
+     * @return void
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
+     */
+    public function testInvitationIsInTheInviteesLocale(): void
+    {
+        config(['api-core.locales' => ['en', 'uk']]);
+
+        $this->actingAs($this->admin)
+            ->postJson('users', ['name' => 'Ann', 'email' => 'ann@example.com', 'locale' => 'de'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('locale');
+
+        $this->postJson('users', ['name' => 'Ann', 'email' => 'ann@example.com', 'locale' => 'uk'])
+            ->assertCreated();
+
+        $invited = User::query()->where('email', 'ann@example.com')->firstOrFail();
+
+        Notification::assertSentTo(
+            $invited,
+            InvitationNotification::class,
+            fn ($notification, $channels, $notifiable, ?string $locale) => $locale === 'uk'
+        );
+
+        // A locale, which is no longer supported, leaves the current one
+        $invited->forceFill(['locale' => 'de'])->save();
+
+        $this->assertNull($invited->preferredLocale());
+    }
+
+    /**
      * Test that a user, who ranks above the manager, can't be changed or deleted by them.
      *
      * @return void

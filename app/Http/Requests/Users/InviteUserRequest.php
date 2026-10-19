@@ -61,7 +61,7 @@ class InviteUserRequest extends StoreRequest
                         : $query->where('organization_id', $orgId)),
             ],
             'timezone' => ['sometimes', 'string', 'timezone:all'],
-            'locale' => ['sometimes', 'string', 'max:5'],
+            'locale' => ['sometimes', 'string', Rule::in(config('api-core.locales', []))],
             ...$this->rolesRules(),
         ];
     }
