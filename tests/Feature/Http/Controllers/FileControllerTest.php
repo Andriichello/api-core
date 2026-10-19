@@ -3,10 +3,14 @@
 namespace Core\Tests\Feature\Http\Controllers;
 
 use Core\Helpers\CurrentOrganization;
+use Core\Http\Controllers\CrudController;
 use Core\Http\Controllers\FileController;
+use Core\Http\Controllers\Traits\NestsUnderParent;
 use Core\Http\Middleware\ResolveOrganization;
 use Core\Http\Requests\Crud\IndexRequest;
 use Core\Http\Requests\Crud\ShowRequest;
+use Core\Http\Resources\BaseCollection;
+use Core\Http\Resources\BaseResource;
 use Core\Models\BaseModel;
 use Core\Models\File;
 use Core\Models\Interfaces\HasFilesInterface;
@@ -15,6 +19,7 @@ use Core\Models\Traits\BelongsToOrganization;
 use Core\Models\Traits\HasFiles;
 use Core\Models\User;
 use Core\Policies\CrudPolicy;
+use Core\Repositories\CrudRepository;
 use Core\Repositories\FileRepository;
 use Core\Tests\TestCase;
 use DateTimeInterface;
@@ -658,6 +663,93 @@ class FileControllerTest extends TestCase
                 $this->assertStringContainsString('needs the policy of', $exception->getMessage());
             }
         }
+    }
+
+    /**
+     * Test that a controller, which uses NestsUnderParent itself, names its parent's route parameter and the
+     * abilities on the parent, which differ from the defaults: listing the documents of a folder needs updating it,
+     * not viewing it, which the policy denies.
+     *
+     * @return void
+     */
+    public function testControllerUsingTheTraitNamesItsParameterAndAbilities(): void
+    {
+        $policy = new class($this->folders) extends CrudPolicy
+        {
+            public function __construct(string $model)
+            {
+                $this->model = $model;
+            }
+
+            public function before(mixed $user, string $ability): ?bool
+            {
+                return $user ? null : false;
+            }
+
+            public function view(mixed $user, mixed $model): bool
+            {
+                return false;
+            }
+
+            public function update(mixed $user, mixed $model): bool
+            {
+                return true;
+            }
+        };
+
+        $repository = new class($this->documents) extends CrudRepository
+        {
+            public function __construct(string $model)
+            {
+                $this->model = $model;
+            }
+        };
+
+        $controller = new class($policy, $repository, $this->folders) extends CrudController
+        {
+            use NestsUnderParent;
+
+            protected string $resourceClass = BaseResource::class;
+
+            protected string $collectionClass = BaseCollection::class;
+
+            protected array $operations = ['index' => IndexRequest::class];
+
+            public function __construct(CrudPolicy $policy, CrudRepository $repository, private string $folders)
+            {
+                parent::__construct($policy, $repository);
+            }
+
+            protected function parentClass(): string
+            {
+                return $this->folders;
+            }
+
+            protected function parentParameter(): string
+            {
+                return 'folder';
+            }
+
+            protected function parentAbilities(): array
+            {
+                return ['viewAny' => 'update'];
+            }
+        };
+
+        $this->app->instance($controller::class, $controller);
+
+        Route::middleware(['auth:sanctum', ResolveOrganization::ALIAS])
+            ->get('folders/{folder}/documents', [$controller::class, 'index']);
+
+        $folder = new $this->folders;
+        $folder->save();
+        $this->document->forceFill(['folder_id' => $folder->getKey()])->save();
+
+        Sanctum::actingAs($this->user);
+
+        $this->getJson("folders/{$folder->getKey()}/documents")
+            ->assertOk()
+            ->assertJsonPath('data.*.id', [$this->document->getKey()]);
     }
 
     /**

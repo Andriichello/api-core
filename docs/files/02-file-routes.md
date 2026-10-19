@@ -75,9 +75,9 @@ With the `NestsUnderParent` trait, the controller handles each request in three 
 | upload, rename, delete | `update` |
 
 There are no permissions of their own for files: a role, which may update invoices, may change their files. To map the
-abilities differently, override `$abilities` as a whole. It maps the requests' abilities (`viewAny`, `view`, `create`,
-`update`, `delete`, `forceDelete`) to abilities on the fileable, and a request, whose ability it doesn't list, is
-denied.
+abilities differently, override `parentAbilities()`, which returns the whole map. It maps the requests' abilities
+(`viewAny`, `view`, `create`, `update`, `delete`, `forceDelete`) to abilities on the fileable, and a request, whose
+ability it doesn't list, is denied.
 
 ## Collections
 

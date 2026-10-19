@@ -20,7 +20,7 @@ use LogicException;
  * the route names, e.g. `profiles/{profile}/invoices/{invoice}/files` with
  * `$parents = ['profile']` (the invoice's BelongsTo relation). The
  * controller's policy, which is the model's one, authorizes each request as
- * an ability on the model (see `$abilities`), so a user, who can view the
+ * an ability on the model (see `parentAbilities()`), so a user, who can view the
  * model, can read what belongs to it, and a user, who can update it, can
  * change that. A policy of another model is refused, so the permissions on
  * the model are always checked.
@@ -33,35 +33,39 @@ use LogicException;
 trait NestsUnderParent
 {
     /**
-     * Route parameter of the model, under which the routes nest what the
-     * controller handles.
-     *
-     * @var string
-     */
-    protected string $parameter;
-
-    /**
-     * Abilities on the model, which the abilities of the requests need.
-     * A request, whose ability isn't listed, is denied.
-     *
-     * @var array<string, string>
-     */
-    protected array $abilities = [
-        'viewAny' => 'view',
-        'view' => 'view',
-        'create' => 'update',
-        'update' => 'update',
-        'delete' => 'update',
-        'forceDelete' => 'update',
-    ];
-
-    /**
      * Get class of the model, under which the routes nest what the controller
      * handles.
      *
      * @return class-string<BaseModel>
      */
     abstract protected function parentClass(): string;
+
+    /**
+     * Get the route parameter of the model, under which the routes nest what
+     * the controller handles, e.g. `invoice`.
+     *
+     * @return string
+     */
+    abstract protected function parentParameter(): string;
+
+    /**
+     * Get the abilities on the model, which the abilities of the requests
+     * need. A request, whose ability isn't listed, is denied. Methods, unlike
+     * the properties of a trait, can be overridden by the class using it.
+     *
+     * @return array<string, string>
+     */
+    protected function parentAbilities(): array
+    {
+        return [
+            'viewAny' => 'view',
+            'view' => 'view',
+            'create' => 'update',
+            'update' => 'update',
+            'delete' => 'update',
+            'forceDelete' => 'update',
+        ];
+    }
 
     /**
      * Register the given routes under the URI for the operations, which the
@@ -98,7 +102,7 @@ trait NestsUnderParent
     {
         $this->ensurePolicyOfParent();
 
-        $ability = $this->abilities[$request->getAbility()] ?? null;
+        $ability = $this->parentAbilities()[$request->getAbility()] ?? null;
 
         if ($ability === null) {
             throw new AuthorizationException;
@@ -147,16 +151,17 @@ trait NestsUnderParent
      */
     protected function resolveParents(CrudRequest $request): array
     {
-        $value = $request->route($this->parameter);
+        $parameter = $this->parentParameter();
+        $value = $request->route($parameter);
 
         if ($value === null) {
-            throw new LogicException(static::class . " needs the {{$this->parameter}} route parameter.");
+            throw new LogicException(static::class . " needs the {{$parameter}} route parameter.");
         }
 
         $class = $this->parentClass();
         $parents = $this->resolveParentsOf(new $class, $request);
 
-        $parents[$this->parameter] = $this->findParent(new $class, $value, $parents, $request);
+        $parents[$parameter] = $this->findParent(new $class, $value, $parents, $request);
 
         return $parents;
     }
@@ -171,7 +176,9 @@ trait NestsUnderParent
      */
     protected function parentOf(CrudRequest $request): BaseModel
     {
-        return $request->getParent($this->parameter)
-            ?? throw new LogicException("The {{$this->parameter}} model of the request isn't resolved.");
+        $parameter = $this->parentParameter();
+
+        return $request->getParent($parameter)
+            ?? throw new LogicException("The {{$parameter}} model of the request isn't resolved.");
     }
 }

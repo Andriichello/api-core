@@ -57,6 +57,13 @@ abstract class SettingController extends CrudController
     protected string $settable;
 
     /**
+     * Route parameter of the model, whose settings the controller handles.
+     *
+     * @var string
+     */
+    protected string $parameter;
+
+    /**
      * SettingController constructor.
      *
      * @param CrudPolicy $policy The policy of the model, whose settings the controller handles.
@@ -144,6 +151,16 @@ abstract class SettingController extends CrudController
     protected function parentClass(): string
     {
         return $this->settable;
+    }
+
+    /**
+     * Get the route parameter of the model, whose settings the controller handles.
+     *
+     * @return string
+     */
+    protected function parentParameter(): string
+    {
+        return $this->parameter;
     }
 
     /**

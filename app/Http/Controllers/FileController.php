@@ -85,6 +85,13 @@ abstract class FileController extends CrudController
     protected string $fileable;
 
     /**
+     * Route parameter of the model, whose files the controller handles.
+     *
+     * @var string
+     */
+    protected string $parameter;
+
+    /**
      * Collection, to which the routes are limited: they list, find and add
      * only its files. When null, they see the files of every collection, and
      * add them to the default one.
@@ -203,6 +210,16 @@ abstract class FileController extends CrudController
     protected function parentClass(): string
     {
         return $this->fileable;
+    }
+
+    /**
+     * Get the route parameter of the model, whose files the controller handles.
+     *
+     * @return string
+     */
+    protected function parentParameter(): string
+    {
+        return $this->parameter;
     }
 
     /**
