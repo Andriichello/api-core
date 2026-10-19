@@ -9,9 +9,12 @@ use Core\Models\User;
  * Class UserPolicy.
  *
  * Authorizes managing the users of an organization (see UserController).
- * Besides the permissions, a user can't change, delete or restore a user,
- * whose roles rank above theirs, nor delete themselves. Adding roles needs
- * the `attachRole` permission, and removing them `detachRole`.
+ * Besides the permissions, a user can't change, delete or restore a user of
+ * another organization than the one they act in, nor one, whose roles rank
+ * above theirs, nor delete themselves. The person's own accounts in other
+ * organizations can be seen, but not managed with the roles of this one.
+ * Adding roles needs the `attachRole` permission, and removing them
+ * `detachRole`.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Policies
@@ -26,8 +29,7 @@ class UserPolicy extends CrudPolicy
     protected BaseModel|string $model = User::class;
 
     /**
-     * Determine whether the user can update the model: not one, who ranks
-     * above them.
+     * Determine whether the user can update the model: one, whom they manage.
      *
      * @param User|null $user
      * @param User $model
@@ -36,12 +38,12 @@ class UserPolicy extends CrudPolicy
      */
     public function update(mixed $user, mixed $model): bool
     {
-        return parent::update($user, $model) && !$model->isHigherThan($user);
+        return parent::update($user, $model) && $this->manages($user, $model);
     }
 
     /**
-     * Determine whether the user can delete the model: not themselves, nor one,
-     * who ranks above them.
+     * Determine whether the user can delete the model: one, whom they manage,
+     * but not themselves.
      *
      * @param User|null $user
      * @param User $model
@@ -50,12 +52,12 @@ class UserPolicy extends CrudPolicy
      */
     public function delete(mixed $user, mixed $model): bool
     {
-        return parent::delete($user, $model) && !$model->is($user) && !$model->isHigherThan($user);
+        return parent::delete($user, $model) && !$model->is($user) && $this->manages($user, $model);
     }
 
     /**
-     * Determine whether the user can permanently delete the model: not
-     * themselves, nor one, who ranks above them.
+     * Determine whether the user can permanently delete the model: one, whom
+     * they manage, but not themselves.
      *
      * @param User|null $user
      * @param User $model
@@ -64,12 +66,11 @@ class UserPolicy extends CrudPolicy
      */
     public function forceDelete(mixed $user, mixed $model): bool
     {
-        return parent::forceDelete($user, $model) && !$model->is($user) && !$model->isHigherThan($user);
+        return parent::forceDelete($user, $model) && !$model->is($user) && $this->manages($user, $model);
     }
 
     /**
-     * Determine whether the user can restore the model: not one, who ranks
-     * above them.
+     * Determine whether the user can restore the model: one, whom they manage.
      *
      * @param User|null $user
      * @param User $model
@@ -78,7 +79,26 @@ class UserPolicy extends CrudPolicy
      */
     public function restore(mixed $user, mixed $model): bool
     {
-        return parent::restore($user, $model) && !$model->isHigherThan($user);
+        return parent::restore($user, $model) && $this->manages($user, $model);
+    }
+
+    /**
+     * Determine whether the user manages the model: a user of the organization,
+     * in which they act (any, when they act in all organizations), who doesn't
+     * rank above them.
+     *
+     * @param User $user
+     * @param User $model
+     *
+     * @return bool
+     */
+    protected function manages(User $user, User $model): bool
+    {
+        if (!$user->actsInAllOrganizations() && $model->orgId() !== $user->actingOrgId()) {
+            return false;
+        }
+
+        return !$model->isHigherThan($user);
     }
 
     /**

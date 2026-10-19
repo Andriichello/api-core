@@ -51,6 +51,9 @@ php artisan config:cache
   out once, on their next request.
 - **Re-invited users.** Inviting the email of a deleted user of the organization restores that user. `suspended_at`
   stays as it was, so a suspended user remains unable to sign in after accepting.
+- **Own accounts in other organizations.** `UserController` lists and shows the person's own accounts in other
+  organizations, but changing, deleting or inviting them again answers `403`, unless the user acts in all
+  organizations.
 
 ## Includes and appends
 

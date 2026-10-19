@@ -354,6 +354,39 @@ class UserControllerTest extends TestCase
     }
 
     /**
+     * Test that the person's own account in another organization is seen, but not changed, deleted or invited
+     * again with the roles of this one, while a super admin, who acts in all organizations, manages it.
+     *
+     * @return void
+     */
+    public function testOwnAccountOfAnotherOrganizationCannotBeManaged(): void
+    {
+        $linked = User::factory()->create([
+            'organization_id' => Organization::factory()->create()->id,
+            'main_account_id' => $this->admin->id,
+        ]);
+        $linked->assignRole(UserRole::User->value);
+
+        $this->actingAs($this->admin)->getJson("users/$linked->id")->assertOk();
+
+        $this->patchJson("users/$linked->id", ['roles' => [UserRole::Admin->value]])->assertForbidden();
+        $this->patchJson("users/$linked->id", ['name' => 'Renamed'])->assertForbidden();
+        $this->postJson("users/$linked->id/invitation")->assertForbidden();
+        $this->deleteJson("users/$linked->id")->assertForbidden();
+
+        $this->assertSame([UserRole::User->value], $linked->fresh()->getRoleNames()->all());
+        $this->assertNotSame('Renamed', $linked->fresh()->name);
+        $this->assertNotSoftDeleted($linked);
+
+        $superAdmin = User::factory()->create(['organization_id' => null]);
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+
+        $this->actingAs($superAdmin)
+            ->patchJson("users/$linked->id", ['name' => 'Renamed'])
+            ->assertOk();
+    }
+
+    /**
      * Test that a user is deleted, but the admin can't delete themselves.
      *
      * @return void

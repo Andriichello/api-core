@@ -40,8 +40,10 @@ The routes act in the organization of the request (see
 [Acting organization](../organizations/04-acting-organization.md)), and every one of them finds users through
 `UserQuery::index()`: the users of that organization and the signed-in person's own accounts in any organization; all
 users for a super admin acting in all organizations. Any other id answers `404` (`Not found.` outside debug mode).
-Since the person's own accounts are in that scope, `show`, `update` and `destroy` reach them too, judged by the
-signed-in account's roles.
+Since the person's own accounts are in that scope, the list and `show` include them, but changing, deleting or
+inviting again a user of another organization than the acting one answers `403`: a person's accounts elsewhere are
+managed only from their own organizations, with the roles held there (see
+[User policy](../http/policies/03-user-policy.md)).
 
 ## Listing and showing
 

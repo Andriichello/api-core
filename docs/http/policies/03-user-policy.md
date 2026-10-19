@@ -1,8 +1,8 @@
 # User policy
 
 `Core\Policies\UserPolicy` authorizes the routes of `UserController`, through which managers handle the users of
-their organization. It is a `CrudPolicy` of `User`, which adds rules of rank: nobody changes a user who ranks above
-them, and nobody deletes themselves.
+their organization. It is a `CrudPolicy` of `User`, which adds rules of organization and rank: nobody changes a user
+of another organization or one who ranks above them, and nobody deletes themselves.
 
 ## Rules
 
@@ -12,9 +12,15 @@ Each ability needs its permission on `models.users` first, as in any [CRUD polic
 |------------------------|------------------------------|-------------------------------------------------------------------------|
 | `viewAny`, `view`      | list, show                   | Always.                                                                 |
 | `create`               | invite (`POST users`)        | The user has a role other than `guest`.                                 |
-| `update`               | `PATCH users/{id}`, resending the invitation | As `create`, and the target doesn't rank above the user. |
-| `delete`, `forceDelete`| `DELETE users/{id}`          | As `create`, the target isn't the user and doesn't rank above them.     |
-| `restore`              | restoring, where a controller adds it | As `create`, and the target doesn't rank above the user.       |
+| `update`               | `PATCH users/{id}`, resending the invitation | As `create`, and the user manages the target. |
+| `delete`, `forceDelete`| `DELETE users/{id}`          | As `create`, the target isn't the user, and the user manages it.        |
+| `restore`              | restoring, where a controller adds it | As `create`, and the user manages the target.                  |
+
+The user manages a target of the organization they act in (see
+[Acting organization](../../organizations/04-acting-organization.md)), any one when they act in all organizations,
+which doesn't rank above them. The person's own accounts in other organizations are listed and shown, as
+`UserQuery::index()` includes them, but not changed with the roles of this organization: otherwise an admin here could
+make their account elsewhere an admin there.
 
 A target ranks above the user when it has roles and its highest role ranks above each of the user's roles, by their
 order in `api-core.roles` (`User::isHigherThan()`, see [Ranking roles](../../roles/03-ranking-roles.md)). Users of
