@@ -19,8 +19,10 @@ return [
         'refresh_token_lifetime' => (int) env('API_CORE_REFRESH_TOKEN_LIFETIME', 20160),
 
         /*
-         * The maximum number of login, refresh, password reset and email
-         * verification attempts per minute for an email and IP address.
+         * The maximum number of login, refresh, password reset, email
+         * verification, invitation and password change attempts per minute
+         * for an IP address and what they are made on: the signed-in user,
+         * the email, the refresh token or the account of the link.
          */
         'rate_limit' => (int) env('API_CORE_AUTH_RATE_LIMIT', 10),
 

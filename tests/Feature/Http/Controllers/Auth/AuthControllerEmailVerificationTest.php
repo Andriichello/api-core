@@ -408,7 +408,9 @@ class AuthControllerEmailVerificationTest extends TestCase
         $this->sendVerificationEmail()->assertOk();
         $this->sendVerificationEmail()->assertTooManyRequests();
 
-        $this->signedInAs($this->createUser('alice@example.com'))
+        $alice = $this->createUser('alice@example.com');
+
+        $this->signedInAs($alice)
             ->sendVerificationEmail()
             ->assertOk();
 
@@ -416,5 +418,8 @@ class AuthControllerEmailVerificationTest extends TestCase
         $this->verifyEmail([...$parameters, 'signature' => 'wrong'])->assertForbidden();
         $this->verifyEmail([...$parameters, 'signature' => 'wrong'])->assertForbidden();
         $this->verifyEmail($parameters)->assertTooManyRequests();
+
+        // The links of other accounts, verified from the same address, count apart
+        $this->verifyEmail([...VerifyEmailRequest::linkParameters($alice), 'signature' => 'wrong'])->assertForbidden();
     }
 }

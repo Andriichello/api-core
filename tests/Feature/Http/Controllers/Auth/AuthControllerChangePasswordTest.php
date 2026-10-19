@@ -215,7 +215,8 @@ class AuthControllerChangePasswordTest extends TestCase
     }
 
     /**
-     * Test that only a signed-in user changes the password, and the attempts are throttled.
+     * Test that only a signed-in user changes the password, and the attempts are throttled for the user, whatever
+     * email the request gives.
      *
      * @return void
      */
@@ -229,6 +230,6 @@ class AuthControllerChangePasswordTest extends TestCase
 
         $this->changePassword($token, ['current_password' => 'wrong-password'])->assertUnprocessable();
         $this->changePassword($token, ['current_password' => 'wrong-password'])->assertUnprocessable();
-        $this->changePassword($token)->assertTooManyRequests();
+        $this->changePassword($token, ['email' => 'other@example.com'])->assertTooManyRequests();
     }
 }

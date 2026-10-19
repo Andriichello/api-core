@@ -76,10 +76,16 @@ A signed-in route answers `401` with `{"message": "Unauthenticated."}` without a
 ## Throttling
 
 The rate limiter `api-core-auth` (`AuthController::RATE_LIMITER`) allows `api-core.auth.rate_limit` attempts per minute
-(10 by default) for each email and IP address. The email is the request's `email` field, or else the signed-in user's
-email; requests with neither (`refresh`, `verify-email`, `accept-invitation`) are counted by the IP address alone. The
-count is shared by all throttled routes, so a `login` and a `forgot-password` for the same email from the same address
-draw from one budget. Over the limit, a route answers `429` with `{"message": "Too Many Attempts."}`.
+(10 by default) for each IP address and what the attempts are made on:
+
+- the signed-in user (`email/verification-notification`, `change-password`), whatever the request gives, so sending
+  other emails doesn't get a signed-in client more attempts at the current password;
+- else the `email` field (`login`, `forgot-password`, `reset-password`);
+- else the refresh token (`refresh`), by its id, so the refreshes of one client don't use up another's;
+- else the account of the link (`verify-email`, `accept-invitation`), by its `id`.
+
+The count is shared by all throttled routes, so a `login` and a `forgot-password` for the same email from the same
+address draw from one budget. Over the limit, a route answers `429` with `{"message": "Too Many Attempts."}`.
 
 ## Configuration
 

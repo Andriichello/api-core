@@ -336,6 +336,29 @@ class AuthControllerTest extends TestCase
     }
 
     /**
+     * Test that refresh attempts are throttled for the refresh token, so those of one client don't use up the ones
+     * of another, made from the same address.
+     *
+     * @return void
+     */
+    public function testThrottlesRefreshesPerRefreshToken(): void
+    {
+        config(['api-core.auth.rate_limit' => 2]);
+
+        $this->createUser('user@example.com', $this->acme);
+        $this->createUser('other@example.com', $this->acme);
+
+        [$id] = explode('|', $this->login(['email' => 'user@example.com'])->json('data.refresh_token'));
+        $other = $this->login(['email' => 'other@example.com'])->json('data.refresh_token');
+
+        $this->postJson('/auth/refresh', ['refresh_token' => "$id|wrong"])->assertUnauthorized();
+        $this->postJson('/auth/refresh', ['refresh_token' => "$id|wrong"])->assertUnauthorized();
+        $this->postJson('/auth/refresh', ['refresh_token' => "$id|wrong"])->assertTooManyRequests();
+
+        $this->postJson('/auth/refresh', ['refresh_token' => $other])->assertOk();
+    }
+
+    /**
      * Test that a refresh token is exchanged for a new pair of tokens, and the old access token stops
      * working.
      *

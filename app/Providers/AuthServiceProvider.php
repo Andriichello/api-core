@@ -35,6 +35,29 @@ use Laravel\Sanctum\Sanctum;
 class AuthServiceProvider extends ServiceProvider
 {
     /**
+     * Get what the attempts of the request count for: the signed-in user, or
+     * else the email, the refresh token or the account of the link, which it
+     * is made on, so the attempts on one don't use up those of another, made
+     * from the same address. A signed-in user's input doesn't change it.
+     *
+     * @param Request $request
+     *
+     * @return string
+     */
+    protected function rateLimitKeyOf(Request $request): string
+    {
+        $user = $request->user();
+
+        return match (true) {
+            $user !== null => 'user:' . $user->getAuthIdentifier(),
+            $request->filled('email') => 'email:' . Str::lower($request->string('email')->value()),
+            $request->filled('refresh_token') => 'refresh:' . Str::before($request->string('refresh_token'), '|'),
+            $request->filled('id') => 'account:' . $request->string('id'),
+            default => 'none',
+        };
+    }
+
+    /**
      * Register any application services.
      */
     public function register(): void
@@ -82,14 +105,11 @@ class AuthServiceProvider extends ServiceProvider
             }
         });
 
-        // Requests of a signed-in user, which have no email, count for the user's email
-        RateLimiter::for(AuthController::RATE_LIMITER, function (Request $request) {
-            $email = $request->has('email')
-                ? $request->string('email')->value() : (string) $request->user()?->email;
-
-            return Limit::perMinute(config('api-core.auth.rate_limit'))
-                ->by(Str::lower($email) . '|' . $request->ip());
-        });
+        RateLimiter::for(
+            AuthController::RATE_LIMITER,
+            fn (Request $request) => Limit::perMinute(config('api-core.auth.rate_limit'))
+                ->by($this->rateLimitKeyOf($request) . '|' . $request->ip())
+        );
 
         // The link in the password reset email leads to the SPA's page, and
         // an application overrides it by calling this in its own provider

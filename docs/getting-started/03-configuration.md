@@ -36,15 +36,16 @@ happens when the cache is built, so rebuild it after changing the config or upgr
 |--------------------------------------|-----------------------------------|-------------------------------|---------------------------------------------------------------------------------------------|
 | `api-core.auth.access_token_lifetime`  | `API_CORE_ACCESS_TOKEN_LIFETIME`  | `480`                         | Minutes, for which an access token authenticates requests.                                  |
 | `api-core.auth.refresh_token_lifetime` | `API_CORE_REFRESH_TOKEN_LIFETIME` | `20160`                       | Minutes, within which a refresh token can be exchanged (once) for new tokens.               |
-| `api-core.auth.rate_limit`             | `API_CORE_AUTH_RATE_LIMIT`        | `10`                          | Requests per minute to the throttled auth routes, per email and IP address.                 |
+| `api-core.auth.rate_limit`             | `API_CORE_AUTH_RATE_LIMIT`        | `10`                          | Requests per minute to the throttled auth routes, per IP address and user, email, refresh token or account. |
 | `api-core.auth.password_reset_url`     | `API_CORE_PASSWORD_RESET_URL`     | `{APP_URL}/reset-password`    | SPA page of the password reset link, which adds `?token=…&email=…`.                         |
 | `api-core.auth.email_verification_url` | `API_CORE_EMAIL_VERIFICATION_URL` | `{APP_URL}/verify-email`      | SPA page of the verification link, which adds `?id=…&hash=…&expires=…&signature=…`.         |
 | `api-core.auth.invitation_url`         | `API_CORE_INVITATION_URL`         | `{APP_URL}/accept-invitation` | SPA page of the invitation link, with the same parameters.                                  |
 | `api-core.auth.invitation_lifetime`    | `API_CORE_INVITATION_LIFETIME`    | `10080`                       | Minutes, for which an invitation link works (7 days).                                       |
 
 The rate limiter `api-core-auth` throttles `login`, `refresh`, `forgot-password`, `reset-password`, `verify-email`,
-`accept-invitation`, `email/verification-notification` and `change-password`. A request without an `email` counts for
-the signed-in user's email. See [Authentication](../auth/00-overview.md) and [Tokens](../auth/02-tokens.md).
+`accept-invitation`, `email/verification-notification` and `change-password`, counting the attempts of the signed-in
+user, or else of the email, the refresh token or the account of the link. See
+[Authentication](../auth/00-overview.md#throttling) and [Tokens](../auth/02-tokens.md).
 
 ## Roles, locales and HTTP
 
