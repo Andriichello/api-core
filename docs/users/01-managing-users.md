@@ -7,14 +7,14 @@ API.
 ## Setup
 
 Register the routes in `routes/api.php`. They add `auth:sanctum` and the `organization` middleware themselves, so
-`UserController::routes();` alone is enough. To add middleware that needs the signed-in user, such as
-`password.updated`, list `auth:sanctum` before it, since the group's middleware runs before the routes' own:
+`UserController::routes();` alone is enough. Other middleware, such as `password.updated`, go on a group around
+them:
 
 ```php
 use Core\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum', 'password.updated'])->group(fn () => UserController::routes());
+Route::middleware('password.updated')->group(fn () => UserController::routes());
 ```
 
 Invited people accept their invitation through the auth routes (see [Invitations](../auth/11-invitations.md)).

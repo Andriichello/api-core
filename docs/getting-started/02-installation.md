@@ -113,10 +113,8 @@ Route::middleware(['auth:sanctum', 'password.updated'])->group(function () {
 
 - The auth routes live under `/api/auth/` (see [Authentication](../auth/00-overview.md)). Don't put
   `password.updated` on them, since a person replaces a required password through them.
-- `password.updated` must come after `auth:sanctum` in the same list. It reads the signed-in user, and Laravel
-  reorders only the middleware of its priority list, which `password.updated` isn't in. Placed before `auth:sanctum`,
-  such as on an outer group around routes, which add `auth:sanctum` themselves, it runs before authentication, sees
-  no user of a token and lets the request through.
+- `password.updated` reads the signed-in user, so it runs after authentication wherever a route lists it: api-core
+  ranks it after `auth:sanctum` in the middleware priority (see [Middleware](../http/03-middleware.md#order)).
 - `organization` sets the organization, in which the request acts. `UserController::routes()` adds it to its own
   routes.
 

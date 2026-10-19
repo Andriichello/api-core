@@ -39,6 +39,10 @@ class RequireUpdatedPasswordTest extends TestCase
 
         Route::middleware(['auth:sanctum', RequireUpdatedPassword::ALIAS])->get('protected', fn () => 'OK');
         Route::middleware(RequireUpdatedPassword::ALIAS)->get('public', fn () => 'OK');
+
+        Route::middleware(RequireUpdatedPassword::ALIAS)->group(function () {
+            Route::middleware('auth:sanctum')->get('grouped', fn () => 'OK');
+        });
     }
 
     /**
@@ -108,6 +112,23 @@ class RequireUpdatedPasswordTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.is_password_update_required', true)
             ->assertJsonPath('data.password_updated_at', null);
+    }
+
+    /**
+     * Test that the middleware runs after authentication, even when a group around the route lists it before
+     * `auth:sanctum`, so it finds the user of the token.
+     *
+     * @return void
+     */
+    public function testRunsAfterAuthenticationWhereverItIsListed(): void
+    {
+        $user = $this->createUser('bob@example.com', ['password_updated_at' => null]);
+        $token = app(AccessTokenRepository::class)->create($user, 'Test');
+
+        $this->withToken($token->plainTextToken)
+            ->getJson('/grouped')
+            ->assertForbidden()
+            ->assertJsonPath('message', RequireUpdatedPassword::MESSAGE);
     }
 
     /**

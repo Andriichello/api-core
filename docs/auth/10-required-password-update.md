@@ -30,7 +30,8 @@ it:
 ```
 
 The message is `RequireUpdatedPassword::MESSAGE`, so a client can tell this `403` from others. Put the middleware on the
-application's own routes, after `auth:sanctum`, as it checks the signed-in user and lets guests through:
+application's own routes, with `auth:sanctum`. It checks the signed-in user and lets guests through, and it runs after
+authentication wherever a route lists it, as api-core ranks it so in the middleware priority:
 
 ```php
 // routes/api.php

@@ -4,6 +4,7 @@ namespace Core\Providers;
 
 use Core\Http\Middleware\AuditRequests;
 use Core\Http\Middleware\ForceJsonOnApi;
+use Core\Http\Middleware\RequireUpdatedPassword;
 use Core\Http\Middleware\ResolveOrganization;
 use Core\Http\Middleware\SetLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -86,6 +87,10 @@ class CoreServiceProvider extends ServiceProvider
 
                 // Runs after authentication too, so it knows the user's locale
                 $kernel->addToMiddlewarePriorityAfter(ResolveOrganization::class, SetLocale::class);
+
+                // Runs after authentication, wherever a route lists it, or else
+                // it finds no user of a token and lets the request through
+                $kernel->addToMiddlewarePriorityAfter(SetLocale::class, RequireUpdatedPassword::class);
             }
         });
 
