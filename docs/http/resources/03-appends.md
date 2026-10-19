@@ -91,9 +91,9 @@ An append that isn't allowed answers `422` with an `append` error, which names t
 
 A nested append is named in the message without the path of its include.
 
-Appends are checked when the response is built. For `store` and `update`, that is after the model has been saved, so
-the `422` of an append that isn't allowed doesn't undo the change. Clients should send only allowed appends with
-requests that change data.
+Appends are checked when the response is built. `CrudController` checks the appends and includes of `store`, `update`
+and `restore` against its resource before they change anything (`BaseResource::validateRequested()`), so their `422`
+comes before the change. An append under a relation, which isn't included, is left out, not refused.
 
 ## Related
 

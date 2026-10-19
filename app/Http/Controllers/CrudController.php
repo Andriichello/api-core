@@ -3,6 +3,7 @@
 namespace Core\Http\Controllers;
 
 use BadMethodCallException;
+use Core\Helpers\Helpers;
 use Core\Http\Requests\Crud\DestroyRequest;
 use Core\Http\Requests\Crud\IndexRequest;
 use Core\Http\Requests\Crud\RestoreRequest;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -206,7 +208,8 @@ abstract class CrudController extends ResourceController
 
     /**
      * Make the operation's request, with the parents, which its route names,
-     * authorize it and validate it.
+     * authorize it and validate it, along with the includes and appends of
+     * the operations, which change a model and answer it.
      *
      * @param string $operation
      * @param Request $request
@@ -232,7 +235,35 @@ abstract class CrudController extends ResourceController
 
         $crudRequest->validateResolved();
 
+        $this->validateRequestedOfResource($operation, $crudRequest);
+
         return $crudRequest;
+    }
+
+    /**
+     * Make sure the includes and appends, which the request of an operation,
+     * that changes a model and answers it (`store`, `update` and `restore`),
+     * asks for, are allowed by the controller's resource. Rendering it would
+     * refuse them too, but only after the change.
+     *
+     * @param string $operation
+     * @param CrudRequest $request
+     *
+     * @return void
+     * @throws ValidationException
+     */
+    protected function validateRequestedOfResource(string $operation, CrudRequest $request): void
+    {
+        if (!in_array($operation, ['store', 'update', 'restore'], true) || !isset($this->resourceClass)) {
+            return;
+        }
+
+        $class = $this->getResourceClass();
+
+        (new $class(null))->validateRequested(
+            Helpers::requestedIncludes($request),
+            Helpers::requestedAppends($request)
+        );
     }
 
     /**

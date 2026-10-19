@@ -438,4 +438,49 @@ class BaseResourceAppendsTest extends TestCase
 
         $resource->toArray(Request::create('/', 'GET', ['append' => ['email']]));
     }
+
+    /**
+     * Test that requested includes and appends are validated without a model, as rendering would: an append under
+     * a relation by the resource the relation is included as, and not at all when the relation isn't included.
+     *
+     * @return void
+     */
+    public function testValidatesRequestedWithoutModel(): void
+    {
+        $organization = get_class(new class(null) extends BaseResource
+        {
+            protected array $allowedAppends = ['name'];
+        });
+
+        $resource = new class(null, $organization) extends BaseResource
+        {
+            protected array $allowedAppends = ['locale'];
+
+            public function __construct(mixed $resource, string $organization)
+            {
+                parent::__construct($resource);
+
+                $this->allowedIncludes = ['organization' => $organization, 'roles'];
+            }
+        };
+
+        $resource->validateRequested(['organization'], ['locale', 'organization.name', 'tokens.name']);
+
+        $refusals = [
+            [['organization'], ['timezone'], 'append'],
+            [['organization'], ['organization.slug'], 'append'],
+            [['roles'], ['roles.name'], 'append'],
+            [['tokens'], [], 'include'],
+        ];
+
+        foreach ($refusals as [$includes, $appends, $key]) {
+            try {
+                $resource->validateRequested($includes, $appends);
+
+                $this->fail('Allowed ' . implode(',', [...$includes, ...$appends]) . '.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey($key, $exception->errors());
+            }
+        }
+    }
 }

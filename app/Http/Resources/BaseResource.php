@@ -13,6 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -121,6 +122,50 @@ class BaseResource extends JsonResource implements
 
         return str_contains($name ?? '', static::singularSlug())
             || str_contains($name ?? '', static::pluralSlug());
+    }
+
+    /**
+     * Make sure the given includes and appends are allowed, as rendering the
+     * resource would, but without its model, so that a request can be
+     * refused before it changes anything. An append under a relation is
+     * checked by the resource the relation is included as, when it is
+     * included, and left out otherwise, as rendering leaves it out.
+     *
+     * @param array<int, string> $includes
+     * @param array<int, string> $appends
+     *
+     * @return void
+     * @throws ValidationException
+     */
+    public function validateRequested(array $includes, array $appends): void
+    {
+        foreach ($includes as $include) {
+            if (!$this->hasAllowedIncludes($include)) {
+                throw $this->notAllowedInclude($include);
+            }
+        }
+
+        foreach ($appends as $append) {
+            if (!str_contains($append, '.')) {
+                if (!$this->hasAllowedAppends($append)) {
+                    throw $this->notAllowedAppend($append);
+                }
+
+                continue;
+            }
+
+            $relation = Str::before($append, '.');
+            $nested = array_values(array_map(
+                fn (string $include) => Str::after($include, "$relation."),
+                array_filter($includes, fn (string $include) => str_starts_with($include, "$relation."))
+            ));
+
+            if (!empty($nested) || in_array($relation, $includes, true)) {
+                // A relation included as it is is wrapped in a resource, which allows no appends
+                ($this->resourceForNestedIncludes($relation) ?? new BaseResource(null))
+                    ->validateRequested($nested, [Str::after($append, '.')]);
+            }
+        }
     }
 
     /**

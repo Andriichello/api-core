@@ -264,6 +264,31 @@ class CrudControllerTest extends TestCase
     }
 
     /**
+     * Test that storing and updating with an append or an include, which the resource doesn't allow, answer with
+     * 422 before the model is created or changed.
+     *
+     * @return void
+     */
+    public function testStoreAndUpdateRefuseNotAllowedAppendsAndIncludesFirst(): void
+    {
+        $this->actingAs($this->user)
+            ->postJson('/users?append=locale', [
+                'name' => 'New User',
+                'email' => 'new@example.com',
+                'password' => 'password123',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['append']);
+
+        $this->patchJson('/users/' . $this->colleague->id . '?include=organization', ['name' => 'Renamed'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['include']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'new@example.com']);
+        $this->assertNotSame('Renamed', $this->colleague->fresh()->name);
+    }
+
+    /**
      * Test that storing data without the required fields answers with 422, naming the missing ones.
      *
      * @return void

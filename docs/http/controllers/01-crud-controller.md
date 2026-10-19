@@ -97,7 +97,9 @@ Every operation goes through `handle($operation, $request)`:
    request with a target, it then finds the target within the user's index scope (404 when it isn't found), and asks
    the policy's method of the ability about it (403 when it's denied).
 4. `validateResolved()` validates the input: 422 when it's invalid.
-5. `handle{Operation}()` (`handleIndex()`, `handleStore()`, ...) does the work and returns the response.
+5. For `store`, `update` and `restore`, `validateRequestedOfResource()` checks the requested includes and appends
+   against the controller's resource: 422 when one isn't allowed, before anything changes.
+6. `handle{Operation}()` (`handleIndex()`, `handleStore()`, ...) does the work and returns the response.
 
 Authorization comes before validation, so a user who may not create invoices gets 403, not 422, for an invalid body.
 A user who has the permission gets 404, never 403, for a model they can't see.

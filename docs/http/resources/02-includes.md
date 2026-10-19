@@ -44,7 +44,8 @@ class InvoiceRepository extends CrudRepository
 ```
 
 Without it, the repository loads nothing, and since a resource never loads a relation lazily, the allowed includes are
-left out of the responses. An include that isn't allowed still answers `422`, once the response is built.
+left out of the responses. An include that isn't allowed still answers `422`, once the response is built, and before
+anything changes for `store`, `update` and `restore`, which `CrudController` checks against its resource first.
 
 ## Requesting includes
 
