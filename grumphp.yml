@@ -12,6 +12,9 @@ grumphp:
   tasks:
     phpcs:
       standard: phpcs.xml
+      # phpcs.xml excludes them, and phpcs fails, when it is given no other file
+      ignore_patterns:
+        - /^database\/migrations\//
     phpmd:
       ruleset: [phpmd.xml]
       report_format: ansi
