@@ -169,6 +169,29 @@ class AuditRequestsTest extends TestCase
     }
 
     /**
+     * Test that an upload's payload is kept, when the fields and the descriptions of its files fit, however large
+     * the files, which count in the size of the request, are.
+     *
+     * @return void
+     */
+    public function testRecordsUploadByTheSizeOfWhatIsKept(): void
+    {
+        $this->actingAs($this->user, 'sanctum');
+
+        $this->withHeader('Content-Length', '40300')
+            ->post('data', [
+                'title' => 'Scan',
+                'scan' => UploadedFile::fake()->createWithContent('scan.pdf', str_repeat('a', 40000)),
+            ])
+            ->assertOk();
+
+        $this->assertSameIgnoringKeyOrder(
+            ['title' => 'Scan', 'scan' => '[file: scan.pdf, 40000 bytes]'],
+            $this->onlyEntry()->metadata['payload']
+        );
+    }
+
+    /**
      * Test that a server error is recorded with the response and the exception, whose trace has no arguments,
      * and the exceptions before it.
      *

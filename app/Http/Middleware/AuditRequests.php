@@ -249,8 +249,9 @@ class AuditRequests
     }
 
     /**
-     * Get the request's payload with its scrub fields masked, unless it is
-     * too large.
+     * Get the request's payload with its scrub fields masked, and its files
+     * described, unless what is kept is too large. The size of the request
+     * isn't the measure, as an upload's counts the files' contents.
      *
      * @param Request $request
      *
@@ -258,13 +259,14 @@ class AuditRequests
      */
     protected function payloadOf(Request $request): array|string
     {
-        $size = (int) ($request->header('Content-Length') ?? strlen((string) $request->getContent()));
+        $payload = $this->scrub($request->all());
+        $encoded = json_encode($payload);
 
-        if ($size > config('api-core.audit.max_payload_size')) {
+        if ($encoded === false || strlen($encoded) > config('api-core.audit.max_payload_size')) {
             return '[too large]';
         }
 
-        return $this->scrub($request->all());
+        return $payload;
     }
 
     /**

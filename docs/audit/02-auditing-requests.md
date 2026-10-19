@@ -68,8 +68,9 @@ The default scopes are `['http']`. An entry with both `http` and `data`:
   case, so `{"Password": "…", "client": {"refresh_token": "…"}}` is recorded as
   `{"Password": "********", "client": {"refresh_token": "********"}}`.
 - An uploaded file is described rather than kept, such as `[file: scan.pdf, 48213 bytes]`.
-- A payload larger than `max_payload_size` bytes is recorded as `[too large]`. The size is the request's
-  `Content-Length`, so a multipart upload counts its files.
+- A payload larger than `max_payload_size` bytes is recorded as `[too large]`. The size is the one of what the entry
+  keeps (the masked fields and the descriptions of the files, as JSON), so an upload's files don't count, however
+  large they are.
 
 The default `scrub_fields` are `password`, `password_confirmation`, `current_password`, `token`, `access_token`,
 `refresh_token`, `remember_token`, `secret`, `client_secret`, `code`, `card_number` and `cvv`. An app, which sets the
