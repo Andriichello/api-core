@@ -164,17 +164,6 @@ class User extends BaseModel implements
     ];
 
     /**
-     * The loadable relationships for the model.
-     *
-     * @var array
-     */
-    protected $relationships = [
-        'organization',
-        'mainAccount',
-        'relatedAccounts',
-    ];
-
-    /**
      * The attributes that should be cast.
      *
      * @var array

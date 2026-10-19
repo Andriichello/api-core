@@ -26,13 +26,6 @@ class BaseModel extends Model implements
     use ListsColumns;
 
     /**
-     * The loadable relationships for the model.
-     *
-     * @var array
-     */
-    protected $relationships = [];
-
-    /**
      * Returns id of the organization, to which the record belongs.
      *
      * @return int|null

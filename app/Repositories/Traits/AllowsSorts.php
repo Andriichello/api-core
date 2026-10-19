@@ -124,16 +124,16 @@ trait AllowsSorts
     }
 
     /**
-     * Get sort value. If it's not allowed then
+     * Get the direction of the sort. If it's not allowed then
      * a validation exception (422) will be thrown.
      *
-     * @param array $sorts
+     * @param array<string, string> $sorts
      * @param string $name
      *
-     * @return string|string[]
+     * @return string
      * @throws ValidationException
      */
-    public function getAllowedSort(array $sorts, string $name): string|array
+    public function getAllowedSort(array $sorts, string $name): string
     {
         if (!$this->hasAllowedSorts($name)) {
             $allowed = array_unique($this->listOfAllowedSorts());
@@ -147,9 +147,7 @@ trait AllowsSorts
             ]);
         }
 
-        $values = explode(',', $sorts[$name]);
-
-        return count($values) === 1 ? $values[0] : $values;
+        return $sorts[$name];
     }
 
     /**

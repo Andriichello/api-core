@@ -85,17 +85,6 @@ class AccessToken extends PersonalAccessToken
     ];
 
     /**
-     * The loadable relationships for the model.
-     *
-     * @var array
-     */
-    protected array $relationships = [
-        'tokenable',
-        'organization',
-        'impersonator',
-    ];
-
-    /**
      * Organization associated with the model.
      *
      * @return BelongsTo

@@ -81,15 +81,6 @@ class Organization extends BaseModel
     ];
 
     /**
-     * The loadable relationships for the model.
-     *
-     * @var array
-     */
-    protected $relationships = [
-        'organization',
-    ];
-
-    /**
      * Bootstrap the model: its users are soft-deleted along with it (at the
      * same time), and restored along with it, while the users, which were
      * deleted before it, stay deleted. Both are done with one query, so no
