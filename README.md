@@ -4,6 +4,8 @@ API Core is an opinionated Laravel API skeleton designed for multi-tenant applic
 foundation with built-in support for global/tenant data scoping, advanced session-to-token bridging, and dynamic CRUD
 capabilities.
 
+The documentation is in [docs](docs/00-index.md).
+
 ### Requirements
 
 - PHP 8.5 with the `pdo` and `fileinfo` extensions, and Laravel 13.
