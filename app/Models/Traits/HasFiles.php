@@ -170,7 +170,10 @@ trait HasFiles
 
     /**
      * Get the directory on the disk, in which the model's files are stored:
-     * `{directory}/{morph}/{id}`, e.g. `files/models.users/1`.
+     * `{directory}/{morph}/{id}`, e.g. `files/models.users/1`. The morph is the
+     * model's alias, as in `fileable_type`, or else a slug of its class, as
+     * a class name, which `fileable_type` holds then, has backslashes. Files are
+     * found by their fileable, not by their paths, so the two may differ.
      *
      * @return string
      */

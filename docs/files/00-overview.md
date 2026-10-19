@@ -69,7 +69,9 @@ Deleting a `File` deletes the stored file, once the deletion is committed. Downl
 A file is stored on the files disk at `{directory}/{morph}/{id}/{uuid}.{extension}`:
 
 - `{directory}` is `api-core.files.directory` (`files`) without its outer slashes; an empty one is left out.
-- `{morph}` is the fileable's alias in the morph map, or else a slug of its class, such as `models.invoices`.
+- `{morph}` is the fileable's alias in the morph map, as in `fileable_type`, or else a slug of its class, such as
+  `models.invoices`, since `fileable_type` then holds the class name, whose backslashes don't belong in a path. Files
+  are found by their fileable, never by their paths, so the two may differ.
 - `{id}` is the fileable's key, and the UUID makes each path unique, so files of the same name never collide.
 - `{extension}` is the one of the type recognized from the contents, not the one of the name. A type without a known
   extension gets none.
