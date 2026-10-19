@@ -32,6 +32,8 @@ php artisan config:cache
   select email, count(*) from users where organization_id is null group by email having count(*) > 1;
   ```
 
+- **Dropped columns.** The migration `2026_10_19_220836_drop_unused_columns_of_sessions_and_password_reset_tokens`
+  drops `sessions.token_id` and `token_type`, and `password_reset_tokens.used_at` and `expires_at`, which nothing used.
 - **Required password updates.** `password.updated` answers 403 to every user, whose `password_updated_at` is `null`,
   until they change the password. Existing users get `null` from the migration, which adds the column, and so does
   any password set by someone else (a seeder, an admin). Stamp the passwords, which their owners chose, in a migration

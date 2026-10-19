@@ -29,8 +29,8 @@ that exist already are skipped, so only the new ones are copied. Then run `php a
 |-------|-----------|----------|
 | `organizations` | `0001_01_01_000000_create_organizations_table` | Tenants: unique `slug`, `name`, `metadata`, `activated_at`, `deactivated_at`, `suspended_at`; soft deletes. |
 | `users` | `0001_01_01_000001_create_users_table`, `…_add_main_account_id_to_users_table`, `…_add_password_updated_at_to_users_table`, `…_add_unique_email_of_users_without_organization` | Accounts: `organization_id`, `main_account_id`, `name`, `email`, `password`, `password_updated_at`, `timezone` (`UTC`), `locale` (`en`), `metadata`, `email_verified_at`, `suspended_at`, `last_login_at`; soft deletes. |
-| `password_reset_tokens` | `0001_01_01_000002_create_password_reset_tokens_table` | Password reset tokens by email. |
-| `sessions` | `0001_01_02_000000_create_sessions_table` | Laravel's `database` session driver. |
+| `password_reset_tokens` | `0001_01_01_000002_create_password_reset_tokens_table`, and `2026_10_19_220836_drop_unused_columns_*`, which drops `used_at` and `expires_at` | Password reset tokens by email. |
+| `sessions` | `0001_01_02_000000_create_sessions_table`, and the same `drop_unused_columns_*`, which drops `token_id` and `token_type` | Laravel's `database` session driver. |
 | `cache`, `cache_locks` | `0001_01_02_000001_create_cache_table` | Laravel's database cache. |
 | `jobs`, `job_batches`, `failed_jobs` | `0001_01_02_000002_create_jobs_table` | Laravel's database queue. |
 | `personal_access_tokens` | `2026_04_05_070504_create_personal_access_tokens_table` and three `add_*` migrations | Access tokens: `organization_id`, the tokenable, `impersonator_id`, `issuer_token_id`, `token`, `refresh_token`, `abilities`, `metadata`, `expires_at`, `refresh_expires_at`. |
