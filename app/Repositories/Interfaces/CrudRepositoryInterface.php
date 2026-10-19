@@ -2,8 +2,8 @@
 
 namespace Core\Repositories\Interfaces;
 
-use Illuminate\Database\Eloquent\Builder;
 use Core\Models\BaseModel;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Interface CrudRepositoryInterface.
@@ -27,18 +27,21 @@ interface CrudRepositoryInterface
      *
      * @param mixed $id
      *
-     * @return BaseModel|null
+     * @return BaseModel
+     * @throws ModelNotFoundException
      */
-    public function findOrFail(mixed $id): ?BaseModel;
+    public function findOrFail(mixed $id): BaseModel;
 
     /**
-     * Create model with given attributes.
+     * Create the model with given attributes, which belongs to the parents:
+     * the models, which its BelongsTo relations, named by the keys, point to.
      *
      * @param array $attributes
+     * @param array<string, BaseModel> $parents
      *
      * @return BaseModel
      */
-    public function create(array $attributes): BaseModel;
+    public function create(array $attributes, array $parents = []): BaseModel;
 
     /**
      * Update the model with given attributes.
@@ -51,13 +54,15 @@ interface CrudRepositoryInterface
     public function update(BaseModel $model, array $attributes): bool;
 
     /**
-     * Update or create the model with given attributes.
+     * Update the model, which matches the given attributes, with the values,
+     * or create it with both.
      *
      * @param array $attributes
+     * @param array $values
      *
-     * @return Builder|BaseModel
+     * @return BaseModel
      */
-    public function updateOrCreate(array $attributes): Builder|BaseModel;
+    public function updateOrCreate(array $attributes, array $values = []): BaseModel;
 
     /**
      * Delete the given model.
@@ -67,6 +72,15 @@ interface CrudRepositoryInterface
      * @return bool
      */
     public function delete(BaseModel $model): bool;
+
+    /**
+     * Restore the given soft-deleted model.
+     *
+     * @param BaseModel $model
+     *
+     * @return bool
+     */
+    public function restore(BaseModel $model): bool;
 
     /**
      * Force delete the given model.

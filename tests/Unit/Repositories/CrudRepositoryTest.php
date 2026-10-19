@@ -349,6 +349,33 @@ class CrudRepositoryTest extends TestCase
     }
 
     /**
+     * Test that finding, creating and updating or creating don't take the current request's index scope, filters
+     * and sorts, so they work alike in a console command, where no user may list any user.
+     *
+     * @return void
+     */
+    public function testFindCreateAndUpdateOrCreateIgnoreTheRequest(): void
+    {
+        $this->app->instance('request', Request::create('/users', 'GET', ['sort' => 'unknown']));
+
+        $repo = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+        };
+
+        /** @var User $user */
+        $user = $repo->create(['name' => 'Ann', 'email' => 'ann@example.com', 'password' => 'password123']);
+
+        $this->assertTrue($user->is($repo->find($user->id)));
+        $this->assertTrue($user->is($repo->findOrFail($user->id)));
+
+        $updated = $repo->updateOrCreate(['email' => 'ann@example.com'], ['name' => 'Ann Smith']);
+
+        $this->assertTrue($user->is($updated));
+        $this->assertSame('Ann Smith', $user->fresh()?->name);
+    }
+
+    /**
      * Test that deleting a model, which uses soft deletes, only soft deletes it.
      *
      * @return void

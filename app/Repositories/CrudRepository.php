@@ -12,7 +12,7 @@ use Core\Repositories\Interfaces\CrudRepositoryInterface;
 use Core\Repositories\Traits\AllowsEagerLoads;
 use Core\Repositories\Traits\AllowsFilters;
 use Core\Repositories\Traits\AllowsSorts;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -20,6 +20,10 @@ use Throwable;
 
 /**
  * Class CrudRepository.
+ *
+ * `builder($request)` applies the request's index scope, filters, sorts and
+ * includes. The other methods use the model's plain query, so they find and
+ * write the same, whatever request or console command they run in.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Repositories
@@ -123,7 +127,8 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
     }
 
     /**
-     * Find the model by the id.
+     * Find the model by the id, without the index scope, filters and sorts
+     * of the current request.
      *
      * @param mixed $id
      *
@@ -131,19 +136,21 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
      */
     public function find(mixed $id): ?BaseModel
     {
-        return $this->builder()->find($id);
+        return parent::builder()->find($id);
     }
 
     /**
-     * Find the model by the id or throw an exception.
+     * Find the model by the id, without the index scope, filters and sorts
+     * of the current request, or throw an exception.
      *
      * @param mixed $id
      *
-     * @return BaseModel|null
+     * @return BaseModel
+     * @throws ModelNotFoundException
      */
-    public function findOrFail(mixed $id): ?BaseModel
+    public function findOrFail(mixed $id): BaseModel
     {
-        return $this->builder()->findOrFail($id);
+        return parent::builder()->findOrFail($id);
     }
 
     /**
@@ -158,7 +165,7 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
     public function create(array $attributes, array $parents = []): BaseModel
     {
         /** @var BaseModel $model */
-        $model = $this->builder()->newModelInstance($attributes);
+        $model = parent::builder()->newModelInstance($attributes);
 
         foreach ($parents as $relation => $parent) {
             $model->$relation()->associate($parent);
@@ -183,15 +190,20 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
     }
 
     /**
-     * Update or create the model with given attributes.
+     * Update the model, which matches the given attributes, with the values,
+     * or create it with both.
      *
      * @param array $attributes
+     * @param array $values
      *
-     * @return Builder|BaseModel
+     * @return BaseModel
      */
-    public function updateOrCreate(array $attributes): Builder|BaseModel
+    public function updateOrCreate(array $attributes, array $values = []): BaseModel
     {
-        return $this->builder()->updateOrCreate($attributes);
+        /** @var BaseModel $model */
+        $model = parent::builder()->updateOrCreate($attributes, $values);
+
+        return $model;
     }
 
     /**

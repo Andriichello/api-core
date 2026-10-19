@@ -50,10 +50,10 @@ and [Sorting](../querying/04-sorting.md)); `$resourceClass` comes from `AllowsEa
 4. the requested includes, validated against `$resourceClass` and eager loaded within the related queries' index
    scopes.
 
-Without a request it uses the current one (`request()`). So `find($id)` and `findOrFail($id)`, which go through
-`builder()`, are scoped like the current request too, filters included. In a console command or a queued job there is
-no signed-in user, and the index scope of most of api-core's queries then finds nothing; use the model's own query
-there.
+Without a request it uses the current one (`request()`). Only `builder()` reads the request: `find($id)`,
+`findOrFail($id)`, `create()` and `updateOrCreate()` use the model's plain query (its global scopes, such as the
+organization's, still apply), so they work alike in a request, a console command and a queued job. Look a model up
+through `builder($request)` when the user must be able to list it.
 
 ## Writing
 
@@ -61,7 +61,7 @@ there.
 |--------|-------------|
 | `create(array $attributes, array $parents = []): BaseModel` | Makes the model of the attributes (mass assignment, so `$fillable` applies), associates the parents and saves it. |
 | `update(BaseModel $model, array $attributes): bool` | `$model->update($attributes)`. |
-| `updateOrCreate(array $attributes): Builder\|BaseModel` | Finds a model with all the attributes within `builder()`, or creates one. |
+| `updateOrCreate(array $attributes, array $values = []): BaseModel` | Updates the model, which has all the attributes, with the values, or creates one with both. |
 | `delete(BaseModel $model): bool` | `$model->delete()`: a soft delete for a model with `SoftDeletes`. |
 | `restore(BaseModel $model): bool` | Restores a soft-deleted model; `false` for a model without `restore()`. |
 | `forceDelete(BaseModel $model): bool` | Deletes the model with `delete()`, then removes it permanently. |
