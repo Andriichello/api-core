@@ -2,9 +2,9 @@
 
 namespace Core\Http\Requests\Interfaces;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Core\Models\BaseModel;
 use Core\Queries\BaseQuery;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Interface WithTargetInterface.

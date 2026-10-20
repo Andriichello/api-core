@@ -2,11 +2,11 @@
 
 namespace Core\Repositories;
 
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Core\Helpers\Helpers;
 use Core\Models\BaseModel;
 use Core\Queries\BaseQuery;
 use Core\Repositories\Interfaces\BaseRepositoryInterface;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class BaseRepository.
@@ -43,7 +43,7 @@ abstract class BaseRepository implements BaseRepositoryInterface
         $class = is_string($this->model)
             ? $this->model : get_class($this->model);
 
-        return empty($class) ? null : new $class();
+        return empty($class) ? null : new $class;
     }
 
     /**
