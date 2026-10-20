@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 interface CrudRepositoryInterface
 {
     /**
-     * Find the model by the id.
+     * Find the model by the id among the models, which the current user may
+     * list.
      *
      * @param mixed $id
      *
@@ -23,7 +24,8 @@ interface CrudRepositoryInterface
     public function find(mixed $id): ?BaseModel;
 
     /**
-     * Find the model by the id or throw an exception.
+     * Find the model by the id among the models, which the current user may
+     * list, or throw an exception.
      *
      * @param mixed $id
      *

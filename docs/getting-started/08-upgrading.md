@@ -74,6 +74,16 @@ php artisan config:cache
 - Included records are loaded through their queries' `index()`: a related record, which the user may not list, comes
   back as `null` (a single relation) or is left out (a list).
 
+## Repositories
+
+- `CrudRepository::find()` and `findOrFail()` apply only the index scope of the current request's user. They no longer
+  take the request's filters and sorts, so an invalid `filter` or `sort` of the request is no longer a 422 from them.
+- `create()` and `updateOrCreate()` use the model's plain query, without the index scope, filters and sorts of the
+  request. `updateOrCreate($attributes, $values = [])` takes the values to update or create with, and returns the
+  model.
+- A repository implementing `CrudRepositoryInterface` on its own needs `create($attributes, $parents = [])`,
+  `updateOrCreate($attributes, $values = [])`, `restore($model)`, and `findOrFail()` returning a `BaseModel`.
+
 ## Auth events
 
 - Logins, failed logins, logouts and switches are recorded in the audit log only with `API_CORE_AUDIT_AUTH_EVENTS=true`.

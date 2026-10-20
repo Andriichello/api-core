@@ -22,8 +22,10 @@ use Throwable;
  * Class CrudRepository.
  *
  * `builder($request)` applies the request's index scope, filters, sorts and
- * includes. The other methods use the model's plain query, so they find and
- * write the same, whatever request or console command they run in.
+ * includes. `find()` and `findOrFail()` apply only the index scope of the
+ * current request's user, so they find the models the user may list. The
+ * writing methods use the model's plain query, as a scope wouldn't keep a
+ * user from writing; the controller's policy authorizes that.
  *
  * @author Andrii Prykhodko <andriichello@gmail.com>
  * @package Core\Repositories
@@ -128,8 +130,21 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
     }
 
     /**
-     * Find the model by the id, without the index scope, filters and sorts
-     * of the current request.
+     * Get the model's query within the index scope of the request's user,
+     * without the request's filters, sorts and includes.
+     *
+     * @param Request|null $request The current request, when null.
+     *
+     * @return BaseQuery
+     */
+    protected function indexedBuilder(?Request $request = null): BaseQuery
+    {
+        return parent::builder()->index(($request ?? request())->user());
+    }
+
+    /**
+     * Find the model by the id among the models, which the current request's
+     * user may list, without the request's filters and sorts.
      *
      * @param mixed $id
      *
@@ -137,12 +152,13 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
      */
     public function find(mixed $id): ?BaseModel
     {
-        return parent::builder()->find($id);
+        return $this->indexedBuilder()->find($id);
     }
 
     /**
-     * Find the model by the id, without the index scope, filters and sorts
-     * of the current request, or throw an exception.
+     * Find the model by the id among the models, which the current request's
+     * user may list, without the request's filters and sorts, or throw an
+     * exception.
      *
      * @param mixed $id
      *
@@ -151,7 +167,7 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
      */
     public function findOrFail(mixed $id): BaseModel
     {
-        return parent::builder()->findOrFail($id);
+        return $this->indexedBuilder()->findOrFail($id);
     }
 
     /**
@@ -193,6 +209,11 @@ abstract class CrudRepository extends BaseRepository implements CrudRepositoryIn
     /**
      * Update the model, which matches the given attributes, with the values,
      * or create it with both.
+     *
+     * It doesn't apply the index scope of the current user, only the model's
+     * global scopes (such as the organization's): a scoped lookup would miss
+     * a model, which the user can't list, and create a second one. Authorize
+     * the write with the policy before calling it.
      *
      * @param array $attributes
      * @param array $values

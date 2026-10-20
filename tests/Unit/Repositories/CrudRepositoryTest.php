@@ -10,6 +10,7 @@ use Core\Models\User;
 use Core\Queries\BaseQuery;
 use Core\Repositories\CrudRepository;
 use Core\Tests\TestCase;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -384,12 +385,46 @@ class CrudRepositoryTest extends TestCase
     }
 
     /**
-     * Test that finding, creating and updating or creating don't take the current request's index scope, filters
-     * and sorts, so they work alike in a console command, where no user may list any user.
+     * Test that finding takes the index scope of the current request's user, but not the request's filters and
+     * sorts, so it finds the models the user may list, and a sort the repository doesn't allow isn't a 422.
      *
      * @return void
      */
-    public function testFindCreateAndUpdateOrCreateIgnoreTheRequest(): void
+    public function testFindsOnlyModelsTheUserMayListIgnoringFiltersAndSorts(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->for($organization)->create();
+        $colleague = User::factory()->for($organization)->create();
+        $stranger = User::factory()->for(Organization::factory())->create();
+
+        $this->app->instance('request', Request::create('/users', 'GET', [
+            'filter' => ['email' => ['eq' => 'nobody@example.com']],
+            'sort' => 'unknown',
+        ]));
+        $this->actingAs($user);
+
+        $repo = new class extends CrudRepository
+        {
+            protected BaseModel|string $model = User::class;
+        };
+
+        $this->assertTrue($colleague->is($repo->find($colleague->id)));
+        $this->assertTrue($colleague->is($repo->findOrFail($colleague->id)));
+        $this->assertNull($repo->find($stranger->id));
+
+        $this->expectException(ModelNotFoundException::class);
+
+        $repo->findOrFail($stranger->id);
+    }
+
+    /**
+     * Test that creating and updating or creating don't take the current request's index scope, filters and sorts:
+     * a scope wouldn't keep anyone from writing, but would make updating or creating miss the model, which the user
+     * can't list, and create a second one.
+     *
+     * @return void
+     */
+    public function testCreateAndUpdateOrCreateIgnoreTheRequest(): void
     {
         $this->app->instance('request', Request::create('/users', 'GET', ['sort' => 'unknown']));
 
@@ -401,13 +436,13 @@ class CrudRepositoryTest extends TestCase
         /** @var User $user */
         $user = $repo->create(['name' => 'Ann', 'email' => 'ann@example.com', 'password' => 'password123']);
 
-        $this->assertTrue($user->is($repo->find($user->id)));
-        $this->assertTrue($user->is($repo->findOrFail($user->id)));
+        $this->assertNull($repo->find($user->id), 'Without a user, no user may be listed.');
 
         $updated = $repo->updateOrCreate(['email' => 'ann@example.com'], ['name' => 'Ann Smith']);
 
         $this->assertTrue($user->is($updated));
         $this->assertSame('Ann Smith', $user->fresh()?->name);
+        $this->assertSame(1, User::query()->count());
     }
 
     /**

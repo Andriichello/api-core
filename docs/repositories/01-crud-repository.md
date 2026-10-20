@@ -50,10 +50,19 @@ and [Sorting](../querying/04-sorting.md)); `$resourceClass` comes from `AllowsEa
 4. the requested includes, validated against `$resourceClass` and eager loaded within the related queries' index
    scopes.
 
-Without a request it uses the current one (`request()`). Only `builder()` reads the request: `find($id)`,
-`findOrFail($id)`, `create()` and `updateOrCreate()` use the model's plain query (its global scopes, such as the
-organization's, still apply), so they work alike in a request, a console command and a queued job. Look a model up
-through `builder($request)` when the user must be able to list it.
+Without a request it uses the current one (`request()`).
+
+## Finding
+
+`find($id)` and `findOrFail($id)` look the model up among the ones, which the current request's user may list: they
+apply the index scope (`index($request->user())`), but not the request's filters, sorts and includes, so a list's
+query parameters don't hide a model from them. `findOrFail()` throws a `ModelNotFoundException`, a 404 in a request,
+for a model the user can't list. In a console command or a queued job there is no user, and the index scope of most
+queries then finds nothing: use the model's own query there (`Invoice::query()->find($id)`).
+
+`create()` and `updateOrCreate()` use the model's plain query, whose global scopes (such as the organization's) still
+apply. A scope wouldn't keep a user from writing: it would only make `updateOrCreate()` miss a model, which the user
+can't list, and create a second one. Authorize writes with the policy before calling them, as `CrudController` does.
 
 ## Writing
 
