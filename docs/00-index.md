@@ -9,7 +9,8 @@ roles, CRUD controllers with filters, sorts and pagination, files, settings, an 
 
 - [Overview](getting-started/00-overview.md) — what api-core provides, its layers, namespaces and a feature map.
 - [Requirements](getting-started/01-requirements.md) — PHP, extensions, packages and the supported databases.
-- [Installation](getting-started/02-installation.md) — installing api-core in an application, step by step.
+- [Installation](getting-started/02-installation.md) — installing api-core in an application, step by step, and
+  its guideline and skill for AI agents.
 - [Configuration](getting-started/03-configuration.md) — every config key with its env variable and default.
 - [SPA with sessions](getting-started/04-spa.md) — setting up a SPA that signs in with sessions.
 - [Scheduled tasks](getting-started/05-scheduled-tasks.md) — pruning expired tokens and old audit log entries.
@@ -146,4 +147,4 @@ roles, CRUD controllers with filters, sorts and pagination, files, settings, an 
 - [Running tests](development/01-running-tests.md) — SQLite, parallel runs and MySQL.
 - [Writing tests](development/02-writing-tests.md) — `TestCase` helpers and MySQL-only tests.
 - [Code quality](development/03-code-quality.md) — GrumPHP, phpcs, phpmd, PHPStan and Pint.
-- [Conventions](development/04-conventions.md) — commit messages, docblocks and code style.
+- [Conventions](development/04-conventions.md) — commit messages, docblocks, code style and documents.

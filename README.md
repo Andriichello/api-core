@@ -46,6 +46,9 @@ The documentation is in [docs](docs/00-index.md).
     set.
 14. Schedule `php artisan model:prune --model="Core\Models\AccessToken"` to delete expired tokens. Don't use
     `sanctum:prune-expired`, which would delete refresh tokens, which are still valid.
+15. With Laravel Boost, run `php artisan boost:install` and select `andriichello/api-core`, which adds api-core's
+    guideline and the `api-core-development` skill, pointing AI agents to the documents in
+    `vendor/andriichello/api-core/docs/`.
 
 ### Roles and permissions
 

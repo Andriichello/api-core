@@ -87,6 +87,13 @@ Outside debug mode, a missing model (a `ModelNotFoundException`, such as one of 
 or a missing enum case of a route answers a plain 404 with `{"message": "Not found."}`, without the class or the id.
 Clients, which matched Laravel's "No query results for model" message, need to match the status instead.
 
+## AI agents
+
+An application, which installed api-core's guideline and skill with Laravel Boost, keeps copies of them, which don't
+change with api-core. Refresh them after updating api-core with `php artisan boost:update`. An application, which set
+up Boost before api-core shipped them, installs them with `php artisan boost:install` (see
+[Installation](02-installation.md#9-ai-agents)).
+
 ## Related
 
 - [Installation](02-installation.md)

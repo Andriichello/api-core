@@ -157,6 +157,21 @@ The invitation email links to `API_CORE_INVITATION_URL` (see [Invitations](../au
 | Locales                        | [Locale middleware](../localization/00-locale-middleware.md)               |
 | The audit log                  | [Auditing requests](../audit/02-auditing-requests.md)                      |
 
+## 9. AI agents
+
+api-core ships a guideline and a skill for [Laravel Boost](https://laravel.com/docs/boost) in `resources/boost/`. In an
+application, which uses Boost, install them with:
+
+```bash
+php artisan boost:install
+```
+
+and select `andriichello/api-core` among the third-party packages. The guideline joins the agents' guidelines (such as
+`CLAUDE.md` or `AGENTS.md`): it tells agents where api-core's documents are installed
+(`vendor/andriichello/api-core/docs/`) and the rules that prevent silent mistakes. The `api-core-development` skill,
+which agents load when a task needs it, lists the steps of adding a model with endpoints and maps tasks to the
+documents. Boost keeps the selection in `boost.json`, so `php artisan boost:update` refreshes both.
+
 ## Related
 
 - [Requirements](01-requirements.md)

@@ -1,8 +1,9 @@
 # Conventions
 
-The conventions of api-core's commits, docblocks and code. The project's own rules live in `.ai/guidelines/`
-(`commits.md`, `docblocks.md`), which Laravel Boost includes in `CLAUDE.md` along with its Laravel guidelines; this
-page sums them up.
+The conventions of api-core's commits, docblocks, code and documents. The project's own rules live in
+`.ai/guidelines/` (`commits.md`, `docblocks.md`, `docs.md`), which Laravel Boost includes in `CLAUDE.md` along with its
+Laravel guidelines, and its skills in `.ai/skills/`; this page sums them up. After changing either, run
+`php8.5 artisan boost:update`, which regenerates `CLAUDE.md` and links the skills into `.claude/skills/`.
 
 ## Commits
 
@@ -75,6 +76,21 @@ and `@var` for properties. In tests, so do test methods (`Test that ….` and `@
 Follow the sibling files of what you add: their directory, naming and shape, such as a query class next to its model's
 other queries in `app/Queries` and a test under the mirrored path in `tests/`. Reuse the existing base classes and
 traits before writing new ones, and keep to the existing directories.
+
+## Documents
+
+- A change of behavior, config, routes or of a public class or method updates the documents that describe it, in the
+  same commit. What applications meet when upgrading also goes into [Upgrading](../getting-started/08-upgrading.md).
+- The `writing-docs` skill (`.ai/skills/writing-docs/SKILL.md`) holds the layout and style of the documents. Its
+  script checks names and numbering, the index, links and anchors, line lengths and the classes, methods and config
+  keys, which the documents cite:
+
+  ```bash
+  php8.5 .ai/skills/writing-docs/scripts/check-docs.php
+  ```
+
+- The guideline and the skill in `resources/boost/` cite documents by their installed path,
+  `vendor/andriichello/api-core/docs/…`. `GuidelinesAndSkillsTest` checks that they exist.
 
 ## Related
 

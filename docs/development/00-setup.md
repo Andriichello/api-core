@@ -66,7 +66,9 @@ api-core is a library, but its repository is also a small Laravel application (`
 | `database/`             | migrations, factories (`Core\Database\Factories`) and seeders (`Core\Database\Seeders`)    |
 | `tests/`                | `Unit` and `Feature` tests, namespace `Core\Tests`                                         |
 | `bootstrap/providers.php` | registers the three providers for the repository's own app                               |
-| `.ai/guidelines/`       | the project's rules of commits and docblocks, included in `CLAUDE.md`                      |
+| `.ai/guidelines/`       | the project's rules of commits, docblocks and documents, included in `CLAUDE.md`           |
+| `.ai/skills/`           | the project's skills, such as `writing-docs` with its `check-docs.php`                     |
+| `resources/boost/`      | the guideline and `api-core-development` skill, which Boost installs into applications     |
 
 `.gitattributes` keeps the development files (tests, tool configs, `CLAUDE.md`, `.ai`) out of the archives, which
 Composer installs into applications.
