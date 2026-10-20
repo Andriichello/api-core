@@ -21,9 +21,10 @@ The documentation is in [docs](docs/00-index.md).
 3. Publish the migrations with `php artisan vendor:publish --tag=api-core-migrations`, and the config with
    `--tag=api-core-config` to change it. Lists in the application's `config/api-core.php` replace api-core's as a whole.
 4. Set `AUTH_MODEL=Core\Models\User`, and point `API_CORE_PASSWORD_RESET_URL`, `API_CORE_EMAIL_VERIFICATION_URL` and
-   `API_CORE_INVITATION_URL` to the SPA's pages.
+   `API_CORE_INVITATION_URL` to the SPA's pages. Delete the skeleton's `app/Models/User.php` and its `UserFactory`, and
+   import `Core\Models\User` in `config/auth.php`.
 5. Run `php artisan migrate`, and call `Core\Database\Seeders\RolesAndPermissionsSeeder` from the application's
-   `DatabaseSeeder`.
+   `DatabaseSeeder`, in place of its `User::factory()` call.
 6. Register the auth routes in `routes/api.php`: `Route::prefix('auth')->group(fn () => AuthController::routes());`.
    Put the `password.updated` middleware on the application's own routes (not on the auth routes).
 7. For a SPA: `$middleware->statefulApi()`, `SANCTUM_STATEFUL_DOMAINS`, `SESSION_DOMAIN` for subdomains, CORS
@@ -48,7 +49,7 @@ The documentation is in [docs](docs/00-index.md).
     `sanctum:prune-expired`, which would delete refresh tokens, which are still valid.
 15. With Laravel Boost, run `php artisan boost:install` and select `andriichello/api-core`, which adds api-core's
     guideline and the `api-core-development` skill, pointing AI agents to the documents in
-    `vendor/andriichello/api-core/docs/`.
+    `vendor/andriichello/api-core/docs/`. Without prompts, list the package under `packages` in `boost.json` first.
 
 ### Roles and permissions
 

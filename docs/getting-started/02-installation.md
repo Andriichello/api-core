@@ -51,6 +51,9 @@ php artisan install:api --without-migration-prompt
 It also registers the file in `bootstrap/app.php`. Since api-core's access token migration is already published, the
 command doesn't publish Sanctum's; if you ran it before step 2, delete that migration.
 
+The command adds `laravel/sanctum` to the application's `composer.json`, which api-core requires anyway, and asks to
+add Sanctum's `HasApiTokens` trait to the user model. `Core\Models\User` already uses it, so there is nothing to add.
+
 ## 4. Configure
 
 Point Laravel's user provider to api-core's user, and the links of its emails to the SPA's pages:
@@ -62,6 +65,21 @@ API_CORE_EMAIL_VERIFICATION_URL=https://app.example.com/verify-email
 API_CORE_INVITATION_URL=https://app.example.com/accept-invitation
 ```
 
+Laravel's skeleton has a user model of its own, which api-core's replaces. Delete it and its factory, and import
+api-core's in `config/auth.php`, whose user provider falls back to it when `AUTH_MODEL` isn't set:
+
+```bash
+rm app/Models/User.php database/factories/UserFactory.php
+```
+
+```php
+// config/auth.php
+use Core\Models\User;
+```
+
+Tests make users with `Core\Models\User::factory()` (see
+[Factories and seeders](../database/01-factories-and-seeders.md)).
+
 To change more, such as the roles, publish the config with `php artisan vendor:publish --tag=api-core-config` (see
 [Configuration](03-configuration.md)).
 
@@ -71,7 +89,8 @@ To change more, such as the roles, publish the config with `php artisan vendor:p
 php artisan migrate
 ```
 
-Call api-core's seeder from the application's `database/seeders/DatabaseSeeder.php`:
+Call api-core's seeder from the application's `database/seeders/DatabaseSeeder.php`, in place of the skeleton's
+`User::factory()` call, whose model is gone:
 
 ```php
 use Core\Database\Seeders\RolesAndPermissionsSeeder;
@@ -171,6 +190,23 @@ and select `andriichello/api-core` among the third-party packages. The guideline
 (`vendor/andriichello/api-core/docs/`) and the rules that prevent silent mistakes. The `api-core-development` skill,
 which agents load when a task needs it, lists the steps of adding a model with endpoints and maps tasks to the
 documents. Boost keeps the selection in `boost.json`, so `php artisan boost:update` refreshes both.
+
+- Without prompts (`--no-interaction`), `boost:install` takes the agents and the packages from `boost.json`, and
+  selects no package that isn't listed there. List them first, then run `php artisan boost:install --no-interaction`:
+
+  ```json
+  {
+      "agents": ["claude_code"],
+      "packages": ["andriichello/api-core"],
+      "cloud": false
+  }
+  ```
+
+- Boost offers its Laravel Cloud integration selected, which adds the `deploying-to-cloud` skill. Deselect it, or set
+  `"cloud": false` as above, for an application deployed elsewhere.
+- Laravel's skeleton ships `CLAUDE.md` and `AGENTS.md` with notes for agents on installing PHP and Composer.
+  `boost:install` replaces the notes in the file of each agent you select (`CLAUDE.md` for Claude Code, `AGENTS.md`
+  for most others); delete the other file, when none of your agents reads it.
 
 ## Related
 
