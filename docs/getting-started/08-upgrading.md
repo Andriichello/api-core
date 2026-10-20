@@ -51,6 +51,9 @@ php artisan config:cache
 - **Switched sessions.** A session, which a user switched to another account, holds that user's password hash, and
   `AuthenticateSession` signs it out without one. Sessions switched by an older api-core lack it, so they are signed
   out once, on their next request.
+- **Remembered logins.** `POST auth/login` with `remember` sets a remember cookie for a session login, and stores its
+  token in `users.remember_token`, which the migration `2026_10_21_010000_add_remember_token_to_users_table` adds, so
+  publish and run it before a SPA sends `remember`.
 - **Re-invited users.** Inviting the email of a deleted user of the organization restores that user. `suspended_at`
   stays as it was, so a suspended user remains unable to sign in after accepting.
 - **Switched tokens.** A token issued by switching may not switch again (`403`), not even when its account may switch
