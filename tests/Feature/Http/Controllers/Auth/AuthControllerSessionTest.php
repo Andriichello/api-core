@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpFoundation\Cookie;
 
 /**
  * Class AuthControllerSessionTest.
@@ -177,6 +178,29 @@ class AuthControllerSessionTest extends TestCase
             'password' => $password,
             'password_confirmation' => $password,
         ]);
+    }
+
+    /**
+     * Get the name of the session guard's remember cookie.
+     *
+     * @return string
+     */
+    private function recallerName(): string
+    {
+        return $this->app['auth']->guard('web')->getRecallerName();
+    }
+
+    /**
+     * Drop every cookie but the remember one, as a browser does, which kept the remember cookie past the session.
+     *
+     * @param Cookie $recaller
+     *
+     * @return void
+     */
+    private function reopenBrowser(Cookie $recaller): void
+    {
+        $this->defaultCookies = [];
+        $this->withCookie($recaller->getName(), $recaller->getValue());
     }
 
     /**
@@ -605,5 +629,50 @@ class AuthControllerSessionTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.id', $main->id)
             ->assertJsonPath('data.impersonator', null);
+    }
+
+    /**
+     * Test that a login, which asks to be remembered, signs a new session in from its cookie once the session is
+     * gone, while a login, which doesn't ask, sets no such cookie.
+     *
+     * @return void
+     */
+    public function testRemembersTheLoginBeyondItsSessionWhenAsked(): void
+    {
+        $user = $this->createUser('user@example.com', $this->acme);
+        $this->login(['email' => 'user@example.com'])->assertOk()->assertCookieMissing($this->recallerName());
+
+        $recaller = $this->login(['email' => 'user@example.com', 'remember' => true])
+            ->assertOk()
+            ->getCookie($this->recallerName());
+
+        $this->assertNotNull($recaller);
+        $this->assertNotNull($user->fresh()->remember_token);
+        $this->reopenBrowser($recaller);
+        $this->spa('GET', '/auth/me')->assertOk()->assertJsonPath('data.id', $user->id);
+    }
+
+    /**
+     * Test that a remembered login ends when the user signs out, and when the password is reset elsewhere.
+     *
+     * @return void
+     */
+    public function testRememberedLoginEndsOnLogoutAndPasswordReset(): void
+    {
+        $user = $this->createUser('user@example.com', $this->acme);
+
+        $recaller = $this->login(['email' => 'user@example.com', 'remember' => true])
+            ->assertOk()
+            ->getCookie($this->recallerName());
+        $this->spa('POST', '/auth/logout')->assertOk();
+        $this->reopenBrowser($recaller);
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
+
+        $recaller = $this->login(['email' => 'user@example.com', 'remember' => true])
+            ->assertOk()
+            ->getCookie($this->recallerName());
+        $this->resetPasswordElsewhere($user, 'new-password')->assertOk();
+        $this->reopenBrowser($recaller);
+        $this->spa('GET', '/auth/me')->assertUnauthorized();
     }
 }

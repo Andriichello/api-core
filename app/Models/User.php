@@ -160,6 +160,7 @@ class User extends BaseModel implements
      */
     protected $hidden = [
         'password',
+        'remember_token',
         'main_account_id',
     ];
 

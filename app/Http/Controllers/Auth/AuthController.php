@@ -118,8 +118,8 @@ class AuthController extends BaseController
 
     /**
      * Sign in with an email and password. A request from the SPA signs in to
-     * its session, and any other request gets an access token and a refresh
-     * token.
+     * its session, which is remembered in a cookie when it asks for it, and
+     * any other request gets an access token and a refresh token.
      *
      * @param LoginRequest $request
      *
@@ -497,7 +497,10 @@ class AuthController extends BaseController
 
     /**
      * Sign the session in to the user. The guard gives the session a new id,
-     * so the id it had before signing in can't be used to take it over.
+     * so the id it had before signing in can't be used to take it over. A
+     * login, which asks to be remembered (`remember`), sets the guard's
+     * remember cookie, which signs a new session in once this one expires,
+     * until the user signs out or changes the password.
      *
      * @param Request $request
      * @param User $user
@@ -508,7 +511,7 @@ class AuthController extends BaseController
     {
         $request->session()->forget([User::IMPERSONATOR_SESSION_KEY, User::IMPERSONATOR_PASSWORD_SESSION_KEY]);
 
-        $this->sessionGuard()->login($user);
+        $this->sessionGuard()->login($user, $request->boolean('remember'));
     }
 
     /**

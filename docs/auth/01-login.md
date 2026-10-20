@@ -10,6 +10,7 @@ token; a SPA, whose request has a session, is signed in to that session.
 | `email`        | required, string, email, max 255            | Matched regardless of case (emails are stored lowercase) |
 | `password`     | required, string                            |                                                          |
 | `organization` | nullable, string, max 255                   | The slug of an organization; send it only when asked     |
+| `remember`     | sometimes, boolean                          | A SPA's login outlives its session (see [Sessions](03-sessions.md#staying-signed-in)) |
 
 ```http
 POST /api/auth/login

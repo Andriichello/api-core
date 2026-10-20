@@ -29,6 +29,8 @@ class LoginRequest extends BaseRequest
             'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'string'],
             'organization' => ['nullable', 'string', 'max:255'],
+            // A session login, which outlives its session in a cookie; tokens have their own lifetimes
+            'remember' => ['sometimes', 'boolean'],
         ];
     }
 

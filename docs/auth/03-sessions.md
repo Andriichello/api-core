@@ -54,6 +54,27 @@ The `user` is shortened here; it is the full [`MeResource`](04-me.md). The accou
 default), which fires `Illuminate\Auth\Events\Login` with that guard's name, and gets a new id, so an id from before
 the login can't be used to take it over.
 
+## Staying signed in
+
+A login with `"remember": true` also sets the session guard's remember cookie (`remember_web_…`, for 400 days), and
+stores its token in the user's `remember_token`. When the session expires (`SESSION_LIFETIME`), or the browser drops
+it, the next request from the SPA signs a new session in from the cookie. Without `remember`, the login lasts as long
+as its session.
+
+```http
+POST /api/auth/login
+Origin: https://app.example.com
+X-XSRF-TOKEN: {the value of the XSRF-TOKEN cookie}
+Content-Type: application/json
+
+{"email": "ann@example.com", "password": "secret-password", "remember": true}
+```
+
+A remembered login ends like a session does (below): signing out clears the cookie and replaces the user's
+`remember_token`, which signs out the other browsers remembered for the user too, and a password changed elsewhere
+makes the cookie stop working, since it carries a hash of the password. Token clients ignore `remember`: their tokens
+have their own [lifetimes](02-tokens.md).
+
 ## Signing out
 
 `POST /api/auth/logout` from the SPA signs the session out, invalidates it and regenerates its CSRF token. It fires
